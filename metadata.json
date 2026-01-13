@@ -1,0 +1,5 @@
+{
+  "name": "CFT - Gestor de Correos Corporativos AI",
+  "description": "Una aplicación profesional para la gestión y generación masiva de correos electrónicos utilizando IA para la detección de género y personalización de saludos.",
+  "requestFramePermissions": []
+}
