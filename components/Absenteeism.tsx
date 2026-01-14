@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
 import { Official, AbsenceRecord, AbsenceType } from '../types';
-import { Calendar, Plus, Trash2, Search, Filter, User } from 'lucide-react';
+import { Calendar, Plus, Trash2, Search, Filter, User, FileText, Download } from 'lucide-react';
+import { generateAbsencePDF } from '../services/reportService';
 
 interface AbsenteeismProps {
     officials: Official[];
@@ -208,8 +208,8 @@ export const Absenteeism: React.FC<AbsenteeismProps> = ({
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${absence.type === AbsenceType.FeriadoLegal ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
-                                                    absence.type === AbsenceType.PermisoAdministrativo ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' :
-                                                        'bg-amber-50 text-amber-600 border border-amber-100'
+                                                absence.type === AbsenceType.PermisoAdministrativo ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' :
+                                                    'bg-amber-50 text-amber-600 border border-amber-100'
                                                 }`}>
                                                 {absence.type}
                                             </span>
@@ -226,14 +226,24 @@ export const Absenteeism: React.FC<AbsenteeismProps> = ({
                                             {absence.description || '-'}
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <button
-                                                onClick={() => {
-                                                    if (confirm("¿Eliminar este registro?")) onDeleteAbsence(absence.id);
-                                                }}
-                                                className="p-1.5 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50 transition-colors"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                                            <div className="flex justify-end gap-2">
+                                                <button
+                                                    onClick={() => official && generateAbsencePDF(absence, official)}
+                                                    className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-md hover:bg-indigo-50 transition-colors"
+                                                    title="Generar Resolución PDF"
+                                                >
+                                                    <Download className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        if (confirm("¿Eliminar este registro?")) onDeleteAbsence(absence.id);
+                                                    }}
+                                                    className="p-1.5 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50 transition-colors"
+                                                    title="Eliminar"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 );

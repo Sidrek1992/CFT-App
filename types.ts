@@ -59,7 +59,7 @@ export interface SavedCc {
   label: string;
 }
 
-export type ViewState = 'dashboard' | 'database' | 'absenteeism' | 'compensatory-hours' | 'template' | 'generate' | 'settings';
+export type ViewState = 'dashboard' | 'database' | 'absenteeism' | 'calendar' | 'compensatory-hours' | 'template' | 'generate' | 'settings';
 
 export enum AbsenceType {
   FeriadoLegal = 'Feriado Legal',
