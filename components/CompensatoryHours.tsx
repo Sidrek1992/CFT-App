@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
 import { Official, CompensatoryHourRecord } from '../types';
-import { Clock, Plus, Trash2, Search, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
+import { Clock, Plus, Trash2, Search, TrendingUp, TrendingDown, AlertCircle, BarChart3 } from 'lucide-react';
+import { BalanceHistoryChart } from './BalanceHistoryChart';
 
 interface CompensatoryHoursProps {
     officials: Official[];
@@ -38,6 +38,13 @@ export const CompensatoryHours: React.FC<CompensatoryHoursProps> = ({
         e.preventDefault();
         if (!selectedOfficialId || !date || hours <= 0) {
             onToast("Por favor complete los campos obligatorios", "error");
+            return;
+        }
+
+        const currentBalance = getOfficialBalance(selectedOfficialId);
+
+        if (type === 'Compensation' && hours > currentBalance) {
+            onToast(`Saldo insuficiente. El funcionario solo dispone de ${currentBalance}h.`, "error");
             return;
         }
 

@@ -12,6 +12,7 @@ import { Settings } from './components/Settings';
 import { ToastContainer } from './components/ToastContainer';
 import { Absenteeism } from './components/Absenteeism';
 import { CompensatoryHours } from './components/CompensatoryHours';
+import { AbsenceCalendar } from './components/AbsenceCalendar';
 
 const generateId = () => {
   return typeof crypto !== 'undefined' && crypto.randomUUID
@@ -76,6 +77,7 @@ export default function App() {
     const saved = localStorage.getItem('app_compensatory_hours');
     return saved ? JSON.parse(saved) : [];
   });
+  const [isAdmin, setIsAdmin] = useState<boolean>(() => JSON.parse(localStorage.getItem('isAdmin') || 'false'));
   const [sortOption, setSortOption] = useState<SortOption>('name');
   const [filterCriteria, setFilterCriteria] = useState<FilterCriteria>({ type: 'none' });
 
@@ -87,6 +89,7 @@ export default function App() {
   useEffect(() => { localStorage.setItem('saved_ccs', JSON.stringify(savedCcs)); }, [savedCcs]);
   useEffect(() => { localStorage.setItem('app_absences', JSON.stringify(absences)); }, [absences]);
   useEffect(() => { localStorage.setItem('app_compensatory_hours', JSON.stringify(compensatoryHours)); }, [compensatoryHours]);
+  useEffect(() => localStorage.setItem('isAdmin', JSON.stringify(isAdmin)), [isAdmin]);
 
   const addToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToasts(prev => [...prev, { id: generateId(), message, type }]);
@@ -139,6 +142,10 @@ export default function App() {
     setView(target);
     if (filter) setFilterCriteria(filter);
     setIsMobileMenuOpen(false);
+  };
+
+  const handleAddAbsence = (a: Omit<AbsenceRecord, 'id'>) => {
+    setAbsences(prev => [...prev, { ...a, id: generateId() }]);
   };
 
   const handleImportClick = () => {
@@ -259,8 +266,12 @@ export default function App() {
                 <button onClick={() => handleNavigate('database')} className={`w-full flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-medium transition-all ${view === 'database' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'}`}>
                   <Briefcase className="w-4 h-4" /> Funcionarios
                 </button>
-                <button onClick={() => handleNavigate('absenteeism')} className={`w-full flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-medium transition-all ${view === 'absenteeism' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'}`}>
-                  <Calendar className="w-4 h-4" /> Ausentismo
+                <button
+                  onClick={() => setView('absenteeism')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm ${view === 'absenteeism' || view === 'calendar' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-500 hover:bg-slate-50'
+                    }`}
+                >
+                  <Calendar className="w-5 h-5" /> Ausentismo
                 </button>
                 <button onClick={() => handleNavigate('compensatory-hours')} className={`w-full flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-medium transition-all ${view === 'compensatory-hours' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'}`}>
                   <Clock className="w-4 h-4" /> Horas Comp.
@@ -314,8 +325,9 @@ export default function App() {
                 onNavigate={handleNavigate}
                 onImport={handleImportClick}
                 onExportExcel={handleExportExcel}
-                onNewOfficial={() => handleNavigate('database')}
+                onNewOfficial={() => { setEditingOfficial(null); setShowForm(true); }}
                 onClearDatabase={handleClearDatabase}
+                isAdmin={isAdmin}
               />
             )}
 
@@ -337,13 +349,54 @@ export default function App() {
             )}
 
             {view === 'absenteeism' && (
-              <Absenteeism
-                officials={officials}
-                absences={absences}
-                onAddAbsence={(a) => setAbsences(prev => [...prev, { ...a, id: generateId() }])}
-                onDeleteAbsence={(id) => setAbsences(prev => prev.filter(a => a.id !== id))}
-                onToast={addToast}
-              />
+              <div className="space-y-6">
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => setView('absenteeism')}
+                    className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${view === 'absenteeism' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}
+                  >
+                    Listado
+                  </button>
+                  <button
+                    onClick={() => setView('calendar')}
+                    className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${view === 'calendar' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}
+                  >
+                    Visor Mensual
+                  </button>
+                </div>
+                {view === 'absenteeism' && (
+                  <Absenteeism
+                    officials={officials}
+                    absences={absences}
+                    onAddAbsence={handleAddAbsence}
+                    onDeleteAbsence={(id) => setAbsences(prev => prev.filter(a => a.id !== id))}
+                    onToast={addToast}
+                  />
+                )}
+              </div>
+            )}
+
+            {view === 'calendar' && (
+              <div className="space-y-6">
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => setView('absenteeism')}
+                    className="px-4 py-2 bg-white text-slate-600 border border-slate-200 rounded-lg font-bold text-sm transition-all"
+                  >
+                    Listado
+                  </button>
+                  <button
+                    onClick={() => setView('calendar')}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm transition-all shadow-lg"
+                  >
+                    Visor Mensual
+                  </button>
+                </div>
+                <AbsenceCalendar
+                  officials={officials}
+                  absences={absences}
+                />
+              </div>
             )}
 
             {view === 'compensatory-hours' && (
@@ -371,6 +424,8 @@ export default function App() {
                   setSavedCcs(prev => prev.filter(cc => cc.id !== id));
                   addToast("CC Permanente eliminado", "info");
                 }}
+                isAdmin={isAdmin}
+                onSetIsAdmin={setIsAdmin}
               />
             )}
           </div>

@@ -7,9 +7,11 @@ interface SettingsProps {
   savedCcs: SavedCc[];
   onAddCc: (label: string, email: string) => void;
   onDeleteCc: (id: string) => void;
+  isAdmin: boolean;
+  onSetIsAdmin: (val: boolean) => void;
 }
 
-export const Settings: React.FC<SettingsProps> = ({ savedCcs, onAddCc, onDeleteCc }) => {
+export const Settings: React.FC<SettingsProps> = ({ savedCcs, onAddCc, onDeleteCc, isAdmin, onSetIsAdmin }) => {
   const [label, setLabel] = useState('');
   const [email, setEmail] = useState('');
 
@@ -42,26 +44,26 @@ export const Settings: React.FC<SettingsProps> = ({ savedCcs, onAddCc, onDeleteC
             <form onSubmit={handleSubmit} className="space-y-4 bg-slate-50 p-6 rounded-xl border border-slate-100">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Nombre / Etiqueta</label>
-                <input 
-                  type="text" 
-                  value={label} 
+                <input
+                  type="text"
+                  value={label}
                   onChange={e => setLabel(e.target.value)}
-                  placeholder="Ej: Subdirección Académica" 
+                  placeholder="Ej: Subdirección Académica"
                   className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Correo Electrónico</label>
-                <input 
-                  type="email" 
-                  value={email} 
+                <input
+                  type="email"
+                  value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder="ejemplo@cft.cl" 
+                  placeholder="ejemplo@cft.cl"
                   className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
               </div>
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={!label || !email}
                 className="w-full py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 transition-all disabled:opacity-50"
               >
@@ -87,7 +89,7 @@ export const Settings: React.FC<SettingsProps> = ({ savedCcs, onAddCc, onDeleteC
                       <p className="text-sm font-bold text-slate-800">{cc.label}</p>
                       <p className="text-xs text-slate-500">{cc.email}</p>
                     </div>
-                    <button 
+                    <button
                       onClick={() => onDeleteCc(cc.id)}
                       className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                     >
@@ -97,6 +99,27 @@ export const Settings: React.FC<SettingsProps> = ({ savedCcs, onAddCc, onDeleteC
                 ))}
               </div>
             )}
+          </div>
+        </div>
+
+        <div className="mt-12 pt-8 border-t border-slate-100">
+          <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-indigo-600" /> Control de Acceso (Simulado)
+          </h3>
+          <div className="flex items-center justify-between p-6 bg-indigo-50 border border-indigo-100 rounded-2xl">
+            <div>
+              <p className="text-indigo-900 font-bold">Modo Administrador</p>
+              <p className="text-indigo-700 text-xs">Activa funciones críticas como la eliminación masiva de registros.</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isAdmin}
+                onChange={(e) => onSetIsAdmin(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-14 h-7 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-indigo-600"></div>
+            </label>
           </div>
         </div>
       </div>
