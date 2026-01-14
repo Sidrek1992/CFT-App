@@ -78,3 +78,74 @@ export const generateAbsencePDF = (record: AbsenceRecord, official: Official) =>
     // Save
     doc.save(`Resolucion_${official.name.replace(/\s+/g, '_')}_${record.startDate}.pdf`);
 };
+export const generateBalanceCertificatePDF = (official: Official, stats: any) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // institutional Header
+    doc.setFontSize(10);
+    doc.setTextColor(150);
+    doc.text('CENTRO FORMACIÓN TÉCNICA ESTATAL', 20, 20);
+    doc.text('ARICA Y PARINACOTA', 20, 25);
+
+    // Title
+    doc.setFontSize(16);
+    doc.setTextColor(40);
+    doc.setFont('helvetica', 'bold');
+    doc.text('CERTIFICADO DE SALDO DE VACACIONES', pageWidth / 2, 45, { align: 'center' });
+
+    doc.setDrawColor(79, 70, 229);
+    doc.setLineWidth(0.5);
+    doc.line(60, 48, pageWidth - 60, 48);
+
+    // Content
+    doc.setFontSize(11);
+    doc.setTextColor(60);
+    doc.setFont('helvetica', 'normal');
+
+    const text = `La Unidad de Recursos Humanos certifica que el funcionario(a) don(ña) ${official.name}, RUT ${official.rut}, con fecha de ingreso ${official.entryDate || 'N/A'}, presenta el siguiente estado de su Feriado Legal a la fecha ${new Date().toLocaleDateString()}:`;
+
+    const splitText = doc.splitTextToSize(text, pageWidth - 40);
+    doc.text(splitText, 20, 65);
+
+    // Stats Table
+    const statsData = [
+        ['Concepto', 'Días'],
+        ['Límite Base Anual', `${stats.baseLimit} días`],
+        ['Días Progresivos Reconocidos', `${stats.progressiveDays} días`],
+        ['Días Ganados a la Fecha (Proporcional)', `${stats.proportionalDays} días`],
+        ['Días Utilizados (Cargados)', `${stats.usedDays} días`],
+        ['Saldo Disponible actual', `${stats.balance} días`],
+    ];
+
+    (doc as any).autoTable({
+        startY: 85,
+        head: [statsData[0]],
+        body: statsData.slice(1),
+        theme: 'striped',
+        headStyles: { fillStyle: 'F', fillColor: [79, 70, 229] },
+        styles: { fontSize: 10, cellPadding: 5 },
+        columnStyles: {
+            0: { fontStyle: 'bold', cellWidth: 80 },
+            1: { halign: 'right' }
+        }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY;
+
+    doc.setFontSize(10);
+    doc.text('Para los fines que el interesado estime conveniente.', 20, finalY + 20);
+
+    // Signature
+    doc.line(pageWidth / 2 - 30, finalY + 60, pageWidth / 2 + 30, finalY + 60);
+    doc.text('UNIDAD DE RECURSOS HUMANOS', pageWidth / 2, finalY + 65, { align: 'center' });
+    doc.text('CFT ESTATAL ARICA Y PARINACOTA', pageWidth / 2, finalY + 70, { align: 'center' });
+
+    // Footer
+    doc.setFontSize(8);
+    doc.setTextColor(180);
+    doc.text(`Cód. Verificación: ${Math.random().toString(36).substring(2, 10).toUpperCase()}`, 20, doc.internal.pageSize.getHeight() - 15);
+    doc.text('Documento generado por el Sistema de Gestión de Personal Gestor AI', pageWidth - 20, doc.internal.pageSize.getHeight() - 15, { align: 'right' });
+
+    doc.save(`Certificado_Saldo_${official.name.replace(/\s+/g, '_')}.pdf`);
+};

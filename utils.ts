@@ -57,3 +57,51 @@ export const generateId = (): string => {
         ? crypto.randomUUID()
         : Date.now().toString(36) + Math.random().toString(36).substring(2);
 };
+/**
+ * Calcula los días de feriado progresivo según la ley chilena:
+ * 1 día adicional por cada 3 años con el actual empleador,
+ * siempre que el trabajador ya tenga 10 años de trabajo total.
+ */
+export const calculateProgressiveDays = (entryDate: string | undefined, recognizedYears: number = 0): number => {
+    if (!entryDate) return 0;
+
+    const entry = new Date(entryDate);
+    const today = new Date();
+
+    // Cálculo de años con el empleador actual
+    const currentTenureYears = (today.getTime() - entry.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+
+    // El trabajador debe alcanzar primero los 10 años de trabajo total
+    // Años que le faltaban para llegar a 10 cuando entró
+    const yearsToReachThreshold = Math.max(0, 10 - recognizedYears);
+
+    // Años trabajados con el empleador actual DESPUÉS de haber cumplido los 10 años totales
+    const yearsAvailableForProgressive = currentTenureYears - yearsToReachThreshold;
+
+    // 1 día por cada 3 años cumplidos
+    return Math.max(0, Math.floor(yearsAvailableForProgressive / 3));
+};
+
+/**
+ * Calcula los días proporcionales ganados a la fecha basándose en el límite anual configurado
+ */
+export const calculateProportionalDays = (entryDate: string | undefined, annualLimit: number = 15, referenceDate?: string): number => {
+    if (!entryDate) return 0;
+
+    const entry = new Date(entryDate);
+    const end = referenceDate ? new Date(referenceDate) : new Date();
+
+    // Tasa mensual (ej: 15 / 12 = 1.25)
+    const monthlyRate = annualLimit / 12;
+
+    // Diferencia en meses totales
+    const months = (end.getFullYear() - entry.getFullYear()) * 12 + (end.getMonth() - entry.getMonth());
+
+    // Días en el mes actual de referencia
+    const days = end.getDate();
+
+    // Tasa por mes completo + (días / 30 * tasa) para el mes parcial
+    const proportional = (months * monthlyRate) + (days / 30 * monthlyRate);
+
+    return Math.max(0, parseFloat(proportional.toFixed(2)));
+};
