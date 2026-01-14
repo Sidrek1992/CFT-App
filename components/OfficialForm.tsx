@@ -1,3 +1,4 @@
+import React, { useState, useEffect, useMemo } from 'react';
 import { Official, Gender } from '../types';
 import { detectGenderAndTitle } from '../services/geminiService';
 import { validateRUT, formatRUT } from '../utils';
@@ -30,6 +31,7 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
   const [address, setAddress] = useState('');
   const [entryDate, setEntryDate] = useState('');
   const [contractEndDate, setContractEndDate] = useState('');
+  const [recognizedYears, setRecognizedYears] = useState(0);
   const [emergencyContactName, setEmergencyContactName] = useState('');
   const [emergencyContactPhone, setEmergencyContactPhone] = useState('');
 
@@ -54,6 +56,7 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
       setAddress(initialData.address || '');
       setEntryDate(initialData.entryDate || '');
       setContractEndDate(initialData.contractEndDate || '');
+      setRecognizedYears(initialData.recognizedYears || 0);
       setEmergencyContactName(initialData.emergencyContactName || '');
       setEmergencyContactPhone(initialData.emergencyContactPhone || '');
     }
@@ -76,7 +79,7 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
     e.preventDefault();
     onSave({
       name, rut, email, department, position, stament, isBoss, bossName, bossPosition, bossEmail, gender, title,
-      birthDate, phone, address, entryDate, contractEndDate, emergencyContactName, emergencyContactPhone
+      birthDate, phone, address, entryDate, contractEndDate, recognizedYears, emergencyContactName, emergencyContactPhone
     });
   };
 
@@ -193,6 +196,11 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Fin de Contrato</label>
             <input type="date" value={contractEndDate} onChange={(e) => setContractEndDate(e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Años Previos Reconocidos (Feriado Progresivo)</label>
+            <input type="number" min="0" value={recognizedYears} onChange={(e) => setRecognizedYears(parseInt(e.target.value) || 0)} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Años en otros empleadores" />
+            <p className="text-[10px] text-slate-400 mt-1 italic">Años trabajados en otras instituciones para el cálculo de días progresivos.</p>
           </div>
         </div>
 

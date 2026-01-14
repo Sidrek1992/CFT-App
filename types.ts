@@ -24,6 +24,7 @@ export interface Official {
   // Datos Institucionales (Nuevos)
   entryDate?: string;
   contractEndDate?: string;
+  recognizedYears?: number;
 
   // Contacto de Emergencia (Nuevos)
   emergencyContactName?: string;
@@ -59,18 +60,44 @@ export interface SavedCc {
   label: string;
 }
 
-export type ViewState = 'dashboard' | 'database' | 'absenteeism' | 'calendar' | 'compensatory-hours' | 'template' | 'generate' | 'settings';
+export type UserRole = 'admin' | 'viewer';
+
+export interface AuditLog {
+  id: string;
+  timestamp: number;
+  user: string;
+  action: string;
+  details: string;
+  module: string;
+}
+
+export interface CustomLeaveType {
+  id: string;
+  name: string;
+  limit: number;
+  genderApplicable?: Gender;
+}
+
+export type ViewState = 'dashboard' | 'database' | 'absenteeism' | 'calendar' | 'compensatory-hours' | 'template' | 'generate' | 'settings' | 'audit-logs' | 'org-chart';
 
 export enum AbsenceType {
   FeriadoLegal = 'Feriado Legal',
   PermisoAdministrativo = 'Permiso Administrativo',
-  FeriadoLega = 'Feriado Lega'
+  LicenciaMedica = 'Licencia Médica',
+  PermisoEspecial = 'Permiso Especial',
+  Otros = 'Otros'
+}
+
+export interface AbsenceConfig {
+  legalHolidayLimit: number;
+  administrativeLeaveLimit: number;
+  customLeaves: CustomLeaveType[];
 }
 
 export interface AbsenceRecord {
   id: string;
   officialId: string;
-  type: AbsenceType;
+  type: AbsenceType | string;
   startDate: string;
   endDate: string;
   days: number;
@@ -98,6 +125,6 @@ export interface ToastNotification {
 export type SortOption = 'name' | 'surname' | 'department' | 'rut' | 'entryDate';
 
 export interface FilterCriteria {
-  type: 'none' | 'missingBoss' | 'missingGender' | 'invalidEmail' | 'department' | 'expiringSoon';
+  type: 'none' | 'missingBoss' | 'missingGender' | 'invalidEmail' | 'department' | 'expiringSoon' | 'birthdays' | 'anniversaries';
   value?: string;
 }

@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { Official, CompensatoryHourRecord } from '../types';
 import { Clock, Plus, Trash2, Search, TrendingUp, TrendingDown, AlertCircle, BarChart3 } from 'lucide-react';
 import { BalanceHistoryChart } from './BalanceHistoryChart';
@@ -25,6 +26,7 @@ export const CompensatoryHours: React.FC<CompensatoryHoursProps> = ({
     const [type, setType] = useState<'Requirement' | 'Compensation'>('Requirement');
     const [date, setDate] = useState('');
     const [hours, setHours] = useState(0);
+    const [minutes, setMinutes] = useState(0);
     const [isHolidayOrWeekend, setIsHolidayOrWeekend] = useState(false);
     const [description, setDescription] = useState('');
 
@@ -36,25 +38,27 @@ export const CompensatoryHours: React.FC<CompensatoryHoursProps> = ({
 
     const handleAdd = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedOfficialId || !date || hours <= 0) {
+        const totalHours = hours + (minutes / 60);
+
+        if (!selectedOfficialId || !date || totalHours <= 0) {
             onToast("Por favor complete los campos obligatorios", "error");
             return;
         }
 
         const currentBalance = getOfficialBalance(selectedOfficialId);
 
-        if (type === 'Compensation' && hours > currentBalance) {
-            onToast(`Saldo insuficiente. El funcionario solo dispone de ${currentBalance}h.`, "error");
+        if (type === 'Compensation' && totalHours > currentBalance) {
+            onToast(`Saldo insuficiente. El funcionario solo dispone de ${formatHours(currentBalance)}.`, "error");
             return;
         }
 
         const rate = type === 'Compensation' ? 1 : (isHolidayOrWeekend ? 1.5 : 1.25);
-        const totalCalculated = calculateTotal(hours, isHolidayOrWeekend, type);
+        const totalCalculated = calculateTotal(totalHours, isHolidayOrWeekend, type);
 
         onAddRecord({
             officialId: selectedOfficialId,
             date,
-            hours,
+            hours: totalHours,
             type,
             isHolidayOrWeekend,
             rate,
@@ -72,8 +76,17 @@ export const CompensatoryHours: React.FC<CompensatoryHoursProps> = ({
         setType('Requirement');
         setDate('');
         setHours(0);
+        setMinutes(0);
         setIsHolidayOrWeekend(false);
         setDescription('');
+    };
+
+    const formatHours = (decimalHours: number) => {
+        const absValue = Math.abs(decimalHours);
+        const h = Math.floor(absValue);
+        const m = Math.round((absValue - h) * 60);
+        const sign = decimalHours < 0 ? '-' : '';
+        return `${sign}${h}h ${m}m`;
     };
 
     const getOfficialBalance = (officialId: string) => {
@@ -154,15 +167,29 @@ export const CompensatoryHours: React.FC<CompensatoryHoursProps> = ({
                             />
                         </div>
                         <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-500 uppercase">Cantidad de Horas</label>
-                            <input
-                                type="number"
-                                value={hours}
-                                onChange={(e) => setHours(Number(e.target.value))}
-                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                                min="0.5"
-                                step="0.5"
-                            />
+                            <label className="text-xs font-bold text-slate-500 uppercase">Tiempo Transcurrido</label>
+                            <div className="flex gap-2">
+                                <div className="flex-1 relative">
+                                    <input
+                                        type="number"
+                                        value={hours}
+                                        onChange={(e) => setHours(Math.max(0, Number(e.target.value)))}
+                                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none pr-8"
+                                        placeholder="0"
+                                    />
+                                    <span className="absolute right-3 top-2 text-[10px] font-bold text-slate-400">H</span>
+                                </div>
+                                <div className="flex-1 relative">
+                                    <input
+                                        type="number"
+                                        value={minutes}
+                                        onChange={(e) => setMinutes(Math.max(0, Math.min(59, Number(e.target.value))))}
+                                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none pr-10"
+                                        placeholder="0"
+                                    />
+                                    <span className="absolute right-3 top-2 text-[10px] font-bold text-slate-400">MIN</span>
+                                </div>
+                            </div>
                         </div>
                         {type === 'Requirement' && (
                             <div className="flex items-center gap-3 pt-6">
@@ -191,9 +218,9 @@ export const CompensatoryHours: React.FC<CompensatoryHoursProps> = ({
                         <div className="md:col-span-3 flex justify-between items-center border-t border-slate-100 pt-4 mt-2">
                             <div className="text-xs text-slate-500">
                                 {type === 'Requirement' ? (
-                                    <p>Cálculo: {hours}h × {isHolidayOrWeekend ? '1.5' : '1.25'} = <span className="font-bold text-indigo-600">{calculateTotal(hours, isHolidayOrWeekend, type)}h a favor</span></p>
+                                    <p>Cálculo: {formatHours(hours + (minutes / 60))} × {isHolidayOrWeekend ? '1.5' : '1.25'} = <span className="font-bold text-indigo-600">{formatHours(calculateTotal(hours + (minutes / 60), isHolidayOrWeekend, type))} a favor</span></p>
                                 ) : (
-                                    <p>Cálculo: <span className="font-bold text-rose-600">{hours}h de descanso</span></p>
+                                    <p>Cálculo: <span className="font-bold text-rose-600">{formatHours(hours + (minutes / 60))} de descanso</span></p>
                                 )}
                             </div>
                             <div className="flex gap-2">
@@ -239,6 +266,7 @@ export const CompensatoryHours: React.FC<CompensatoryHoursProps> = ({
                                 <th className="px-6 py-4">Tipo</th>
                                 <th className="px-6 py-4 text-center">Horas Base</th>
                                 <th className="px-6 py-4 text-center">Factor</th>
+                                <th className="px-6 py-4 text-center text-indigo-600">Recargo</th>
                                 <th className="px-6 py-4 text-center">Total Calc.</th>
                                 <th className="px-6 py-4">Saldo Actual</th>
                                 <th className="px-6 py-4 text-right">Acciones</th>
@@ -278,17 +306,20 @@ export const CompensatoryHours: React.FC<CompensatoryHoursProps> = ({
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-center font-medium">
-                                            {record.hours}h
+                                            {formatHours(record.hours)}
                                         </td>
-                                        <td className="px-6 py-4 text-center text-slate-400">
+                                        <td className="px-6 py-4 text-center text-slate-400 tabular-nums">
                                             {record.type === 'Requirement' ? `x${record.rate}` : '-'}
                                         </td>
-                                        <td className="px-6 py-4 text-center font-black text-slate-800">
-                                            {record.type === 'Requirement' ? `+${record.totalCalculated}h` : `-${record.hours}h`}
+                                        <td className="px-6 py-4 text-center font-bold text-indigo-500 tabular-nums">
+                                            {record.type === 'Requirement' ? `+${formatHours(record.totalCalculated - record.hours)}` : '-'}
                                         </td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-6 py-4 text-center font-black text-slate-800 tabular-nums">
+                                            {record.type === 'Requirement' ? `+${formatHours(record.totalCalculated)}` : `-${formatHours(record.hours)}`}
+                                        </td>
+                                        <td className="px-6 py-4 tabular-nums">
                                             <span className={`font-bold ${balance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                                {balance}h
+                                                {formatHours(balance)}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">

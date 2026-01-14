@@ -1,8 +1,8 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { FileEdit, Send, Plus, Database, LayoutDashboard, Upload, Trash2, FileSpreadsheet, Menu, Briefcase, ChevronDown, FolderInput, FolderOutput, Settings as SettingsIcon, PenLine, AlertTriangle, Calendar, Clock, Undo2 } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { FileEdit, Send, Plus, Database, LayoutDashboard, Upload, Trash2, FileSpreadsheet, Menu, Briefcase, ChevronDown, FolderInput, FolderOutput, Settings as SettingsIcon, PenLine, AlertTriangle, Calendar, Clock, Undo2, Bell, Users, FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { Official, EmailTemplate, ViewState, ToastNotification, SavedTemplate, Gender, SortOption, FilterCriteria, OfficialDatabase, SavedCc, AbsenceRecord, CompensatoryHourRecord } from './types';
+import { Official, EmailTemplate, ViewState, ToastNotification, SavedTemplate, Gender, SortOption, FilterCriteria, OfficialDatabase, SavedCc, AbsenceRecord, CompensatoryHourRecord, AbsenceConfig, AuditLog, UserRole } from './types';
 import { OfficialForm } from './components/OfficialForm';
 import { OfficialList } from './components/OfficialList';
 import { TemplateEditor } from './components/TemplateEditor';
@@ -13,6 +13,9 @@ import { ToastContainer } from './components/ToastContainer';
 import { Absenteeism } from './components/Absenteeism';
 import { CompensatoryHours } from './components/CompensatoryHours';
 import { AbsenceCalendar } from './components/AbsenceCalendar';
+import { useNotifications } from './components/NotificationSystem';
+import { AuditLogs } from './components/AuditLogs';
+import { OrgChart } from './components/OrgChart';
 
 const generateId = () => {
   return typeof crypto !== 'undefined' && crypto.randomUUID
@@ -78,6 +81,21 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
   const [isAdmin, setIsAdmin] = useState<boolean>(() => JSON.parse(localStorage.getItem('isAdmin') || 'false'));
+  const [absenceConfig, setAbsenceConfig] = useState<AbsenceConfig>(() => {
+    const saved = localStorage.getItem('absence_config');
+    const parsed = saved ? JSON.parse(saved) : { legalHolidayLimit: 20, administrativeLeaveLimit: 6, customLeaves: [] };
+    return { ...parsed, customLeaves: parsed.customLeaves || [] };
+  });
+
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => {
+    const saved = localStorage.getItem('app_audit_logs');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [userRole, setUserRole] = useState<UserRole>(() => {
+    const saved = localStorage.getItem('user_role');
+    return (saved as UserRole) || 'admin';
+  });
   const [sortOption, setSortOption] = useState<SortOption>('name');
   const [filterCriteria, setFilterCriteria] = useState<FilterCriteria>({ type: 'none' });
 
@@ -90,6 +108,21 @@ export default function App() {
   useEffect(() => { localStorage.setItem('app_absences', JSON.stringify(absences)); }, [absences]);
   useEffect(() => { localStorage.setItem('app_compensatory_hours', JSON.stringify(compensatoryHours)); }, [compensatoryHours]);
   useEffect(() => localStorage.setItem('isAdmin', JSON.stringify(isAdmin)), [isAdmin]);
+  useEffect(() => localStorage.setItem('absence_config', JSON.stringify(absenceConfig)), [absenceConfig]);
+  useEffect(() => localStorage.setItem('app_audit_logs', JSON.stringify(auditLogs)), [auditLogs]);
+  useEffect(() => localStorage.setItem('user_role', userRole), [userRole]);
+
+  const addAuditLog = (action: string, details: string, module: string) => {
+    const newLog: AuditLog = {
+      id: generateId(),
+      timestamp: Date.now(),
+      user: userRole === 'admin' ? 'Administrador' : 'Visualizador',
+      action,
+      details,
+      module
+    };
+    setAuditLogs(prev => [newLog, ...prev].slice(0, 1000)); // Limit to 1000 logs
+  };
 
   const addToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToasts(prev => [...prev, { id: generateId(), message, type }]);
@@ -113,9 +146,11 @@ export default function App() {
     if (editingOfficial) {
       updateActiveOfficials(prev => prev.map(o => o.id === editingOfficial.id ? { ...data, id: editingOfficial.id } : o));
       addToast("Funcionario actualizado", 'success');
+      addAuditLog('Actualizar Funcionario', `Se actualizó a ${data.name}`, 'Directorio');
     } else {
       updateActiveOfficials(prev => [...prev, { ...data, id: generateId() }]);
       addToast("Funcionario creado", 'success');
+      addAuditLog('Crear Funcionario', `Se creó a ${data.name}`, 'Directorio');
     }
     setShowForm(false);
     setEditingOfficial(null);
@@ -123,8 +158,10 @@ export default function App() {
 
   const handleDeleteOfficial = (id: string) => {
     if (confirm("¿Eliminar este registro?")) {
+      const official = officials.find(o => o.id === id);
       updateActiveOfficials(prev => prev.filter(o => o.id !== id));
       addToast("Registro eliminado", 'success');
+      addAuditLog('Eliminar Funcionario', `Se eliminó a ${official?.name || id}`, 'Directorio');
     }
   };
 
@@ -135,13 +172,19 @@ export default function App() {
   const executeClearDatabase = () => {
     updateActiveOfficials([]);
     addToast("Base de datos vaciada", 'success');
+    addAuditLog('Vaciar Base de Datos', `Se eliminaron todos los registros de ${activeDatabase.name}`, 'Sistema');
     setShowClearConfirm(false);
   };
+
+  const [showNotifications, setShowNotifications] = useState(false);
+  const notifications = useNotifications(officials, absences);
+  const notificationCount = notifications.length;
 
   const handleNavigate = (target: ViewState, filter?: FilterCriteria) => {
     setView(target);
     if (filter) setFilterCriteria(filter);
     setIsMobileMenuOpen(false);
+    setShowNotifications(false);
   };
 
   const handleAddAbsence = (a: Omit<AbsenceRecord, 'id'>) => {
@@ -189,6 +232,7 @@ export default function App() {
 
         updateActiveOfficials(prev => [...prev, ...newOfficials]);
         addToast(`Importados ${newOfficials.length} funcionarios correctamente`, "success");
+        addAuditLog('Importación Masiva', `Se importaron ${newOfficials.length} funcionarios vía Excel`, 'Directorio');
       } catch (err) {
         console.error(err);
         addToast("Error al procesar el archivo Excel", "error");
@@ -239,11 +283,64 @@ export default function App() {
       />
 
       <aside className={`fixed inset-y-0 left-0 z-30 w-64 bg-slate-900 text-slate-300 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 border-b border-slate-800 flex items-center gap-3">
-          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center">
-            <Briefcase className="text-white w-6 h-6" />
+        <div className="p-6 border-b border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center">
+              <Briefcase className="text-white w-6 h-6" />
+            </div>
+            <h1 className="text-white font-bold text-lg">Gestor AI</h1>
           </div>
-          <h1 className="text-white font-bold text-lg">Gestor AI</h1>
+          <button
+            onClick={() => setShowNotifications(!showNotifications)}
+            className={`p-2 rounded-xl transition-all relative group ${showNotifications ? 'bg-indigo-600' : 'hover:bg-slate-800'}`}
+            title="Notificaciones"
+          >
+            <Bell className={`w-5 h-5 ${notificationCount > 0 ? (showNotifications ? 'text-white' : 'text-amber-400') : 'text-slate-400'}`} />
+            {notificationCount > 0 && (
+              <span className={`absolute top-1.5 right-1.5 w-4 h-4 bg-rose-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 ${showNotifications ? 'border-indigo-600' : 'border-slate-900'} group-hover:scale-110 transition-transform`}>
+                {notificationCount}
+              </span>
+            )}
+          </button>
+
+          {/* Notifications Dropdown */}
+          {showNotifications && (
+            <div className="absolute top-20 left-6 right-6 lg:left-2 lg:right-auto lg:w-[350px] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[100] animate-in zoom-in-95 duration-200">
+              <div className="p-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <span className="text-[10px] font-black text-slate-800 uppercase tracking-tight">Notificaciones Recientes</span>
+                <button onClick={() => setShowNotifications(false)} className="text-slate-400 hover:text-slate-600"><Undo2 className="w-3.5 h-3.5" /></button>
+              </div>
+              <div className="max-h-[400px] overflow-y-auto divide-y divide-slate-100">
+                {notifications.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <Bell className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-tight">No hay notificaciones</p>
+                  </div>
+                ) : (
+                  notifications.map(notif => (
+                    <div key={notif.id} className="p-4 hover:bg-slate-50 transition-colors flex items-start gap-4">
+                      <div className={`p-2 rounded-xl shrink-0 ${notif.priority === 'high' ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'}`}>
+                        <notif.icon className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-black text-slate-900 leading-none mb-1 uppercase tracking-tight">{notif.title}</p>
+                        <p className="text-sm font-bold text-slate-800 truncate">{notif.officialName}</p>
+                        <p className="text-[10px] text-slate-500 font-medium">{notif.description}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              {notifications.length > 0 && (
+                <button
+                  onClick={() => handleNavigate('dashboard')}
+                  className="w-full p-3 bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-colors border-t border-indigo-100"
+                >
+                  Ver Panel Completo
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
@@ -281,6 +378,12 @@ export default function App() {
           </div>
 
           <div className="pt-2">
+            <button onClick={() => handleNavigate('org-chart')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${view === 'org-chart' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'}`}>
+              <Users className="w-5 h-5" /> Organigrama
+            </button>
+          </div>
+
+          <div className="pt-2">
             <button
               onClick={() => setIsBulkEmailOpen(!isBulkEmailOpen)}
               className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold text-slate-400 hover:text-white transition-colors"
@@ -302,9 +405,12 @@ export default function App() {
               </div>
             )}
           </div>
-          <div className="pt-4 border-t border-slate-800 mt-4">
+          <div className="pt-4 border-t border-slate-800 mt-4 space-y-2">
             <button onClick={() => handleNavigate('settings')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${view === 'settings' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'}`}>
               <SettingsIcon className="w-5 h-5" /> Configuración
+            </button>
+            <button onClick={() => handleNavigate('audit-logs')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${view === 'audit-logs' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'}`}>
+              <FileText className="w-5 h-5" /> Auditoría
             </button>
           </div>
         </nav>
@@ -313,7 +419,20 @@ export default function App() {
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         <div className="lg:hidden bg-white border-b border-slate-200 p-4 flex justify-between items-center">
           <span className="font-bold">Gestor AI</span>
-          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2"><Menu /></button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className={`p-2 rounded-xl transition-colors relative ${showNotifications ? 'bg-indigo-50' : 'hover:bg-slate-50'}`}
+            >
+              <Bell className={`w-5 h-5 ${notificationCount > 0 ? 'text-amber-500' : 'text-slate-400'}`} />
+              {notificationCount > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white">
+                  {notificationCount}
+                </span>
+              )}
+            </button>
+            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2"><Menu /></button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 lg:p-8">
@@ -321,11 +440,12 @@ export default function App() {
             {view === 'dashboard' && (
               <Dashboard
                 officials={officials}
+                absences={absences}
                 sentHistory={sentHistory}
                 onNavigate={handleNavigate}
                 onImport={handleImportClick}
                 onExportExcel={handleExportExcel}
-                onNewOfficial={() => { setEditingOfficial(null); setShowForm(true); }}
+                onNewOfficial={() => { setEditingOfficial(null); setShowForm(true); setView('database'); }}
                 onClearDatabase={handleClearDatabase}
                 isAdmin={isAdmin}
               />
@@ -343,7 +463,21 @@ export default function App() {
                 {showForm ? (
                   <OfficialForm initialData={editingOfficial} existingOfficials={officials} onSave={handleSaveOfficial} onCancel={() => setShowForm(false)} />
                 ) : (
-                  <OfficialList officials={officials} onEdit={(o) => { setEditingOfficial(o); setShowForm(true); }} onDelete={handleDeleteOfficial} onBulkDelete={() => { }} onBulkUpdate={() => { }} onClearAll={handleClearDatabase} sortOption={sortOption} onSortChange={setSortOption} initialFilter={filterCriteria} onClearFilter={() => setFilterCriteria({ type: 'none' })} />
+                  <OfficialList
+                    officials={officials}
+                    absences={absences}
+                    compensatoryRecords={compensatoryHours}
+                    config={absenceConfig}
+                    onEdit={(o) => { setEditingOfficial(o); setShowForm(true); }}
+                    onDelete={handleDeleteOfficial}
+                    onBulkDelete={() => { }}
+                    onBulkUpdate={() => { }}
+                    onClearAll={handleClearDatabase}
+                    sortOption={sortOption}
+                    onSortChange={setSortOption}
+                    initialFilter={filterCriteria}
+                    onClearFilter={() => setFilterCriteria({ type: 'none' })}
+                  />
                 )}
               </div>
             )}
@@ -371,6 +505,7 @@ export default function App() {
                     onAddAbsence={handleAddAbsence}
                     onDeleteAbsence={(id) => setAbsences(prev => prev.filter(a => a.id !== id))}
                     onToast={addToast}
+                    config={absenceConfig}
                   />
                 )}
               </div>
@@ -413,6 +548,16 @@ export default function App() {
 
             {view === 'generate' && <Generator officials={officials} template={template} files={[]} sentHistory={sentHistory} savedCcs={savedCcs} onMarkAsSent={(id) => setSentHistory(prev => [...prev, id])} onToast={addToast} />}
 
+            {view === 'org-chart' && <OrgChart officials={officials} />}
+
+            {view === 'audit-logs' && (
+              <AuditLogs
+                logs={auditLogs}
+                onClearLogs={() => setAuditLogs([])}
+                userRole={userRole}
+              />
+            )}
+
             {view === 'settings' && (
               <Settings
                 savedCcs={savedCcs}
@@ -424,8 +569,10 @@ export default function App() {
                   setSavedCcs(prev => prev.filter(cc => cc.id !== id));
                   addToast("CC Permanente eliminado", "info");
                 }}
-                isAdmin={isAdmin}
-                onSetIsAdmin={setIsAdmin}
+                userRole={userRole}
+                onSetUserRole={setUserRole}
+                absenceConfig={absenceConfig}
+                onUpdateAbsenceConfig={setAbsenceConfig}
               />
             )}
           </div>
