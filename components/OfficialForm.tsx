@@ -1,8 +1,8 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Official, Gender } from '../types';
 import { detectGenderAndTitle } from '../services/geminiService';
-import { validateRUT, formatRUT } from '../utils';
-import { Sparkles, User, Mail, Briefcase, Save, X, Building2, Crown, Eraser, BadgeCheck, UserCheck, Calendar, Phone, MapPin, Heart, ShieldAlert, Fingerprint, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Sparkles, User, Mail, Briefcase, Save, X, Building2, Crown, Eraser, BadgeCheck, UserCheck, Calendar, Phone, MapPin, Heart, ShieldAlert, Fingerprint } from 'lucide-react';
 
 interface OfficialFormProps {
   initialData?: Official | null;
@@ -24,14 +24,13 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
   const [bossEmail, setBossEmail] = useState('');
   const [gender, setGender] = useState<Gender>(Gender.Unspecified);
   const [title, setTitle] = useState('Sr./Sra.');
-
+  
   // Nuevos campos
   const [birthDate, setBirthDate] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [entryDate, setEntryDate] = useState('');
   const [contractEndDate, setContractEndDate] = useState('');
-  const [recognizedYears, setRecognizedYears] = useState(0);
   const [emergencyContactName, setEmergencyContactName] = useState('');
   const [emergencyContactPhone, setEmergencyContactPhone] = useState('');
 
@@ -56,15 +55,14 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
       setAddress(initialData.address || '');
       setEntryDate(initialData.entryDate || '');
       setContractEndDate(initialData.contractEndDate || '');
-      setRecognizedYears(initialData.recognizedYears || 0);
       setEmergencyContactName(initialData.emergencyContactName || '');
       setEmergencyContactPhone(initialData.emergencyContactPhone || '');
     }
   }, [initialData]);
 
-  const uniqueDepartments = useMemo(() =>
+  const uniqueDepartments = useMemo(() => 
     [...new Set(existingOfficials.map(o => o.department).filter(Boolean))].sort(),
-    [existingOfficials]);
+  [existingOfficials]);
 
   const handleAnalyzeName = async () => {
     if (!name) return;
@@ -79,14 +77,14 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
     e.preventDefault();
     onSave({
       name, rut, email, department, position, stament, isBoss, bossName, bossPosition, bossEmail, gender, title,
-      birthDate, phone, address, entryDate, contractEndDate, recognizedYears, emergencyContactName, emergencyContactPhone
+      birthDate, phone, address, entryDate, contractEndDate, emergencyContactName, emergencyContactPhone
     });
   };
 
   const SectionTitle = ({ icon: Icon, text }: { icon: any, text: string }) => (
     <div className="flex items-center gap-2 pb-2 border-b border-slate-100 mb-4 mt-8 first:mt-0">
-      <Icon className="w-5 h-5 text-indigo-600" />
-      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest">{text}</h4>
+        <Icon className="w-5 h-5 text-indigo-600" />
+        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest">{text}</h4>
     </div>
   );
 
@@ -94,10 +92,10 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
     <div className="bg-white p-8 rounded-2xl shadow-xl border border-slate-200 max-w-4xl mx-auto animate-in fade-in zoom-in-95 duration-300">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h3 className="text-2xl font-bold text-slate-800">
+            <h3 className="text-2xl font-bold text-slate-800">
             {initialData ? 'Editar Expediente' : 'Nueva Ficha de Funcionario'}
-          </h3>
-          <p className="text-slate-500 text-sm">Complete toda la información personal e institucional del funcionario.</p>
+            </h3>
+            <p className="text-slate-500 text-sm">Complete toda la información personal e institucional del funcionario.</p>
         </div>
         <button onClick={onCancel} className="p-2 text-slate-400 hover:text-slate-600 transition-colors">
           <X className="w-6 h-6" />
@@ -105,7 +103,7 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-
+        
         <SectionTitle icon={User} text="Identificación y Contacto" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
@@ -120,26 +118,9 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">RUT</label>
             <div className="relative">
-              <Fingerprint className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                value={rut}
-                onChange={(e) => setRut(formatRUT(e.target.value))}
-                className={`pl-10 w-full px-4 py-2 border rounded-lg focus:ring-2 outline-none transition-colors ${rut ? (validateRUT(rut) ? 'border-emerald-200 bg-emerald-50 focus:ring-emerald-500' : 'border-rose-200 bg-rose-50 focus:ring-rose-500') : 'border-slate-300 focus:ring-indigo-500'
-                  }`}
-                placeholder="12.345.678-9"
-              />
-              <div className="absolute right-3 top-2.5">
-                {rut && (
-                  validateRUT(rut) ?
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500" /> :
-                    <AlertCircle className="w-4 h-4 text-rose-500" />
-                )}
-              </div>
+                <Fingerprint className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                <input type="text" value={rut} onChange={(e) => setRut(e.target.value)} className="pl-10 w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="12.345.678-9" />
             </div>
-            {rut && !validateRUT(rut) && (
-              <p className="text-[10px] text-rose-600 mt-1 font-bold animate-pulse">RUT inválido</p>
-            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Correo Institucional</label>
@@ -168,8 +149,8 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
             <div className="relative">
-              <Phone className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
-              <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className="pl-10 w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="+56 9..." />
+                <Phone className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className="pl-10 w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="+56 9..." />
             </div>
           </div>
           <div className="md:col-span-2">
@@ -196,11 +177,6 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Fin de Contrato</label>
             <input type="date" value={contractEndDate} onChange={(e) => setContractEndDate(e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Años Previos Reconocidos (Feriado Progresivo)</label>
-            <input type="number" min="0" value={recognizedYears} onChange={(e) => setRecognizedYears(parseInt(e.target.value) || 0)} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Años en otros empleadores" />
-            <p className="text-[10px] text-slate-400 mt-1 italic">Años trabajados en otras instituciones para el cálculo de días progresivos.</p>
           </div>
         </div>
 
