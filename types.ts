@@ -8,28 +8,13 @@ export enum Gender {
 export interface Official {
   id: string;
   name: string;
-  rut: string; // Nuevo
   email: string;
   gender: Gender;
-  title: string; 
-  department: string; 
-  stament?: string; 
+  title: string; // e.g., "Sr.", "Sra.", "Dr."
+  department: string; // New field
+  stament?: string; // New field: Estamento (Profesional, Técnico, etc.)
   position: string;
-  
-  // Datos Personales (Nuevos)
-  birthDate?: string;
-  phone?: string;
-  address?: string;
-  
-  // Datos Institucionales (Nuevos)
-  entryDate?: string;
-  contractEndDate?: string;
-  
-  // Contacto de Emergencia (Nuevos)
-  emergencyContactName?: string;
-  emergencyContactPhone?: string;
-
-  isBoss?: boolean; 
+  isBoss?: boolean; // New field: Is this person a boss available for others?
   bossName: string;
   bossPosition: string;
   bossEmail: string;
@@ -44,7 +29,7 @@ export interface OfficialDatabase {
 
 export interface EmailTemplate {
   subject: string;
-  body: string; 
+  body: string; // Contains variables like {nombre}, {cargo}
 }
 
 export interface SavedTemplate extends EmailTemplate {
@@ -53,13 +38,16 @@ export interface SavedTemplate extends EmailTemplate {
   createdAt: number;
 }
 
-export interface SavedCc {
+export interface GeneratedEmail {
   id: string;
-  email: string;
-  label: string;
+  officialId: string;
+  recipient: string;
+  subject: string;
+  body: string;
+  attachments: File[];
 }
 
-export type ViewState = 'dashboard' | 'database' | 'template' | 'generate' | 'settings';
+export type ViewState = 'dashboard' | 'database' | 'template' | 'generate';
 
 export interface ToastNotification {
   id: string;
@@ -67,9 +55,9 @@ export interface ToastNotification {
   type: 'success' | 'error' | 'info';
 }
 
-export type SortOption = 'name' | 'surname' | 'department' | 'rut' | 'entryDate';
+export type SortOption = 'name' | 'surname' | 'department';
 
 export interface FilterCriteria {
-  type: 'none' | 'missingBoss' | 'missingGender' | 'invalidEmail' | 'department' | 'expiringSoon';
+  type: 'none' | 'missingBoss' | 'missingGender' | 'invalidEmail' | 'department';
   value?: string;
 }

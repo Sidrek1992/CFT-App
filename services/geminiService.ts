@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { Gender } from "../types";
 
@@ -15,7 +14,7 @@ interface GenderPrediction {
 export const detectGenderAndTitle = async (name: string): Promise<{ gender: Gender; title: string }> => {
   try {
     const ai = getAiClient();
-    const model = "gemini-3-flash-preview";
+    const model = "gemini-2.5-flash";
     
     const response = await ai.models.generateContent({
       model: model,
@@ -64,7 +63,7 @@ export const detectGenderAndTitle = async (name: string): Promise<{ gender: Gend
 export const generateTemplateWithAI = async (instruction: string): Promise<{ subject: string; body: string }> => {
   try {
     const ai = getAiClient();
-    const model = "gemini-3-flash-preview";
+    const model = "gemini-2.5-flash";
     const systemInstruction = `You are an expert corporate communications assistant. 
     Your goal is to write a professional email template in Spanish based on the user's request.
     
@@ -113,7 +112,7 @@ export const generateTemplateWithAI = async (instruction: string): Promise<{ sub
 export const refineEmailWithAI = async (currentBody: string, instruction: string): Promise<string> => {
   try {
     const ai = getAiClient();
-    const model = "gemini-3-flash-preview";
+    const model = "gemini-2.5-flash";
     const response = await ai.models.generateContent({
       model: model,
       contents: `Original Email Body:

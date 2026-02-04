@@ -1,77 +1,144 @@
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { Official, EmailTemplate, Gender, SavedCc } from '../types';
+import { Official, EmailTemplate, Gender } from '../types';
 import { refineEmailWithAI } from '../services/geminiService';
-import { Copy, ExternalLink, User, Search, ChevronLeft, ChevronRight, Check, Download, Sparkles, Building2, UserPlus, X, Mail, Send, Fingerprint, Calendar, Clock, BookmarkCheck } from 'lucide-react';
+import { Copy, ExternalLink, AlertCircle, CheckSquare, Square, User, UserCheck, Search, ChevronLeft, ChevronRight, Check, Filter, Download, Sparkles, Building2, UserPlus, X, LayoutList, LayoutGrid, ChevronDown, ChevronUp, CopyPlus, UserCog, ArrowUpDown } from 'lucide-react';
 
 interface GeneratorProps {
   officials: Official[];
   template: EmailTemplate;
   files: File[];
   sentHistory: string[];
-  savedCcs: SavedCc[];
   onMarkAsSent: (id: string) => void;
   onToast: (msg: string, type: 'success' | 'error') => void;
 }
 
 interface EditableEmail {
-  id: string;
+  id: string; // Links to official.id
   official: Official;
   recipientType: 'official' | 'boss';
-  includeCc: boolean; // This refers to including the Boss CC
-  selectedPermanentCcIds: string[];
-  additionalCc: string;
+  includeCc: boolean; // Boss CC
+  includeSubdirectora: boolean; // New Subdirectora CC
+  additionalCc: string; // Email address of the extra person
   subject: string;
   body: string;
-  sent: boolean;
+  sent: boolean; // Track sending status (local + prop)
   aiRefining: boolean;
 }
 
-const normalizeText = (text: string) => text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+// Helper to convert File to Base64
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        // Remove the Data URL prefix (e.g., "data:application/pdf;base64,")
+        const base64 = reader.result.split(',')[1];
+        resolve(base64);
+      } else {
+        reject(new Error('Failed to convert file'));
+      }
+    };
+    reader.onerror = error => reject(error);
+  });
+};
 
-export const Generator: React.FC<GeneratorProps> = ({ officials, template, files, sentHistory, savedCcs, onMarkAsSent, onToast }) => {
+// Helper for accent-insensitive search
+const normalizeText = (text: string) => {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+};
+
+export const Generator: React.FC<GeneratorProps> = ({ officials, template, files, sentHistory, onMarkAsSent, onToast }) => {
+  
   const [editableEmails, setEditableEmails] = useState<EditableEmail[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  
+  // View Mode State (Cards vs Compact Table)
+  const [viewMode, setViewMode] = useState<'cards' | 'compact'>('cards');
+  const [expandedRows, setExpandedRows] = useState<string[]>([]);
+  
+  // Global Config for Subdirectora
+  const [subdirectoraEmail, setSubdirectoraEmail] = useState('gestion.personas@cftestatalaricayparinacota.cl');
+
+  // Filters State
+  const [selectedPosition, setSelectedPosition] = useState<string>('Todos');
+  const [selectedDept, setSelectedDept] = useState<string>('Todos');
+  const [selectedBoss, setSelectedBoss] = useState<string>('Todos');
+  
+  // Sorting State
+  const [sortOption, setSortOption] = useState<'name' | 'surname' | 'department'>('name');
+
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = viewMode === 'compact' ? 10 : 5; // More items in compact mode
   const [aiInstruction, setAiInstruction] = useState<{id: string, text: string} | null>(null);
 
+  // Extract unique values for filters
+  const positions = useMemo(() => ['Todos', ...new Set(officials.map(o => o.position).filter(Boolean).sort())], [officials]);
+  const departments = useMemo(() => ['Todos', ...new Set(officials.map(o => o.department).filter(Boolean).sort())], [officials]);
+  const bosses = useMemo(() => ['Todos', ...new Set(officials.map(o => o.bossName).filter(Boolean).sort())], [officials]);
+
+  // Sort officials for the CC dropdown
+  const sortedOfficialsForCc = useMemo(() => {
+    return [...officials].sort((a, b) => a.name.localeCompare(b.name));
+  }, [officials]);
+
+  // Hotkey listener for Search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            searchInputRef.current?.focus();
+        }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Generate initial batch
   useEffect(() => {
     const generated = officials.map(official => {
       let body = template.body;
-      let estimadoVar = official.gender === Gender.Male ? 'Estimado' : official.gender === Gender.Female ? 'Estimada' : 'Estimado/a';
       
+      // Calculate dynamic gender adjective
+      let estimadoVar = 'Estimado/a';
+      if (official.gender === Gender.Male) estimadoVar = 'Estimado';
+      if (official.gender === Gender.Female) estimadoVar = 'Estimada';
+
+      // Parse Name Parts
       const nameParts = official.name.trim().split(/\s+/);
       const firstName = nameParts[0] || '';
-      const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : '';
+      let lastName = '';
+      
+      // Heuristic: If name has > 2 parts, assume last 2 are surnames (Standard Spanish Format)
+      if (nameParts.length > 2) {
+          lastName = nameParts.slice(-2).join(' ');
+      } else if (nameParts.length === 2) {
+          lastName = nameParts[1];
+      }
 
-      // Mapeo extendido de placeholders
-      const mapping: Record<string, string> = {
-        '{nombre}': official.name,
-        '{nombres}': firstName,
-        '{apellidos}': lastName,
-        '{titulo}': official.title,
-        '{estimado}': estimadoVar,
-        '{rut}': official.rut || 'N/A',
-        '{departamento}': official.department || '',
-        '{cargo}': official.position,
-        '{correo}': official.email,
-        '{fecha_ingreso}': official.entryDate || 'N/A',
-        '{fecha_fin_contrato}': official.contractEndDate || 'N/A',
-        '{jefatura_nombre}': official.bossName || 'N/A',
-        '{jefatura_cargo}': official.bossPosition || 'N/A'
-      };
-
-      Object.entries(mapping).forEach(([key, value]) => {
-          body = body.replace(new RegExp(key, 'g'), value);
-      });
+      // Replace variables
+      body = body.replace(/{nombre}/g, official.name);
+      body = body.replace(/{nombres}/g, firstName);
+      body = body.replace(/{apellidos}/g, lastName);
+      body = body.replace(/{titulo}/g, official.title);
+      body = body.replace(/{estimado}/g, estimadoVar);
+      body = body.replace(/{departamento}/g, official.department || '');
+      body = body.replace(/{cargo}/g, official.position);
+      body = body.replace(/{correo}/g, official.email);
+      body = body.replace(/{jefatura_nombre}/g, official.bossName || 'N/A');
+      body = body.replace(/{jefatura_cargo}/g, official.bossPosition || 'N/A');
 
       return {
         id: official.id,
         official,
-        recipientType: 'official',
+        recipientType: 'official' as const, // Default to official
         includeCc: false,
-        selectedPermanentCcIds: [],
+        includeSubdirectora: false,
         additionalCc: '',
         subject: template.subject,
         body,
@@ -82,191 +149,756 @@ export const Generator: React.FC<GeneratorProps> = ({ officials, template, files
     setEditableEmails(generated);
   }, [officials, template, sentHistory]);
 
-  const handleEmailChange = (id: string, field: keyof EditableEmail, value: any) => {
-    setEditableEmails(prev => prev.map(email => email.id === id ? { ...email, [field]: value } : email));
+  const handleEmailChange = (id: string, field: 'subject' | 'body', value: string) => {
+    setEditableEmails(prev => prev.map(email => 
+      email.id === id ? { ...email, [field]: value } : email
+    ));
   };
 
-  const togglePermanentCc = (emailId: string, ccId: string) => {
-    setEditableEmails(prev => prev.map(email => {
-      if (email.id !== emailId) return email;
-      const ids = [...email.selectedPermanentCcIds];
-      const index = ids.indexOf(ccId);
-      if (index === -1) ids.push(ccId);
-      else ids.splice(index, 1);
-      return { ...email, selectedPermanentCcIds: ids };
-    }));
+  const toggleRecipient = (id: string, type: 'official' | 'boss') => {
+    setEditableEmails(prev => prev.map(email => 
+      email.id === id ? { ...email, recipientType: type } : email
+    ));
   };
 
+  const toggleCc = (id: string) => {
+    setEditableEmails(prev => prev.map(email => 
+      email.id === id ? { ...email, includeCc: !email.includeCc } : email
+    ));
+  };
+  
+  const toggleSubdirectoraCc = (id: string) => {
+    setEditableEmails(prev => prev.map(email => 
+      email.id === id ? { ...email, includeSubdirectora: !email.includeSubdirectora } : email
+    ));
+  };
+
+  const replicateSettingToAll = (key: 'includeCc' | 'includeSubdirectora', value: boolean) => {
+      setEditableEmails(prev => prev.map(email => ({
+          ...email,
+          [key]: value
+      })));
+      onToast(`Configuración aplicada a ${editableEmails.length} correos.`, 'success');
+  };
+
+  const handleAdditionalCcChange = (id: string, value: string) => {
+    setEditableEmails(prev => prev.map(email => 
+        email.id === id ? { ...email, additionalCc: value } : email
+      ));
+  };
+
+  const toggleRowExpand = (id: string) => {
+      setExpandedRows(prev => 
+        prev.includes(id) ? prev.filter(rowId => rowId !== id) : [...prev, id]
+      );
+  };
+
+  // Helper to calculate addresses based on current state
   const getEmailAddresses = (email: EditableEmail) => {
     const to = email.recipientType === 'official' ? email.official.email : email.official.bossEmail;
+    
     const ccList: string[] = [];
     
-    // Boss CC
-    if (email.includeCc && email.recipientType === 'official' && email.official.bossEmail) {
-      ccList.push(email.official.bossEmail);
+    // Logic: If Include CC is on, we add the boss if the boss isn't already the recipient
+    if (email.includeCc) {
+       if (email.recipientType === 'official' && email.official.bossEmail) {
+         ccList.push(email.official.bossEmail);
+       }
     }
     
-    // Permanent CCs
-    email.selectedPermanentCcIds.forEach(id => {
-      const found = savedCcs.find(s => s.id === id);
-      if (found) ccList.push(found.email);
-    });
+    // Logic: Include Subdirectora
+    if (email.includeSubdirectora && subdirectoraEmail) {
+        ccList.push(subdirectoraEmail);
+    }
 
-    // Manual CC
-    if (email.additionalCc) ccList.push(email.additionalCc);
-    
-    return { to, cc: ccList.join(',') };
+    // Add Additional CC
+    if (email.additionalCc) {
+        ccList.push(email.additionalCc);
+    }
+
+    const cc = ccList.join(',');
+    return { to, cc };
   };
 
-  const handleGmailWeb = (email: EditableEmail) => {
+  const handleMailTo = (email: EditableEmail) => {
     const { to, cc } = getEmailAddresses(email);
-    const subject = encodeURIComponent(email.subject);
-    const body = encodeURIComponent(email.body);
-    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&cc=${cc}&su=${subject}&body=${body}`;
-    window.open(gmailUrl, '_blank');
+    const encodedSubject = encodeURIComponent(email.subject);
+    const encodedBody = encodeURIComponent(email.body);
+    
+    // Create query params manually to control order
+    const params: string[] = [];
+    // Important: Add CC before body to prevent it from being truncated if body is long
+    // Also encode CC to handle special characters or multiple emails safely
+    if (cc) params.push(`cc=${encodeURIComponent(cc)}`);
+    params.push(`subject=${encodedSubject}`);
+    params.push(`body=${encodedBody}`);
+    
+    const url = `mailto:${to}?${params.join('&')}`;
+    
+    window.open(url, '_blank');
+
+    // Mark as sent in parent (Persistent)
     onMarkAsSent(email.id);
+    
+    // Update local state
+    setEditableEmails(prev => prev.map(e => 
+      e.id === email.id ? { ...e, sent: true } : e
+    ));
+  };
+
+  const handleDownloadEml = async (email: EditableEmail) => {
+    try {
+      const { to, cc } = getEmailAddresses(email);
+      const boundary = `----=_NextPart_${Date.now()}`;
+      
+      // Headers
+      let emlContent = `To: ${to}\n`;
+      if (cc) emlContent += `Cc: ${cc}\n`;
+      emlContent += `Subject: ${email.subject}\n`;
+      emlContent += `X-Unsent: 1\n`;
+      emlContent += `MIME-Version: 1.0\n`;
+      emlContent += `Content-Type: multipart/mixed; boundary="${boundary}"\n\n`;
+
+      // HTML Body Part
+      emlContent += `--${boundary}\n`;
+      emlContent += `Content-Type: text/html; charset="utf-8"\n`;
+      emlContent += `Content-Transfer-Encoding: 7bit\n\n`;
+      emlContent += `<html><body style="font-family: sans-serif;">${email.body.replace(/\n/g, '<br/>')}</body></html>\n\n`;
+
+      // Attachments Parts
+      if (files.length > 0) {
+        for (const file of files) {
+          const base64 = await fileToBase64(file);
+          
+          emlContent += `--${boundary}\n`;
+          emlContent += `Content-Type: ${file.type || 'application/octet-stream'}; name="${file.name}"\n`;
+          emlContent += `Content-Disposition: attachment; filename="${file.name}"\n`;
+          emlContent += `Content-Transfer-Encoding: base64\n\n`;
+          
+          // Split base64 into 76-char lines for MIME compliance
+          const chunks = base64.match(/.{1,76}/g) || [];
+          emlContent += chunks.join('\n');
+          emlContent += `\n\n`;
+        }
+      }
+
+      emlContent += `--${boundary}--`;
+
+      const blob = new Blob([emlContent], { type: 'message/rfc822' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${email.subject.replace(/[^a-z0-9]/gi, '_')}.eml`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      onToast("Archivo .eml descargado con adjuntos", "success");
+    } catch (error) {
+      console.error("Error generating EML", error);
+      onToast("Error al generar archivo .eml", "error");
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    onToast("Copiado al portapapeles", "success");
   };
 
   const handleAiRefine = async (id: string) => {
     const email = editableEmails.find(e => e.id === id);
     if (!email || !aiInstruction || aiInstruction.id !== id || !aiInstruction.text) return;
+
     setEditableEmails(prev => prev.map(e => e.id === id ? { ...e, aiRefining: true } : e));
+    
     try {
       const newBody = await refineEmailWithAI(email.body, aiInstruction.text);
       setEditableEmails(prev => prev.map(e => e.id === id ? { ...e, body: newBody, aiRefining: false } : e));
-      setAiInstruction(null);
-      onToast("Cuerpo actualizado con IA", "success");
+      setAiInstruction(null); // Close input
+      onToast("Correo reescrito con éxito", "success");
     } catch (error) {
       setEditableEmails(prev => prev.map(e => e.id === id ? { ...e, aiRefining: false } : e));
-      onToast("Error de IA", "error");
+      onToast("Error al reescribir con IA", "error");
     }
   };
 
+  // --- Filtering & Pagination Logic ---
   const filteredEmails = editableEmails.filter(email => {
     const term = normalizeText(searchTerm);
-    return normalizeText(email.official.name).includes(term) || (email.official.rut && email.official.rut.includes(term));
+    const matchesSearch = (
+      normalizeText(email.official.name).includes(term) ||
+      normalizeText(email.official.email).includes(term) ||
+      normalizeText(email.subject).includes(term)
+    );
+    
+    const matchesPosition = selectedPosition === 'Todos' || email.official.position === selectedPosition;
+    const matchesDept = selectedDept === 'Todos' || email.official.department === selectedDept;
+    const matchesBoss = selectedBoss === 'Todos' || email.official.bossName === selectedBoss;
+
+    return matchesSearch && matchesPosition && matchesDept && matchesBoss;
   });
 
-  const totalPages = Math.ceil(filteredEmails.length / itemsPerPage);
-  const currentItems = filteredEmails.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  // Sorting Logic
+  const sortedEmails = [...filteredEmails].sort((a, b) => {
+      switch (sortOption) {
+          case 'department':
+               return (a.official.department || '').localeCompare(b.official.department || '');
+          case 'surname':
+              // Naive surname extraction: last word
+              const surnameA = a.official.name.trim().split(' ').slice(-1)[0] || '';
+              const surnameB = b.official.name.trim().split(' ').slice(-1)[0] || '';
+              return surnameA.localeCompare(surnameB);
+          case 'name':
+          default:
+              return a.official.name.localeCompare(b.official.name);
+      }
+  });
 
-  return (
-    <div className="space-y-6">
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
-        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-            <Send className="w-5 h-5 text-indigo-600" /> Cola de Envíos Personalizados
-        </h2>
-        <div className="relative w-full md:w-96">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-            <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm w-full outline-none" placeholder="Filtrar cola por nombre o RUT..." />
-        </div>
+  const totalPages = Math.ceil(sortedEmails.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentItems = sortedEmails.slice(startIndex, startIndex + itemsPerPage);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1); 
+  };
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  if (officials.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 bg-white rounded-xl border border-slate-200">
+        <AlertCircle className="w-8 h-8 text-amber-500 mb-2" />
+        <p className="text-slate-600">No hay funcionarios seleccionados para generar correos.</p>
       </div>
+    );
+  }
 
-      <div className="space-y-4">
-        {currentItems.map(item => (
-          <div key={item.id} className={`bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm transition-all ${item.sent ? 'opacity-60 grayscale-[0.5]' : 'hover:shadow-md'}`}>
-            <div className="p-6">
-                <div className="flex flex-col lg:flex-row justify-between gap-6">
-                    <div className="flex gap-4">
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg ${item.sent ? 'bg-slate-100 text-slate-400' : 'bg-indigo-600 text-white'}`}>
-                            {item.sent ? <Check className="w-6 h-6" /> : item.official.name.charAt(0)}
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-slate-900">{item.official.name}</h3>
-                            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
-                                <span className="text-xs text-slate-500 flex items-center gap-1"><Fingerprint className="w-3 h-3" /> {item.official.rut || 'N/A'}</span>
-                                <span className="text-xs text-slate-500 flex items-center gap-1"><Building2 className="w-3 h-3" /> {item.official.department}</span>
-                                <span className="text-xs text-slate-500 flex items-center gap-1"><Clock className="w-3 h-3" /> Término: {item.official.contractEndDate || 'N/A'}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                        <button onClick={() => handleGmailWeb(item)} className="px-6 py-2 bg-indigo-600 text-white rounded-xl text-sm font-black hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-lg shadow-indigo-200">
-                            <Mail className="w-4 h-4" /> Gmail Web
+  // --- Render Components ---
+
+  const renderPagination = () => (
+      <div className="flex justify-center items-center gap-4 mt-8 pb-4">
+          <button
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="p-2 rounded-lg border border-slate-300 bg-white text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          
+          <span className="text-sm font-medium text-slate-600">
+            Página {currentPage} de {totalPages}
+          </span>
+          
+          <button
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="p-2 rounded-lg border border-slate-300 bg-white text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+  );
+
+  const renderBodyEditor = (item: EditableEmail) => (
+      <div className="space-y-4 relative bg-slate-50 p-4 rounded-lg border border-slate-200 mt-4">
+        <div>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Asunto</span>
+            <input
+            type="text"
+            value={item.subject}
+            onChange={(e) => handleEmailChange(item.id, 'subject', e.target.value)}
+            className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-corporate-blue outline-none font-medium text-slate-800"
+            />
+        </div>
+        
+        <div className="relative">
+            <div className="flex justify-between items-center mb-1">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Contenido</span>
+                <button 
+                    onClick={() => setAiInstruction(prev => prev?.id === item.id ? null : {id: item.id, text: ''})}
+                    className="text-xs text-indigo-600 flex items-center gap-1 hover:text-indigo-800"
+                >
+                    <Sparkles className="w-3 h-3" /> IA Rewrite
+                </button>
+            </div>
+            
+            {aiInstruction?.id === item.id && (
+                <div className="mb-3 p-3 bg-indigo-50 rounded-lg border border-indigo-100 animate-in fade-in slide-in-from-top-2">
+                    <label className="block text-xs font-medium text-indigo-800 mb-1">¿Cómo quieres mejorar este correo?</label>
+                    <div className="flex gap-2">
+                        <input 
+                            type="text" 
+                            autoFocus
+                            value={aiInstruction.text}
+                            onChange={(e) => setAiInstruction({ id: item.id, text: e.target.value })}
+                            className="flex-1 px-3 py-1.5 text-xs border border-indigo-200 rounded focus:outline-none focus:border-indigo-400"
+                            placeholder="Ej. Hazlo más formal, resume el segundo párrafo..."
+                            onKeyDown={(e) => e.key === 'Enter' && handleAiRefine(item.id)}
+                        />
+                        <button 
+                            onClick={() => handleAiRefine(item.id)}
+                            disabled={!aiInstruction.text || item.aiRefining}
+                            className="px-3 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 disabled:opacity-50"
+                        >
+                            {item.aiRefining ? '...' : 'Aplicar'}
                         </button>
                     </div>
                 </div>
+            )}
 
-                <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 space-y-4">
-                        <input type="text" value={item.subject} onChange={e => handleEmailChange(item.id, 'subject', e.target.value)} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold" />
-                        <div className="relative">
-                            <textarea value={item.body} onChange={e => handleEmailChange(item.id, 'body', e.target.value)} className="w-full h-48 p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono resize-none outline-none focus:ring-2 focus:ring-indigo-500" />
-                            <button onClick={() => setAiInstruction({id: item.id, text: ''})} className="absolute bottom-4 right-4 p-2 bg-white text-indigo-600 rounded-lg shadow-md border border-slate-100 hover:scale-105 transition-transform"><Sparkles className="w-4 h-4" /></button>
-                        </div>
-                        {aiInstruction?.id === item.id && (
-                            <div className="flex gap-2 animate-in slide-in-from-top-2">
-                                <input autoFocus type="text" value={aiInstruction.text} onChange={e => setAiInstruction({id: item.id, text: e.target.value})} className="flex-1 px-3 py-1.5 text-xs border rounded-lg" placeholder="Ej: Escríbelo más formal..." />
-                                <button onClick={() => handleAiRefine(item.id)} className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold">Aplicar IA</button>
-                            </div>
-                        )}
+            {/* Skeleton Loading or Textarea */}
+            {item.aiRefining ? (
+                <div className="w-full h-[200px] bg-white rounded-lg border border-slate-200 p-4 space-y-3 animate-pulse">
+                    <div className="h-4 bg-slate-200 rounded w-3/4"></div>
+                    <div className="h-4 bg-slate-200 rounded w-full"></div>
+                    <div className="h-4 bg-slate-200 rounded w-full"></div>
+                    <div className="h-4 bg-slate-200 rounded w-5/6"></div>
+                    <div className="h-4 bg-slate-200 rounded w-1/2"></div>
+                </div>
+            ) : (
+                <textarea
+                    value={item.body}
+                    onChange={(e) => handleEmailChange(item.id, 'body', e.target.value)}
+                    className="w-full p-4 bg-white rounded-lg border border-slate-300 text-sm text-slate-700 whitespace-pre-wrap font-mono focus:ring-2 focus:ring-corporate-blue outline-none min-h-[200px]"
+                />
+            )}
+        </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
+        
+        {/* Global Controls Row */}
+        <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center border-b border-slate-100 pb-4">
+            <div>
+               <div className="flex items-center gap-3">
+                   <h2 className="text-lg font-semibold text-slate-800">Filtros y Búsqueda</h2>
+                   {/* View Toggle */}
+                   <div className="bg-slate-100 p-1 rounded-lg flex border border-slate-200">
+                        <button 
+                            onClick={() => setViewMode('cards')}
+                            className={`p-1.5 rounded-md transition-all ${viewMode === 'cards' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+                            title="Vista Tarjetas"
+                        >
+                            <LayoutGrid className="w-4 h-4" />
+                        </button>
+                        <button 
+                            onClick={() => setViewMode('compact')}
+                            className={`p-1.5 rounded-md transition-all ${viewMode === 'compact' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+                            title="Vista Compacta"
+                        >
+                            <LayoutList className="w-4 h-4" />
+                        </button>
+                   </div>
+               </div>
+               <p className="text-xs text-slate-500 mt-1">
+                 Mostrando {sortedEmails.length} correos
+               </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row flex-wrap gap-3 w-full xl:w-auto">
+                {/* Sort Dropdown */}
+                <div className="relative min-w-[150px]">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <ArrowUpDown className="h-4 w-4 text-slate-400" />
                     </div>
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Opciones de Envío</h4>
-                        <div className="space-y-2">
-                            <label className="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-100 cursor-pointer hover:bg-indigo-50 transition-colors">
-                                <input type="checkbox" checked={item.includeCc} onChange={() => handleEmailChange(item.id, 'includeCc', !item.includeCc)} className="w-4 h-4 text-indigo-600 rounded" />
-                                <span className="text-xs font-bold text-slate-700">CC Jefatura</span>
-                            </label>
-                            
-                            {/* Permanent CC Section */}
-                            {savedCcs.length > 0 && (
-                                <div className="pt-2">
-                                    <span className="text-[10px] font-bold text-slate-400 block mb-1 uppercase flex items-center gap-1">
-                                        <BookmarkCheck className="w-3 h-3" /> Copias Permanentes:
-                                    </span>
-                                    <div className="space-y-1 max-h-32 overflow-y-auto">
-                                        {savedCcs.map(cc => (
-                                            <label key={cc.id} className="flex items-center gap-2 p-1.5 bg-white/50 rounded-lg border border-slate-100 cursor-pointer hover:bg-indigo-50 transition-colors">
-                                                <input 
-                                                  type="checkbox" 
-                                                  checked={item.selectedPermanentCcIds.includes(cc.id)} 
-                                                  onChange={() => togglePermanentCc(item.id, cc.id)}
-                                                  className="w-3.5 h-3.5 text-indigo-600 rounded" 
-                                                />
-                                                <div className="min-w-0">
-                                                    <p className="text-[10px] font-bold text-slate-700 truncate leading-none">{cc.label}</p>
-                                                    <p className="text-[8px] text-slate-400 truncate leading-none">{cc.email}</p>
-                                                </div>
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
+                    <select
+                        value={sortOption}
+                        onChange={(e) => { setSortOption(e.target.value as any); setCurrentPage(1); }}
+                        className="pl-10 w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-corporate-blue outline-none appearance-none cursor-pointer"
+                    >
+                        <option value="name">Nombre (A-Z)</option>
+                        <option value="surname">Apellido (A-Z)</option>
+                        <option value="department">Departamento</option>
+                    </select>
+                </div>
 
-                            <div className="pt-2">
-                                <span className="text-[10px] font-bold text-slate-400 block mb-1 uppercase">Para:</span>
-                                <div className="flex gap-1">
-                                    <button onClick={() => handleEmailChange(item.id, 'recipientType', 'official')} className={`flex-1 py-2 rounded-lg text-[10px] font-black border transition-all ${item.recipientType === 'official' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-500 border-slate-200'}`}>FUNCIONARIO</button>
-                                    <button onClick={() => handleEmailChange(item.id, 'recipientType', 'boss')} className={`flex-1 py-2 rounded-lg text-[10px] font-black border transition-all ${item.recipientType === 'boss' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-500 border-slate-200'}`}>JEFATURA</button>
-                                </div>
-                            </div>
-
-                            <div className="pt-2">
-                                <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase">CC Adicional Manual:</label>
-                                <input 
-                                  type="text" 
-                                  value={item.additionalCc} 
-                                  onChange={e => handleEmailChange(item.id, 'additionalCc', e.target.value)}
-                                  className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded text-[10px] outline-none focus:ring-1 focus:ring-indigo-500"
-                                  placeholder="otros@cft.cl"
-                                />
-                            </div>
-                        </div>
+                {/* Department Filter */}
+                 <div className="relative min-w-[150px]">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Building2 className="h-4 w-4 text-slate-400" />
                     </div>
+                    <select
+                        value={selectedDept}
+                        onChange={(e) => { setSelectedDept(e.target.value); setCurrentPage(1); }}
+                        className="pl-10 w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-corporate-blue outline-none appearance-none cursor-pointer"
+                    >
+                        {departments.map(d => (
+                            <option key={d} value={d}>{d === 'Todos' ? 'Todos Depts.' : d}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Boss Filter */}
+                <div className="relative min-w-[150px]">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <UserCheck className="h-4 w-4 text-slate-400" />
+                    </div>
+                    <select
+                        value={selectedBoss}
+                        onChange={(e) => { setSelectedBoss(e.target.value); setCurrentPage(1); }}
+                        className="pl-10 w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-corporate-blue outline-none appearance-none cursor-pointer"
+                    >
+                        {bosses.map(b => (
+                            <option key={b} value={b}>{b === 'Todos' ? 'Todas Jef.' : b}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Search Bar */}
+                <div className="relative w-full sm:w-64">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Search className="h-4 w-4 text-slate-400" />
+                    </div>
+                    <input
+                        ref={searchInputRef}
+                        type="text"
+                        value={searchTerm}
+                        onChange={handleSearchChange}
+                        className="pl-10 w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-corporate-blue outline-none"
+                        placeholder="Buscar (Ctrl + K)"
+                    />
                 </div>
             </div>
-          </div>
-        ))}
+        </div>
+
+        {/* Configuration Row */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+             <div className="flex-1 w-full">
+                 <label className="block text-xs font-bold text-indigo-900 mb-1 uppercase tracking-wider flex items-center gap-2">
+                    <UserCog className="w-4 h-4" />
+                    Correo Subdirectora de Gestión de Personas (CC Opcional)
+                 </label>
+                 <input 
+                    type="email" 
+                    value={subdirectoraEmail}
+                    onChange={(e) => setSubdirectoraEmail(e.target.value)}
+                    className="w-full px-3 py-1.5 text-sm border border-indigo-200 rounded text-slate-700 focus:outline-none focus:border-indigo-400"
+                    placeholder="ejemplo@empresa.cl"
+                 />
+             </div>
+             <div className="flex items-end gap-2 text-xs text-indigo-700">
+                 <AlertCircle className="w-4 h-4 mb-0.5" />
+                 <span className="max-w-md">Este correo se usará si activas la opción <strong>CC Subdirectora de Gestión de Personas</strong> en los envíos individuales o masivos.</span>
+             </div>
+        </div>
+
       </div>
 
-      {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-4 py-4">
-              <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} className="p-2 border rounded-lg bg-white shadow-sm"><ChevronLeft /></button>
-              <span className="text-sm font-bold text-slate-600">Página {currentPage} de {totalPages}</span>
-              <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} className="p-2 border rounded-lg bg-white shadow-sm"><ChevronRight /></button>
+      {filteredEmails.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-xl border border-slate-200 border-dashed">
+              <p className="text-slate-500">No se encontraron resultados.</p>
+              <button 
+                onClick={() => { setSearchTerm(''); setSelectedPosition('Todos'); setSelectedDept('Todos'); setSelectedBoss('Todos'); }}
+                className="mt-2 text-indigo-600 hover:underline text-sm"
+              >
+                Limpiar filtros
+              </button>
+          </div>
+      ) : viewMode === 'cards' ? (
+          // CARD VIEW MODE
+          <div className="grid grid-cols-1 gap-6">
+            {currentItems.map((item) => {
+              return (
+                <div key={item.id} className={`bg-white rounded-xl shadow-sm border ${item.sent ? 'border-green-200' : 'border-slate-200'} overflow-visible transition-all hover:shadow-md`}>
+                  {/* Card Header */}
+                  <div className={`px-6 py-4 border-b flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 ${item.sent ? 'bg-green-50/50 border-green-100' : 'bg-slate-50 border-slate-200'}`}>
+                    
+                    {/* Recipient Selectors */}
+                    <div className="flex flex-col gap-3 w-full lg:w-auto">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider w-12">Para:</span>
+                        <div className="flex bg-white border border-slate-200 rounded-lg p-1">
+                            <button 
+                              onClick={() => toggleRecipient(item.id, 'official')}
+                              className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                                item.recipientType === 'official' 
+                                ? 'bg-indigo-100 text-indigo-700 shadow-sm' 
+                                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                              }`}
+                            >
+                              <User className="w-3 h-3" />
+                              {item.official.name}
+                            </button>
+                            <button 
+                              onClick={() => toggleRecipient(item.id, 'boss')}
+                              className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                                item.recipientType === 'boss' 
+                                ? 'bg-purple-100 text-purple-700 shadow-sm' 
+                                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                              }`}
+                            >
+                              <UserCheck className="w-3 h-3" />
+                              Jefatura
+                            </button>
+                        </div>
+                      </div>
+                      
+                       <div className="flex items-center gap-3">
+                          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider w-12"></span>
+                          <span className="text-xs text-slate-500 flex items-center gap-1">
+                             <span className="font-semibold">{item.official.position}</span>
+                             {item.official.department && (
+                                <span className="text-slate-400">• {item.official.department}</span>
+                             )}
+                          </span>
+                       </div>
+
+                    </div>
+
+                    {/* CC and Actions */}
+                    <div className="flex flex-col gap-2 w-full lg:w-auto">
+                        
+                        <div className="flex flex-wrap items-center gap-2">
+                             {/* CC Jefatura Button */}
+                            <div className="flex items-center">
+                                <button 
+                                    onClick={() => toggleCc(item.id)}
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-l-lg border-y border-l transition-all text-xs font-medium ${
+                                    item.includeCc 
+                                    ? 'bg-indigo-50 border-indigo-200 text-indigo-700 z-10' 
+                                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                                    }`}
+                                >
+                                    {item.includeCc ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                                    CC Jefatura
+                                </button>
+                                <button
+                                    onClick={() => replicateSettingToAll('includeCc', !item.includeCc)}
+                                    className="px-2 py-1.5 bg-slate-100 border border-slate-200 rounded-r-lg hover:bg-slate-200 text-slate-500 transition-colors"
+                                    title={`Aplicar "CC Jefatura: ${!item.includeCc ? 'Sí' : 'No'}" a TODOS`}
+                                >
+                                    <CopyPlus className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                             {/* CC Subdirectora Button */}
+                            <div className="flex items-center">
+                                <button 
+                                    onClick={() => toggleSubdirectoraCc(item.id)}
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-l-lg border-y border-l transition-all text-xs font-medium ${
+                                    item.includeSubdirectora 
+                                    ? 'bg-pink-50 border-pink-200 text-pink-700 z-10' 
+                                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                                    }`}
+                                >
+                                    {item.includeSubdirectora ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                                    CC Subdirectora de Gestión de Personas
+                                </button>
+                                <button
+                                    onClick={() => replicateSettingToAll('includeSubdirectora', !item.includeSubdirectora)}
+                                    className="px-2 py-1.5 bg-slate-100 border border-slate-200 rounded-r-lg hover:bg-slate-200 text-slate-500 transition-colors"
+                                    title={`Aplicar "CC Subdirectora de Gestión de Personas: ${!item.includeSubdirectora ? 'Sí' : 'No'}" a TODOS`}
+                                >
+                                    <CopyPlus className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-4 mt-2 lg:mt-0">
+                            {/* Additional CC Selector */}
+                            <div className="flex items-center gap-1">
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                                        <UserPlus className="w-3 h-3 text-slate-400" />
+                                    </div>
+                                    <select
+                                        value={item.additionalCc}
+                                        onChange={(e) => handleAdditionalCcChange(item.id, e.target.value)}
+                                        className={`pl-7 pr-4 py-1.5 rounded-lg border text-xs font-medium appearance-none cursor-pointer outline-none focus:ring-2 focus:ring-indigo-100 transition-all max-w-[150px] ${
+                                            item.additionalCc 
+                                            ? 'bg-indigo-50 border-indigo-200 text-indigo-700' 
+                                            : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        <option value="">{item.additionalCc ? 'Sin copia extra' : '+ CC Otro'}</option>
+                                        {sortedOfficialsForCc.filter(o => o.email !== (item.recipientType === 'official' ? item.official.email : item.official.bossEmail)).map(o => (
+                                            <option key={o.id} value={o.email}>
+                                                {o.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                {item.additionalCc && (
+                                    <button
+                                        onClick={() => handleAdditionalCcChange(item.id, '')}
+                                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                                        title="Quitar CC adicional"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="h-4 w-px bg-slate-300 hidden lg:block"></div>
+
+                            <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+                                <button
+                                    onClick={() => handleDownloadEml(item)}
+                                    className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-white rounded-lg transition-all border border-slate-200 hover:border-indigo-200"
+                                    title="Descargar archivo .eml (Outlook)"
+                                >
+                                    <Download className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => copyToClipboard(item.body)}
+                                    className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-white rounded-lg transition-all border border-slate-200 hover:border-indigo-200"
+                                    title="Copiar texto"
+                                >
+                                    <Copy className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => handleMailTo(item)}
+                                    className={`px-4 py-2 text-xs font-medium rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm hover:shadow ${
+                                        item.sent 
+                                        ? 'bg-green-100 text-green-700 border border-green-200 hover:bg-green-200'
+                                        : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                                    }`}
+                                >
+                                    {item.sent ? <Check className="w-3 h-3" /> : <ExternalLink className="w-3 h-3" />}
+                                    {item.sent ? 'Enviado' : 'Enviar'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                  </div>
+                  
+                  {/* Editable Content */}
+                  <div className="p-6 relative">
+                     {item.sent && (
+                         <div className="absolute top-0 right-0 m-2">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-green-100 text-green-800 border border-green-200">
+                                <Check className="w-3 h-3" /> Enviado
+                            </span>
+                         </div>
+                    )}
+                    {renderBodyEditor(item)}
+                    
+                    {files.length > 0 && (
+                      <div className="pt-2 mt-4 border-t border-slate-100">
+                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                          <span className="w-2 h-2 bg-amber-400 rounded-full"></span>
+                          Adjuntos incluidos en descarga .EML
+                        </span>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {files.map((f, i) => (
+                            <span key={i} className="px-2 py-1 bg-white border border-slate-200 rounded text-xs text-slate-600">
+                              {f.name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+      ) : (
+          // TABLE COMPACT MODE
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+             <div className="overflow-x-auto">
+                 <table className="w-full text-left">
+                     <thead>
+                         <tr className="bg-slate-50 border-b border-slate-200">
+                             <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Destinatario</th>
+                             <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Configuración</th>
+                             <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Asunto</th>
+                             <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase text-center">Estado</th>
+                             <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase text-right">Acciones</th>
+                             <th className="w-10"></th>
+                         </tr>
+                     </thead>
+                     <tbody className="divide-y divide-slate-100">
+                         {currentItems.map(item => (
+                             <React.Fragment key={item.id}>
+                                 <tr className={`hover:bg-slate-50 transition-colors ${item.sent ? 'bg-green-50/30' : ''}`}>
+                                     <td className="px-4 py-3">
+                                         <div className="font-medium text-sm text-slate-900">{item.official.name}</div>
+                                         <div className="text-xs text-slate-500">{item.official.email}</div>
+                                     </td>
+                                     <td className="px-4 py-3">
+                                        <div className="flex gap-2">
+                                            <button 
+                                                onClick={() => toggleCc(item.id)}
+                                                className={`p-1 rounded border transition-colors ${item.includeCc ? 'bg-indigo-100 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-400'}`}
+                                                title="CC Jefatura"
+                                            >
+                                                <UserCheck className="w-3 h-3" />
+                                            </button>
+                                            <button 
+                                                onClick={() => toggleSubdirectoraCc(item.id)}
+                                                className={`p-1 rounded border transition-colors ${item.includeSubdirectora ? 'bg-pink-100 border-pink-200 text-pink-700' : 'bg-white border-slate-200 text-slate-400'}`}
+                                                title="CC Subdirectora de Gestión de Personas"
+                                            >
+                                                <UserCog className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                     </td>
+                                     <td className="px-4 py-3 text-sm text-slate-600 max-w-xs truncate">
+                                         {item.subject}
+                                     </td>
+                                     <td className="px-4 py-3 text-center">
+                                         {item.sent ? (
+                                             <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800">
+                                                 Enviado
+                                             </span>
+                                         ) : (
+                                             <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-500">
+                                                 Pendiente
+                                             </span>
+                                         )}
+                                     </td>
+                                     <td className="px-4 py-3 text-right">
+                                         <div className="flex justify-end gap-2">
+                                             <button
+                                                onClick={() => handleDownloadEml(item)}
+                                                className="p-1.5 text-slate-400 hover:text-indigo-600 rounded bg-transparent hover:bg-indigo-50"
+                                                title="Descargar EML"
+                                             >
+                                                 <Download className="w-4 h-4" />
+                                             </button>
+                                             <button
+                                                onClick={() => handleMailTo(item)}
+                                                className={`p-1.5 rounded transition-colors ${item.sent ? 'text-green-600 hover:bg-green-100' : 'text-indigo-600 hover:bg-indigo-100'}`}
+                                                title="Enviar"
+                                             >
+                                                 {item.sent ? <Check className="w-4 h-4" /> : <ExternalLink className="w-4 h-4" />}
+                                             </button>
+                                         </div>
+                                     </td>
+                                     <td className="px-2">
+                                         <button 
+                                            onClick={() => toggleRowExpand(item.id)}
+                                            className="p-1 text-slate-400 hover:text-slate-600"
+                                         >
+                                             {expandedRows.includes(item.id) ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                         </button>
+                                     </td>
+                                 </tr>
+                                 {expandedRows.includes(item.id) && (
+                                     <tr className="bg-slate-50/50">
+                                         <td colSpan={6} className="px-4 py-4 border-b border-slate-100">
+                                             {renderBodyEditor(item)}
+                                         </td>
+                                     </tr>
+                                 )}
+                             </React.Fragment>
+                         ))}
+                     </tbody>
+                 </table>
+             </div>
           </div>
       )}
+
+      {totalPages > 1 && renderPagination()}
     </div>
   );
 };
