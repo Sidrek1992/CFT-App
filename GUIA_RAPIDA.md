@@ -84,7 +84,7 @@ Las credenciales de Supabase ya están configuradas. Si hay problemas:
 
 ## 🌐 URL de la aplicación en Vercel
 
-**Producción**: https://app-correo-ten.vercel.app/
+**Producción**: https://myappcftcorreo.vercel.app/
 
 ---
 

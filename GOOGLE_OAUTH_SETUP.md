@@ -79,7 +79,7 @@ Agrega las siguientes URLs:
 
 ```
 http://localhost:3000
-https://app-correo-ten.vercel.app
+https://myappcftcorreo.vercel.app
 ```
 
 #### Authorized redirect URIs
@@ -88,7 +88,7 @@ Agrega las siguientes URLs:
 
 ```
 http://localhost:4000/api/auth/google/callback
-https://app-correo-ten.vercel.app/api/auth/google/callback
+https://myappcftcorreo.vercel.app/api/auth/google/callback
 ```
 
 **⚠️ IMPORTANTE**: Asegúrate de que las URLs estén escritas exactamente como se muestra, sin espacios ni caracteres adicionales.
@@ -125,8 +125,8 @@ Agrega:
 ```
 GOOGLE_CLIENT_ID=tu-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=tu-client-secret
-GOOGLE_REDIRECT_URI=https://app-correo-ten.vercel.app/api/auth/google/callback
-APP_BASE_URL=https://app-correo-ten.vercel.app
+GOOGLE_REDIRECT_URI=https://myappcftcorreo.vercel.app/api/auth/google/callback
+APP_BASE_URL=https://myappcftcorreo.vercel.app
 ```
 
 ---
@@ -143,7 +143,7 @@ Abre http://localhost:3000 y haz clic en "Conectar Gmail"
 
 ### 2. Test en Producción
 
-Abre https://app-correo-ten.vercel.app y haz clic en "Conectar Gmail"
+Abre https://myappcftcorreo.vercel.app y haz clic en "Conectar Gmail"
 
 ---
 
@@ -156,7 +156,7 @@ Abre https://app-correo-ten.vercel.app y haz clic en "Conectar Gmail"
 **Solución**:
 1. Verifica que `GOOGLE_REDIRECT_URI` en Vercel sea exactamente:
    ```
-   https://app-correo-ten.vercel.app/api/auth/google/callback
+   https://myappcftcorreo.vercel.app/api/auth/google/callback
    ```
 2. Verifica que esta URL esté agregada en **Authorized redirect URIs** en Google Cloud Console
 3. Espera 5 minutos para que los cambios se propaguen
