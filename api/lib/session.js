@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { serialize, parse } from 'cookie';
+import { parse, serialize } from 'cookie';
 
 const SESSION_SECRET = process.env.SESSION_SECRET || 'fallback-secret-change-in-production';
 const COOKIE_NAME = 'cft_session';
@@ -54,10 +54,4 @@ export function clearSession(res) {
   });
   
   res.setHeader('Set-Cookie', cookie);
-}
-
-export function updateSession(req, res, updates) {
-  const currentSession = getSession(req) || {};
-  const newSession = { ...currentSession, ...updates };
-  return setSession(res, newSession);
 }
