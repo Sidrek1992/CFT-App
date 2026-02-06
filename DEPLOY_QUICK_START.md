@@ -1,40 +1,142 @@
-# Guía de Despliegue Rápido - CFT CORREOS
+# ⚡ Guía Rápida de Deployment - Vercel
 
-Esta guía te ayudará a poner en marcha la aplicación en producción.
+## 🚀 Deploy en 5 minutos
 
-## 1. Supabase Setup
+### Paso 1: Configurar Variables de Entorno en Vercel
 
-1. Crea un proyecto en [Supabase](https://supabase.com/).
-2. Ejecuta el SQL de `supabase-schema.sql` en el Editor SQL de Supabase.
-3. Obtén tu `SUPABASE_URL` y `SUPABASE_ANON_KEY`.
+Ve a: `https://vercel.com/[tu-usuario]/myappcftcorreo/settings/environment-variables`
 
-## 2. Google OAuth Setup
-
-1. Ve a [Google Cloud Console](https://console.cloud.google.com/).
-2. Crea un proyecto y configura la pantalla de consentimiento OAuth.
-3. Crea credenciales de tipo "ID de cliente de OAuth 2.0" (Aplicación web).
-4. Añade `https://tu-app.vercel.app/api/auth/google/callback` a los URIs de redireccionamiento autorizados.
-5. Obtén tu `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`.
-
-## 3. Gemini API Setup
-
-1. Obtén tu API Key en [Google AI Studio](https://aistudio.google.com/).
-
-## 4. Despliegue en Vercel
-
-1. Sube tu código a GitHub.
-2. Conecta tu repositorio a Vercel.
-3. Configura las siguientes variables de entorno:
+Copia y pega estas variables (una por una):
 
 ```
-GEMINI_API_KEY=TU_GEMINI_API_KEY
-GOOGLE_CLIENT_ID=TU_GOOGLE_CLIENT_ID
-GOOGLE_CLIENT_SECRET=TU_GOOGLE_CLIENT_SECRET
-GOOGLE_REDIRECT_URI=https://tu-app.vercel.app/api/auth/google/callback
-APP_BASE_URL=https://tu-app.vercel.app
-SESSION_SECRET=UNA_CADENA_ALEATORIA_LARGA
-SUPABASE_URL=TU_SUPABASE_URL
-SUPABASE_ANON_KEY=TU_SUPABASE_ANON_KEY
+GEMINI_API_KEY=AIzaSyBCCc5EsWW4PdN-F5FHwKpEvPpDJp_iZjM
 ```
 
-4. Haz clic en "Deploy".
+```
+GOOGLE_CLIENT_ID=105444466970-787jho21mvt0ehs2mbtmgioigu6m6ns9.apps.googleusercontent.com
+```
+
+```
+GOOGLE_CLIENT_SECRET=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
+```
+
+```
+GOOGLE_REDIRECT_URI=https://myappcftcorreo.vercel.app/api/auth/google/callback
+```
+
+```
+APP_BASE_URL=https://myappcftcorreo.vercel.app
+```
+
+```
+SESSION_SECRET=7f4a8d09e3b2c1a6f5e8d7c4b3a2e1f9d8c7b6a5e4d3c2b1a0f9e8d7c6b5a4e3
+```
+
+```
+SUPABASE_URL=https://jfrrvxefpboginppevrb.supabase.co
+```
+
+```
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcnJ2eGVmcGJvZ2lucHBldnJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzODAwNzcsImV4cCI6MjA4NTk1NjA3N30.I1qtybXUDfoudJM_gVKDPmE9M8Lj8RfZ88E3ToaZTP8
+```
+
+```
+NODE_ENV=production
+```
+
+---
+
+### Paso 2: Actualizar Google Cloud Console
+
+1. Ve a: https://console.cloud.google.com/apis/credentials
+2. Selecciona tu OAuth Client ID
+3. En **Authorized redirect URIs**, agrega:
+   ```
+   https://myappcftcorreo.vercel.app/api/auth/google/callback
+   ```
+4. En **Authorized JavaScript origins**, agrega:
+   ```
+   https://myappcftcorreo.vercel.app
+   ```
+5. Guarda
+
+---
+
+### Paso 3: Deploy
+
+Opción A - Git Push (Recomendado):
+```bash
+git add .
+git commit -m "Configure for Vercel deployment"
+git push origin main
+```
+
+Opción B - Script Automatizado:
+```bash
+./deploy.sh
+```
+
+Opción C - Vercel CLI:
+```bash
+vercel --prod
+```
+
+---
+
+### Paso 4: Verificar
+
+1. **Health Check**:
+   ```
+   https://myappcftcorreo.vercel.app/api/health
+   ```
+   Debe devolver: `{"ok":true}`
+
+2. **Autenticación**:
+   - Abre: https://myappcftcorreo.vercel.app
+   - Click en "Conectar Gmail"
+   - Autoriza con Google
+   - ✅ ¡Funciona!
+
+---
+
+## ✅ Checklist
+
+- [ ] Variables de entorno configuradas en Vercel
+- [ ] Google OAuth redirect URIs actualizados
+- [ ] Deploy realizado
+- [ ] Health check funciona
+- [ ] Login con Gmail funciona
+
+---
+
+## 🆘 Problemas Comunes
+
+### Error "redirect_uri_mismatch"
+
+Verifica que en Google Cloud Console tengas exactamente:
+```
+https://myappcftcorreo.vercel.app/api/auth/google/callback
+```
+
+### Error "This app's request is invalid"
+
+1. Ve a Google Cloud Console → OAuth consent screen
+2. Agrega tu email en Test Users
+3. Guarda y vuelve a intentar
+
+### Error 500 en API
+
+1. Verifica que TODAS las variables de entorno estén en Vercel
+2. Redeploy: `vercel --prod --force`
+
+---
+
+## 📞 Necesitas ayuda?
+
+Ver documentación completa:
+- `VERCEL_SETUP.md` - Configuración detallada de Vercel
+- `GOOGLE_OAUTH_SETUP.md` - Configuración de Google OAuth
+
+---
+
+**¡Listo para producción en minutos!** ⚡
