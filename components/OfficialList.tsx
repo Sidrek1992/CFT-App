@@ -437,15 +437,10 @@ export const OfficialList: React.FC<OfficialListProps> = ({
                     {/* Clickable Email Column */}
                     <td className="px-6 py-4 text-sm">
                         {official.email ? (
-                            <a 
-                                href={`mailto:${official.email}`} 
-                                className="text-indigo-600 hover:underline hover:text-indigo-800 flex items-center gap-1.5 transition-colors font-medium"
-                                onClick={(e) => e.stopPropagation()}
-                                title="Enviar correo"
-                            >
+                            <div className="text-slate-600 flex items-center gap-1.5 font-medium">
                                 <Mail className="w-3 h-3" />
-                                {official.email}
-                            </a>
+                                <span className="break-all">{official.email}</span>
+                            </div>
                         ) : (
                             <span className="text-slate-400 italic">Sin correo</span>
                         )}
