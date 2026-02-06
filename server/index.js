@@ -152,15 +152,18 @@ app.get('/api/auth/google/callback', async (req, res) => {
   if (!ensureConfigured(res)) return;
   const { code } = req.query;
   if (!code) {
+    console.error('No code provided in OAuth callback');
     res.redirect(`${APP_BASE_URL}?gmail=error`);
     return;
   }
 
   try {
+    console.log('OAuth callback: Getting tokens...');
     const client = createOAuthClient();
     const { tokens } = await client.getToken(code);
     client.setCredentials(tokens);
 
+    console.log('OAuth callback: Getting user info...');
     const oauth2 = google.oauth2({ version: 'v2', auth: client });
     const { data } = await oauth2.userinfo.get();
     
@@ -168,17 +171,38 @@ app.get('/api/auth/google/callback', async (req, res) => {
     const userEmail = data.email || '';
     const userName = data.name || '';
 
-    const user = db.getOrCreateUser(googleId, userEmail, userName);
+    console.log('OAuth callback: Creating/getting user from database...', userEmail);
+    const user = await db.getOrCreateUser(googleId, userEmail, userName);
+    
+    if (!user || !user.id) {
+      throw new Error('Failed to create or retrieve user');
+    }
 
+    console.log('OAuth callback: User retrieved:', user.id);
     req.session.tokens = tokens;
     req.session.userId = user.id;
     req.session.userEmail = userEmail;
     req.session.userName = userName;
 
+    console.log('OAuth callback: Saving session...');
+    await new Promise((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) {
+          console.error('Session save error:', err);
+          reject(err);
+        } else {
+          console.log('Session saved successfully');
+          resolve();
+        }
+      });
+    });
+
+    console.log('OAuth callback: Redirecting to app...');
     res.redirect(`${APP_BASE_URL}?gmail=connected`);
   } catch (error) {
-    console.error('OAuth callback error', error);
-    res.redirect(`${APP_BASE_URL}?gmail=error`);
+    console.error('OAuth callback error:', error);
+    console.error('Error stack:', error.stack);
+    res.redirect(`${APP_BASE_URL}?gmail=error&message=${encodeURIComponent(error.message)}`);
   }
 });
 
