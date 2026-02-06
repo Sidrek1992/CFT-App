@@ -67,6 +67,20 @@ lsof -i :4000
 kill -9 [PID]
 ```
 
+### Error 500 después de login con Google
+
+**Ya corregido!** Si ves este error:
+```
+Esta página no funciona - HTTP ERROR 500
+```
+
+**Solución:**
+1. Reinicia el servidor: `pkill -f "node server/index.js" && npm run server`
+2. Limpia las cookies del navegador (F12 → Application → Cookies → Borrar todo)
+3. Vuelve a intentar login
+
+Ver más en: `TROUBLESHOOTING.md`
+
 ### Error de autenticación con Google
 
 Verifica que en Google Cloud Console:
@@ -79,6 +93,7 @@ Verifica que en Google Cloud Console:
 Las credenciales de Supabase ya están configuradas. Si hay problemas:
 1. Verifica tu conexión a internet
 2. Revisa que el archivo `.env.local` esté presente
+3. Ejecuta el script de diagnóstico: `./diagnostic.sh`
 
 ---
 

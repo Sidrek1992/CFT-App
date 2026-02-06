@@ -1,21 +1,18 @@
 import crypto from 'crypto';
 import express from 'express';
-import session from 'express-session';
 import { google } from 'googleapis';
 import * as db from '../server/supabaseClient.js';
+import { getSession, setSession, clearSession, updateSession } from './sessionHandler.js';
 
 const app = express();
 
 // Environment variables
-const APP_BASE_URL = process.env.APP_BASE_URL || process.env.VERCEL_URL 
-  ? `https://${process.env.VERCEL_URL}` 
-  : 'http://localhost:3000';
+const APP_BASE_URL = process.env.APP_BASE_URL || 
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || `${APP_BASE_URL}/api/auth/google/callback`;
-
-const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 
 const OAUTH_SCOPES = [
   'https://www.googleapis.com/auth/gmail.send',
@@ -26,19 +23,6 @@ const OAUTH_SCOPES = [
 
 // Middleware
 app.use(express.json({ limit: '20mb' }));
-app.use(
-  session({
-    secret: SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    },
-  })
-);
 
 // Helper functions
 const createOAuthClient = () =>
@@ -126,49 +110,58 @@ const buildMimeMessage = ({ to, cc, subject, html, attachments }) => {
 };
 
 const getAuthorizedClient = (req) => {
-  if (!req.session?.tokens) return null;
+  const session = getSession(req);
+  if (!session?.tokens) return null;
   const client = createOAuthClient();
-  client.setCredentials(req.session.tokens);
+  client.setCredentials(session.tokens);
   return client;
 };
 
 const requireAuth = (req, res, next) => {
-  if (!req.session?.userId) {
+  const session = getSession(req);
+  if (!session?.userId) {
     res.status(401).json({ error: 'not_authenticated' });
     return;
   }
+  req.userSession = session;
   next();
 };
 
 // Routes
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true });
+  res.json({ ok: true, timestamp: new Date().toISOString() });
 });
 
 app.get('/api/auth/google', (req, res) => {
   if (!ensureConfigured(res)) return;
+  console.log('Initiating OAuth flow...');
   const client = createOAuthClient();
   const url = client.generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
     scope: OAUTH_SCOPES,
   });
+  console.log('Redirecting to:', url);
   res.redirect(url);
 });
 
 app.get('/api/auth/google/callback', async (req, res) => {
   if (!ensureConfigured(res)) return;
   const { code } = req.query;
+  
   if (!code) {
+    console.error('No code provided in OAuth callback');
     res.redirect(`${APP_BASE_URL}?gmail=error`);
     return;
   }
 
   try {
+    console.log('OAuth callback: Getting tokens...');
     const client = createOAuthClient();
     const { tokens } = await client.getToken(code);
     client.setCredentials(tokens);
 
+    console.log('OAuth callback: Getting user info...');
     const oauth2 = google.oauth2({ version: 'v2', auth: client });
     const { data } = await oauth2.userinfo.get();
     
@@ -176,33 +169,48 @@ app.get('/api/auth/google/callback', async (req, res) => {
     const userEmail = data.email || '';
     const userName = data.name || '';
 
+    console.log('OAuth callback: Creating/getting user from database...', userEmail);
     const user = await db.getOrCreateUser(googleId, userEmail, userName);
+    
+    if (!user || !user.id) {
+      throw new Error('Failed to create or retrieve user');
+    }
 
-    req.session.tokens = tokens;
-    req.session.userId = user.id;
-    req.session.userEmail = userEmail;
-    req.session.userName = userName;
+    console.log('OAuth callback: User retrieved:', user.id);
+    
+    // Guardar sesión en cookie JWT
+    setSession(res, {
+      tokens,
+      userId: user.id,
+      userEmail,
+      userName,
+    });
 
+    console.log('OAuth callback: Session saved in JWT cookie');
+    console.log('OAuth callback: Redirecting to app...');
     res.redirect(`${APP_BASE_URL}?gmail=connected`);
   } catch (error) {
-    console.error('OAuth callback error', error);
-    res.redirect(`${APP_BASE_URL}?gmail=error`);
+    console.error('OAuth callback error:', error);
+    console.error('Error stack:', error.stack);
+    res.redirect(`${APP_BASE_URL}?gmail=error&message=${encodeURIComponent(error.message)}`);
   }
 });
 
 app.get('/api/auth/status', (req, res) => {
-  const authenticated = Boolean(req.session?.userId);
+  const session = getSession(req);
+  const authenticated = Boolean(session?.userId);
   res.json({
     authenticated,
-    userId: req.session?.userId || null,
-    email: req.session?.userEmail || '',
-    name: req.session?.userName || '',
+    userId: session?.userId || null,
+    email: session?.userEmail || '',
+    name: session?.userName || '',
   });
 });
 
 app.post('/api/auth/logout', async (req, res) => {
+  const session = getSession(req);
   const client = getAuthorizedClient(req);
-  const accessToken = req.session?.tokens?.access_token;
+  const accessToken = session?.tokens?.access_token;
 
   if (client && accessToken) {
     try {
@@ -212,9 +220,8 @@ app.post('/api/auth/logout', async (req, res) => {
     }
   }
 
-  req.session.destroy(() => {
-    res.json({ ok: true });
-  });
+  clearSession(res);
+  res.json({ ok: true });
 });
 
 app.post('/api/gmail/send', requireAuth, async (req, res) => {
@@ -252,7 +259,7 @@ app.post('/api/gmail/send', requireAuth, async (req, res) => {
     });
 
     if (officialId) {
-      await db.markAsSent(req.session.userId, officialId);
+      await db.markAsSent(req.userSession.userId, officialId);
     }
 
     res.json({ id: response.data.id });
@@ -265,7 +272,7 @@ app.post('/api/gmail/send', requireAuth, async (req, res) => {
 // User data endpoints
 app.get('/api/user/databases', requireAuth, async (req, res) => {
   try {
-    const databases = await db.getUserDatabases(req.session.userId);
+    const databases = await db.getUserDatabases(req.userSession.userId);
     res.json(databases);
   } catch (error) {
     console.error('Error fetching databases', error);
@@ -279,7 +286,7 @@ app.post('/api/user/databases', requireAuth, async (req, res) => {
     if (!id || !name) {
       return res.status(400).json({ error: 'missing_fields' });
     }
-    await db.createDatabase(req.session.userId, id, name);
+    await db.createDatabase(req.userSession.userId, id, name);
     res.json({ ok: true });
   } catch (error) {
     console.error('Error creating database', error);
@@ -369,7 +376,7 @@ app.delete('/api/user/officials/:id', requireAuth, async (req, res) => {
 
 app.get('/api/user/templates', requireAuth, async (req, res) => {
   try {
-    const templates = await db.getSavedTemplates(req.session.userId);
+    const templates = await db.getSavedTemplates(req.userSession.userId);
     res.json(templates);
   } catch (error) {
     console.error('Error fetching templates', error);
@@ -380,7 +387,7 @@ app.get('/api/user/templates', requireAuth, async (req, res) => {
 app.post('/api/user/templates', requireAuth, async (req, res) => {
   try {
     const template = req.body;
-    await db.createTemplate(req.session.userId, template);
+    await db.createTemplate(req.userSession.userId, template);
     res.json({ ok: true });
   } catch (error) {
     console.error('Error creating template', error);
@@ -400,7 +407,7 @@ app.delete('/api/user/templates/:id', requireAuth, async (req, res) => {
 
 app.get('/api/user/current-template', requireAuth, async (req, res) => {
   try {
-    const template = await db.getCurrentTemplate(req.session.userId);
+    const template = await db.getCurrentTemplate(req.userSession.userId);
     res.json(template || { subject: '', body: '' });
   } catch (error) {
     console.error('Error fetching current template', error);
@@ -411,7 +418,7 @@ app.get('/api/user/current-template', requireAuth, async (req, res) => {
 app.post('/api/user/current-template', requireAuth, async (req, res) => {
   try {
     const { subject, body } = req.body;
-    await db.saveCurrentTemplate(req.session.userId, subject, body);
+    await db.saveCurrentTemplate(req.userSession.userId, subject, body);
     res.json({ ok: true });
   } catch (error) {
     console.error('Error saving current template', error);
@@ -421,7 +428,7 @@ app.post('/api/user/current-template', requireAuth, async (req, res) => {
 
 app.get('/api/user/sent-history', requireAuth, async (req, res) => {
   try {
-    const history = await db.getSentHistory(req.session.userId);
+    const history = await db.getSentHistory(req.userSession.userId);
     res.json(history);
   } catch (error) {
     console.error('Error fetching sent history', error);
@@ -431,7 +438,7 @@ app.get('/api/user/sent-history', requireAuth, async (req, res) => {
 
 app.get('/api/user/settings', requireAuth, async (req, res) => {
   try {
-    const settings = await db.getUserSettings(req.session.userId);
+    const settings = await db.getUserSettings(req.userSession.userId);
     res.json(settings || { active_db_id: null });
   } catch (error) {
     console.error('Error fetching settings', error);
@@ -442,7 +449,7 @@ app.get('/api/user/settings', requireAuth, async (req, res) => {
 app.post('/api/user/settings', requireAuth, async (req, res) => {
   try {
     const { activeDbId } = req.body;
-    await db.saveUserSettings(req.session.userId, activeDbId);
+    await db.saveUserSettings(req.userSession.userId, activeDbId);
     res.json({ ok: true });
   } catch (error) {
     console.error('Error saving settings', error);
