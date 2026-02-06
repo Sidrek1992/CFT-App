@@ -2,7 +2,8 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Official, EmailTemplate, Gender } from '../types';
 import { refineEmailWithAI } from '../services/geminiService';
-import { Copy, ExternalLink, AlertCircle, CheckSquare, Square, User, UserCheck, Search, ChevronLeft, ChevronRight, Check, Filter, Download, Sparkles, Building2, UserPlus, X, LayoutList, LayoutGrid, ChevronDown, ChevronUp, CopyPlus, UserCog, ArrowUpDown } from 'lucide-react';
+import { getGmailAuthStatus, logoutGmail, sendGmailMessage, startGmailAuth } from '../services/gmailService';
+import { Copy, AlertCircle, CheckSquare, Square, User, UserCheck, Search, ChevronLeft, ChevronRight, Check, Filter, Download, Sparkles, Building2, UserPlus, X, LayoutList, LayoutGrid, ChevronDown, ChevronUp, CopyPlus, UserCog, ArrowUpDown, Mail, Send } from 'lucide-react';
 
 interface GeneratorProps {
   officials: Official[];
@@ -23,6 +24,7 @@ interface EditableEmail {
   subject: string;
   body: string;
   sent: boolean; // Track sending status (local + prop)
+  sending: boolean;
   aiRefining: boolean;
 }
 
@@ -65,6 +67,14 @@ export const Generator: React.FC<GeneratorProps> = ({ officials, template, files
   // Global Config for Subdirectora
   const [subdirectoraEmail, setSubdirectoraEmail] = useState('gestion.personas@cftestatalaricayparinacota.cl');
 
+  // Gmail Auth State
+  const [gmailStatus, setGmailStatus] = useState({
+    authenticated: false,
+    email: '',
+    loading: true,
+  });
+  const [gmailActionLoading, setGmailActionLoading] = useState(false);
+
   // Filters State
   const [selectedPosition, setSelectedPosition] = useState<string>('Todos');
   const [selectedDept, setSelectedDept] = useState<string>('Todos');
@@ -98,6 +108,46 @@ export const Generator: React.FC<GeneratorProps> = ({ officials, template, files
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  const refreshGmailStatus = async () => {
+    try {
+      const status = await getGmailAuthStatus();
+      setGmailStatus({
+        authenticated: status.authenticated,
+        email: status.email || '',
+        loading: false,
+      });
+    } catch (error) {
+      console.warn('Gmail status check failed', error);
+      setGmailStatus({ authenticated: false, email: '', loading: false });
+    }
+  };
+
+  useEffect(() => {
+    refreshGmailStatus();
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const gmailParam = params.get('gmail');
+
+    if (gmailParam === 'connected') {
+      onToast('Gmail conectado', 'success');
+      refreshGmailStatus();
+    }
+
+    if (gmailParam === 'error') {
+      onToast('Error conectando Gmail', 'error');
+      refreshGmailStatus();
+    }
+
+    if (gmailParam) {
+      params.delete('gmail');
+      const query = params.toString();
+      const nextUrl = window.location.pathname + (query ? `?${query}` : '');
+      window.history.replaceState({}, document.title, nextUrl);
+    }
+  }, [onToast]);
 
   // Generate initial batch
   useEffect(() => {
@@ -143,6 +193,7 @@ export const Generator: React.FC<GeneratorProps> = ({ officials, template, files
         subject: template.subject,
         body,
         sent: sentHistory.includes(official.id),
+        sending: false,
         aiRefining: false
       };
     });
@@ -220,30 +271,75 @@ export const Generator: React.FC<GeneratorProps> = ({ officials, template, files
     return { to, cc };
   };
 
-  const handleMailTo = (email: EditableEmail) => {
-    const { to, cc } = getEmailAddresses(email);
-    const encodedSubject = encodeURIComponent(email.subject);
-    const encodedBody = encodeURIComponent(email.body);
-    
-    // Create query params manually to control order
-    const params: string[] = [];
-    // Important: Add CC before body to prevent it from being truncated if body is long
-    // Also encode CC to handle special characters or multiple emails safely
-    if (cc) params.push(`cc=${encodeURIComponent(cc)}`);
-    params.push(`subject=${encodedSubject}`);
-    params.push(`body=${encodedBody}`);
-    
-    const url = `mailto:${to}?${params.join('&')}`;
-    
-    window.open(url, '_blank');
+  const handleGmailConnect = () => {
+    setGmailActionLoading(true);
+    startGmailAuth();
+  };
 
-    // Mark as sent in parent (Persistent)
-    onMarkAsSent(email.id);
-    
-    // Update local state
-    setEditableEmails(prev => prev.map(e => 
-      e.id === email.id ? { ...e, sent: true } : e
+  const handleGmailDisconnect = async () => {
+    setGmailActionLoading(true);
+    try {
+      await logoutGmail();
+      setGmailStatus({ authenticated: false, email: '', loading: false });
+      onToast('Gmail desconectado', 'success');
+    } catch (error) {
+      console.error('Error disconnecting Gmail', error);
+      onToast('Error desconectando Gmail', 'error');
+    } finally {
+      setGmailActionLoading(false);
+    }
+  };
+
+  const buildGmailAttachments = async () => {
+    if (files.length === 0) return [];
+    return Promise.all(
+      files.map(async (file) => ({
+        filename: file.name,
+        mimeType: file.type || 'application/octet-stream',
+        contentBase64: await fileToBase64(file),
+      }))
+    );
+  };
+
+  const handleSendGmail = async (email: EditableEmail) => {
+    if (!gmailStatus.authenticated) {
+      onToast('Conecta Gmail para enviar', 'error');
+      return;
+    }
+
+    const { to, cc } = getEmailAddresses(email);
+    if (!to || !to.includes('@')) {
+      onToast('Destinatario sin correo valido', 'error');
+      return;
+    }
+
+    setEditableEmails(prev => prev.map(e =>
+      e.id === email.id ? { ...e, sending: true } : e
     ));
+
+    try {
+      const attachments = await buildGmailAttachments();
+      await sendGmailMessage({
+        to,
+        cc: cc || undefined,
+        subject: email.subject || '',
+        body: email.body || '',
+        attachments,
+        officialId: email.id,
+      });
+
+      onMarkAsSent(email.id);
+      setEditableEmails(prev => prev.map(e =>
+        e.id === email.id ? { ...e, sent: true, sending: false } : e
+      ));
+      onToast('Correo enviado con Gmail', 'success');
+    } catch (error) {
+      console.error('Error sending Gmail', error);
+      setEditableEmails(prev => prev.map(e =>
+        e.id === email.id ? { ...e, sending: false } : e
+      ));
+      onToast('Error al enviar con Gmail', 'error');
+    }
   };
 
   const handleDownloadEml = async (email: EditableEmail) => {
@@ -473,6 +569,42 @@ export const Generator: React.FC<GeneratorProps> = ({ officials, template, files
 
   return (
     <div className="space-y-6">
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${gmailStatus.authenticated ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+            <Mail className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-800">Gmail integrado</p>
+            <p className="text-xs text-slate-500">
+              {gmailStatus.loading
+                ? 'Revisando sesion...'
+                : gmailStatus.authenticated
+                ? `Conectado como ${gmailStatus.email || 'Cuenta Google'}`
+                : 'No conectado'}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {gmailStatus.authenticated ? (
+            <button
+              onClick={handleGmailDisconnect}
+              disabled={gmailActionLoading}
+              className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {gmailActionLoading ? 'Desconectando...' : 'Desconectar'}
+            </button>
+          ) : (
+            <button
+              onClick={handleGmailConnect}
+              disabled={gmailActionLoading}
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {gmailActionLoading ? 'Abriendo Google...' : 'Conectar Gmail'}
+            </button>
+          )}
+        </div>
+      </div>
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
         
         {/* Global Controls Row */}
@@ -606,6 +738,13 @@ export const Generator: React.FC<GeneratorProps> = ({ officials, template, files
           // CARD VIEW MODE
           <div className="grid grid-cols-1 gap-6">
             {currentItems.map((item) => {
+              const sendDisabled = !gmailStatus.authenticated || item.sending;
+              const sendTitle = !gmailStatus.authenticated
+                ? 'Conecta Gmail para enviar'
+                : item.sending
+                ? 'Enviando...'
+                : 'Enviar con Gmail';
+
               return (
                 <div key={item.id} className={`bg-white rounded-xl shadow-sm border ${item.sent ? 'border-green-200' : 'border-slate-200'} overflow-visible transition-all hover:shadow-md`}>
                   {/* Card Header */}
@@ -755,15 +894,17 @@ export const Generator: React.FC<GeneratorProps> = ({ officials, template, files
                                     <Copy className="w-4 h-4" />
                                 </button>
                                 <button
-                                    onClick={() => handleMailTo(item)}
+                                    onClick={() => handleSendGmail(item)}
+                                    disabled={sendDisabled}
+                                    title={sendTitle}
                                     className={`px-4 py-2 text-xs font-medium rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm hover:shadow ${
                                         item.sent 
                                         ? 'bg-green-100 text-green-700 border border-green-200 hover:bg-green-200'
                                         : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                                    }`}
+                                    } ${sendDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
                                 >
-                                    {item.sent ? <Check className="w-3 h-3" /> : <ExternalLink className="w-3 h-3" />}
-                                    {item.sent ? 'Enviado' : 'Enviar'}
+                                    {item.sent ? <Check className="w-3 h-3" /> : <Send className="w-3 h-3" />}
+                                    {item.sending ? 'Enviando...' : item.sent ? 'Enviado' : 'Enviar con Gmail'}
                                 </button>
                             </div>
                         </div>
@@ -817,8 +958,16 @@ export const Generator: React.FC<GeneratorProps> = ({ officials, template, files
                          </tr>
                      </thead>
                      <tbody className="divide-y divide-slate-100">
-                         {currentItems.map(item => (
-                             <React.Fragment key={item.id}>
+                          {currentItems.map(item => {
+                              const sendDisabled = !gmailStatus.authenticated || item.sending;
+                              const sendTitle = !gmailStatus.authenticated
+                                ? 'Conecta Gmail para enviar'
+                                : item.sending
+                                ? 'Enviando...'
+                                : 'Enviar con Gmail';
+
+                              return (
+                              <React.Fragment key={item.id}>
                                  <tr className={`hover:bg-slate-50 transition-colors ${item.sent ? 'bg-green-50/30' : ''}`}>
                                      <td className="px-4 py-3">
                                          <div className="font-medium text-sm text-slate-900">{item.official.name}</div>
@@ -865,13 +1014,14 @@ export const Generator: React.FC<GeneratorProps> = ({ officials, template, files
                                              >
                                                  <Download className="w-4 h-4" />
                                              </button>
-                                             <button
-                                                onClick={() => handleMailTo(item)}
-                                                className={`p-1.5 rounded transition-colors ${item.sent ? 'text-green-600 hover:bg-green-100' : 'text-indigo-600 hover:bg-indigo-100'}`}
-                                                title="Enviar"
-                                             >
-                                                 {item.sent ? <Check className="w-4 h-4" /> : <ExternalLink className="w-4 h-4" />}
-                                             </button>
+                                              <button
+                                                onClick={() => handleSendGmail(item)}
+                                                disabled={sendDisabled}
+                                                className={`p-1.5 rounded transition-colors ${item.sent ? 'text-green-600 hover:bg-green-100' : 'text-indigo-600 hover:bg-indigo-100'} ${sendDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                                title={sendTitle}
+                                              >
+                                                  {item.sent ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+                                              </button>
                                          </div>
                                      </td>
                                      <td className="px-2">
@@ -890,8 +1040,9 @@ export const Generator: React.FC<GeneratorProps> = ({ officials, template, files
                                          </td>
                                      </tr>
                                  )}
-                             </React.Fragment>
-                         ))}
+                              </React.Fragment>
+                          );
+                          })}
                      </tbody>
                  </table>
              </div>
