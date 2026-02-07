@@ -32,8 +32,8 @@ Ve a: **Settings → Environment Variables** en Vercel
 | `GEMINI_API_KEY` | `AIzaSyB...` | ⏸️ Pendiente |
 | `GOOGLE_CLIENT_ID` | `105444466970-...` | ⏸️ Pendiente |
 | `GOOGLE_CLIENT_SECRET` | `GOCSPX-...` | ⏸️ Pendiente |
-| `GOOGLE_REDIRECT_URI` | `https://myappcftcorreo.vercel.app/api/auth/google/callback` | ⏸️ Pendiente |
-| `APP_BASE_URL` | `https://myappcftcorreo.vercel.app` | ⏸️ Pendiente |
+| `GOOGLE_REDIRECT_URI` | `https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback` | ⏸️ Pendiente |
+| `APP_BASE_URL` | `https://goldenrod-cormorant-780503.hostingersite.com` | ⏸️ Pendiente |
 | `SESSION_SECRET` | `7f4a8d09e3b2c1a6...` | ⏸️ Pendiente |
 | `SUPABASE_URL` | `https://jfrrvxefpboginppevrb.supabase.co` | ⏸️ Pendiente |
 | `SUPABASE_ANON_KEY` | `eyJhbGciOiJIUzI1...` | ⏸️ Pendiente |
@@ -70,7 +70,7 @@ En **Authorized redirect URIs**, agrega:
 | URI | Status |
 |-----|--------|
 | `http://localhost:4000/api/auth/google/callback` | ✅ Completo |
-| `https://myappcftcorreo.vercel.app/api/auth/google/callback` | ⏸️ Pendiente |
+| `https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback` | ⏸️ Pendiente |
 
 ### 3. JavaScript Origins
 
@@ -79,7 +79,7 @@ En **Authorized JavaScript origins**, agrega:
 | Origin | Status |
 |--------|--------|
 | `http://localhost:3000` | ✅ Completo |
-| `https://myappcftcorreo.vercel.app` | ⏸️ Pendiente |
+| `https://goldenrod-cormorant-780503.hostingersite.com` | ⏸️ Pendiente |
 
 ### 4. Test Users (si OAuth está en Testing)
 
@@ -137,7 +137,7 @@ vercel --prod
 ### 1. Health Check
 
 ```bash
-curl https://myappcftcorreo.vercel.app/api/health
+curl https://goldenrod-cormorant-780503.hostingersite.com/api/health
 ```
 
 **Respuesta esperada**: `{"ok":true}`
@@ -262,7 +262,7 @@ https://vercel.com/[tu-usuario]/app-correo-ten/logs
 
 Una vez que todos los checks estén ✅, tu aplicación estará funcionando al 100% en:
 
-**https://myappcftcorreo.vercel.app**
+**https://goldenrod-cormorant-780503.hostingersite.com**
 
 ---
 

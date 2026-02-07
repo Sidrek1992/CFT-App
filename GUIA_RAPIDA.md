@@ -99,7 +99,7 @@ Las credenciales de Supabase ya están configuradas. Si hay problemas:
 
 ## 🌐 URL de la aplicación en Vercel
 
-**Producción**: https://myappcftcorreo.vercel.app/
+**Producción**: https://goldenrod-cormorant-780503.hostingersite.com/
 
 ---
 
