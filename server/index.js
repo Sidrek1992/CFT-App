@@ -36,6 +36,20 @@ const OAUTH_SCOPES = [
   'profile',
 ];
 
+const parseBoolean = (value, fallback = false) => {
+  if (value === undefined || value === null || value === '') return fallback;
+  return String(value).toLowerCase() === 'true';
+};
+
+const sessionSameSite = process.env.SESSION_SAMESITE || 'lax';
+const sessionSecureEnv = process.env.SESSION_COOKIE_SECURE;
+const sessionSecure =
+  sessionSecureEnv === 'true'
+    ? true
+    : sessionSecureEnv === 'false'
+      ? false
+      : 'auto';
+
 const app = express();
 if (USE_HTTPS) {
   app.set('trust proxy', true);
@@ -43,13 +57,15 @@ if (USE_HTTPS) {
 app.use(express.json({ limit: '20mb' }));
 app.use(
   session({
+    name: 'cft_session',
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+    proxy: parseBoolean(process.env.SESSION_PROXY, true),
     cookie: {
       httpOnly: true,
-      sameSite: process.env.SESSION_SAMESITE || 'lax',
-      secure: USE_HTTPS,
+      sameSite: sessionSameSite,
+      secure: sessionSecure,
     },
   })
 );
