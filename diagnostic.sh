@@ -30,10 +30,22 @@ if [ -f ".env.local" ]; then
         echo -e "${RED}❌ GOOGLE_CLIENT_SECRET falta${NC}"
     fi
     
-    if grep -q "SUPABASE_URL" .env.local; then
-        echo -e "${GREEN}✅ SUPABASE_URL configurado${NC}"
+    if grep -q "FIREBASE_PROJECT_ID" .env.local; then
+        echo -e "${GREEN}✅ FIREBASE_PROJECT_ID configurado${NC}"
     else
-        echo -e "${RED}❌ SUPABASE_URL falta${NC}"
+        echo -e "${RED}❌ FIREBASE_PROJECT_ID falta${NC}"
+    fi
+
+    if grep -q "FIREBASE_CLIENT_EMAIL" .env.local; then
+        echo -e "${GREEN}✅ FIREBASE_CLIENT_EMAIL configurado${NC}"
+    else
+        echo -e "${RED}❌ FIREBASE_CLIENT_EMAIL falta${NC}"
+    fi
+
+    if grep -q "FIREBASE_PRIVATE_KEY" .env.local; then
+        echo -e "${GREEN}✅ FIREBASE_PRIVATE_KEY configurado${NC}"
+    else
+        echo -e "${RED}❌ FIREBASE_PRIVATE_KEY falta${NC}"
     fi
     
     if grep -q "GEMINI_API_KEY" .env.local; then
@@ -80,17 +92,14 @@ fi
 
 echo ""
 
-# Verificar conexión a Supabase
-echo "4. Verificando conexión a Supabase..."
+# Verificar variables de Firebase
+echo "4. Verificando configuración de Firebase..."
 if [ -f ".env.local" ]; then
-    SUPABASE_URL=$(grep SUPABASE_URL .env.local | cut -d '=' -f2)
-    if [ ! -z "$SUPABASE_URL" ]; then
-        if curl -s -f "$SUPABASE_URL" > /dev/null 2>&1; then
-            echo -e "${GREEN}✅ Supabase accesible${NC}"
-        else
-            echo -e "${RED}❌ No se puede conectar a Supabase${NC}"
-            echo -e "${YELLOW}→ Verifica tu conexión a internet${NC}"
-        fi
+    FIREBASE_PROJECT_ID=$(grep FIREBASE_PROJECT_ID .env.local | cut -d '=' -f2)
+    if [ ! -z "$FIREBASE_PROJECT_ID" ]; then
+        echo -e "${GREEN}✅ Firebase project configurado: $FIREBASE_PROJECT_ID${NC}"
+    else
+        echo -e "${RED}❌ Firebase project no configurado${NC}"
     fi
 fi
 

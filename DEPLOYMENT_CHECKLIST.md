@@ -33,8 +33,8 @@ Ve a: hPanel → **Node.js** → **Environment Variables**
 | `GOOGLE_REDIRECT_URI` | `https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback` | ⏸️ Pendiente |
 | `APP_BASE_URL` | `https://goldenrod-cormorant-780503.hostingersite.com` | ⏸️ Pendiente |
 | `SESSION_SECRET` | `7f4a8d09e3b2c1a6...` | ⏸️ Pendiente |
-| `SUPABASE_URL` | `https://jfrrvxefpboginppevrb.supabase.co` | ⏸️ Pendiente |
-| `SUPABASE_ANON_KEY` | `eyJhbGciOiJIUzI1...` | ⏸️ Pendiente |
+| `FIREBASE_PROJECT_ID` | `https://jfrrvxefpboginppevrb.firebase.co` | ⏸️ Pendiente |
+| `FIREBASE_CLIENT_EMAIL` | `eyJhbGciOiJIUzI1...` | ⏸️ Pendiente |
 | `NODE_ENV` | `production` | ⏸️ Pendiente |
 
 ### 2. Configuración de Build
@@ -162,11 +162,11 @@ curl https://goldenrod-cormorant-780503.hostingersite.com/api/health
 | Usuario se autentica correctamente | ⏸️ Pendiente |
 | Sesión persiste en recargar | ⏸️ Pendiente |
 
-### 4. Base de Datos (Supabase)
+### 4. Base de Datos (Firebase)
 
 | Verificación | Status |
 |--------------|--------|
-| Conexión a Supabase funciona | ⏸️ Pendiente |
+| Conexión a Firebase funciona | ⏸️ Pendiente |
 | Crear base de datos funciona | ⏸️ Pendiente |
 | Agregar funcionarios funciona | ⏸️ Pendiente |
 | Datos se guardan correctamente | ⏸️ Pendiente |
@@ -198,7 +198,7 @@ curl https://goldenrod-cormorant-780503.hostingersite.com/api/health
 | `redirect_uri_mismatch` | URI no autorizada en Google | Agregar URI en Google Cloud Console | ⏸️ N/A |
 | "This app's request is invalid" | Falta OAuth Consent Screen | Configurar OAuth Consent Screen | ⏸️ N/A |
 | Sesiones no persisten | Cookie settings incorrectos | Verificar `secure: true` y `sameSite: 'none'` | ⏸️ N/A |
-| Error de conexión a Supabase | Credenciales incorrectas | Verificar SUPABASE_URL y KEY | ⏸️ N/A |
+| Error de conexión a Firebase | Credenciales incorrectas | Verificar FIREBASE_PROJECT_ID y KEY | ⏸️ N/A |
 
 ---
 
@@ -233,7 +233,7 @@ https://vercel.com/[tu-usuario]/app-correo-ten/logs
 - [ ] Variables de entorno configuradas en Vercel
 - [ ] Google OAuth redirect URIs actualizados
 - [ ] Gmail API habilitada
-- [ ] Supabase conectado
+- [ ] Firebase conectado
 
 ### Deployment
 - [ ] Deploy realizado (Git push o CLI)

@@ -48,25 +48,25 @@ Si ves un error, te mostrará exactamente dónde falló.
 
 ### Error: "Failed to create or retrieve user"
 
-**Causa:** Problema con Supabase
+**Causa:** Problema con Firebase
 
 **Solución:**
-1. Verifica que las credenciales de Supabase estén correctas en `.env.local`:
+1. Verifica que las credenciales de Firebase estén correctas en `.env.local`:
    ```bash
-   SUPABASE_URL=https://jfrrvxefpboginppevrb.supabase.co
-   SUPABASE_ANON_KEY=eyJhbGci...
+   FIREBASE_PROJECT_ID=https://jfrrvxefpboginppevrb.firebase.co
+   FIREBASE_CLIENT_EMAIL=eyJhbGci...
    ```
 
-2. Verifica que las tablas existan en Supabase:
+2. Verifica que las tablas existan en Firebase:
    ```bash
-   # Ve a Supabase Dashboard → SQL Editor
-   # Ejecuta: supabase-schema.sql
+   # Ve a Firebase Dashboard → SQL Editor
+   # Ejecuta: firebase-schema.sql
    ```
 
 3. Verifica la conexión:
    ```bash
-   curl -H "apikey: TU_SUPABASE_ANON_KEY" \
-        "https://jfrrvxefpboginppevrb.supabase.co/rest/v1/users"
+   curl -H "apikey: TU_FIREBASE_CLIENT_EMAIL" \
+        "https://jfrrvxefpboginppevrb.firebase.co/rest/v1/users"
    ```
 
 ---
@@ -209,9 +209,9 @@ curl http://localhost:4000/api/auth/status
 
 ## 📊 Verificar Base de Datos
 
-### Conectarse a Supabase
+### Conectarse a Firebase
 
-1. Ve a: https://supabase.com/dashboard
+1. Ve a: https://firebase.com/dashboard
 2. Selecciona tu proyecto
 3. Ve a **Table Editor** → **users**
 4. Deberías ver tu usuario después de hacer login
@@ -295,7 +295,7 @@ Antes de hacer login, verifica:
 - [ ] Variables de entorno en `.env.local` correctas
 - [ ] Google OAuth URIs configurados correctamente
 - [ ] Cookies del navegador limpias
-- [ ] Tablas de Supabase creadas
+- [ ] Tablas de Firebase creadas
 
 ---
 

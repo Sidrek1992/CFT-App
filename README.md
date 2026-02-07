@@ -24,8 +24,9 @@ View your app in AI Studio: https://ai.studio/apps/drive/1GIJBjciX20cFpLqJ70Y9W1
      - ✅ **GEMINI_API_KEY**: API key de Gemini AI (ya configurada)
      - ✅ **GOOGLE_CLIENT_ID**: ID de cliente OAuth de Google (ya configurado)
      - ✅ **GOOGLE_CLIENT_SECRET**: Secret de cliente OAuth de Google (ya configurado)
-     - ✅ **SUPABASE_URL**: URL de tu proyecto Supabase (ya configurada)
-     - ✅ **SUPABASE_ANON_KEY**: Clave anónima de Supabase (ya configurada)
+     - ✅ **FIREBASE_PROJECT_ID**: ID de tu proyecto Firebase
+     - ✅ **FIREBASE_CLIENT_EMAIL**: Email de la service account
+     - ✅ **FIREBASE_PRIVATE_KEY**: Private key de la service account
      - ✅ **SESSION_SECRET**: Secreto para sesiones (ya configurado)
 
 3. **Ejecutar la aplicación**:
@@ -51,15 +52,15 @@ View your app in AI Studio: https://ai.studio/apps/drive/1GIJBjciX20cFpLqJ70Y9W1
 
 ## Características de la Aplicación
 
-### 🔐 Sistema Multi-Usuario con Supabase
+### 🔐 Sistema Multi-Usuario con Firebase
 
-Esta aplicación utiliza Gmail API para autenticación y envío de correos a través de un backend Node/Express con **Supabase (PostgreSQL)**.
+Esta aplicación utiliza Gmail API para autenticación y envío de correos a través de un backend Node/Express con **Firebase Firestore**.
 
 #### ✨ Funcionalidades principales:
 
 - 📧 **Envío de correos**: Integración completa con Gmail API
 - 👥 **Multi-usuario**: Cada usuario tiene sus propias bases de datos, plantillas e historial
-- 🔒 **Seguridad**: Row Level Security (RLS) en Supabase
+- 🔒 **Seguridad**: acceso autenticado y cookies de sesión JWT
 - 🤖 **IA Integrada**: Generación de contenido con Gemini AI
 - 📊 **Gestión de contactos**: Organiza funcionarios y destinatarios
 - 📝 **Plantillas personalizadas**: Crea y guarda plantillas de correos
@@ -70,7 +71,7 @@ Esta aplicación utiliza Gmail API para autenticación y envío de correos a tra
 
 Todas las credenciales y configuraciones ya están incluidas en el archivo `.env.local`:
 
-- ✅ **Supabase**: Base de datos PostgreSQL lista y configurada
+- ✅ **Firebase**: Firestore listo y configurado
 - ✅ **Google OAuth**: Autenticación configurada con Gmail API
 - ✅ **Gemini AI**: API key configurada para generación de contenido
 - ✅ **Sesiones**: Configuración de seguridad lista
@@ -81,13 +82,13 @@ Todas las credenciales y configuraciones ya están incluidas en el archivo `.env
 1. Abre `http://localhost:3000`
 2. Haz clic en "Conectar Gmail"
 3. Autentica con tu cuenta de Google
-4. Tu perfil de usuario se crea automáticamente en Supabase
+4. Tu perfil de usuario se crea automáticamente en Firebase
 5. Los datos de localStorage se migran a tu cuenta (solo una vez)
 
 #### Arquitectura:
 - **Frontend**: React + TypeScript + Vite
 - **Backend**: Serverless Functions en Vercel (`/api/*`)
-- **Base de datos**: Supabase (PostgreSQL)
+- **Base de datos**: Firebase Firestore
 - **APIs**: Gmail API + Gemini AI
 - **Autenticación**: Google OAuth 2.0
 - **Hosting**: Vercel
@@ -118,8 +119,9 @@ En Vercel -> **Project Settings -> Environment Variables**, agrega:
 - `GOOGLE_REDIRECT_URI` = `https://tu-app.vercel.app/api/auth/google/callback`
 - `APP_BASE_URL` = `https://tu-app.vercel.app`
 - `SESSION_SECRET`
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
+- `FIREBASE_PROJECT_ID`
+- `FIREBASE_CLIENT_EMAIL`
+- `FIREBASE_PRIVATE_KEY`
 - `NODE_ENV` = `production`
 
 Ver `VERCEL_SETUP.md` para instrucciones detalladas.
