@@ -55,13 +55,13 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
     
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ Deploy exitoso!${NC}"
-        echo -e "${BLUE}🌐 Tu aplicación está en: https://myappcftcorreo.vercel.app${NC}"
+        echo -e "${BLUE}🌐 Tu aplicación está en: https://goldenrod-cormorant-780503.hostingersite.com${NC}"
         echo ""
         echo -e "${YELLOW}📝 Próximos pasos:${NC}"
         echo "1. Verifica que las variables de entorno estén configuradas en Vercel"
         echo "2. Actualiza los redirect URIs en Google Cloud Console"
         echo "3. Prueba la autenticación OAuth"
-        echo "4. Verifica el health check: https://myappcftcorreo.vercel.app/api/health"
+        echo "4. Verifica el health check: https://goldenrod-cormorant-780503.hostingersite.com/api/health"
     else
         echo -e "${RED}❌ Error en el deploy${NC}"
         exit 1

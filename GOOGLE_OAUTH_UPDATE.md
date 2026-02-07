@@ -2,7 +2,7 @@
 
 ## ⚡ Configuración Rápida (3 minutos)
 
-Tu aplicación Vercel está en: **https://myappcftcorreo.vercel.app**
+Tu aplicación Vercel está en: **https://goldenrod-cormorant-780503.hostingersite.com**
 
 Necesitas actualizar Google Cloud Console para autorizar este dominio.
 
@@ -34,7 +34,7 @@ http://localhost:3000
 ```
 
 ```
-https://myappcftcorreo.vercel.app
+https://goldenrod-cormorant-780503.hostingersite.com
 ```
 
 #### Authorized redirect URIs
@@ -46,7 +46,7 @@ http://localhost:4000/api/auth/google/callback
 ```
 
 ```
-https://myappcftcorreo.vercel.app/api/auth/google/callback
+https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback
 ```
 
 ⚠️ **IMPORTANTE**: Las URLs deben estar escritas EXACTAMENTE como se muestran arriba.
@@ -64,11 +64,11 @@ https://myappcftcorreo.vercel.app/api/auth/google/callback
 
 **Authorized JavaScript origins:**
 - ✅ http://localhost:3000
-- ✅ https://myappcftcorreo.vercel.app
+- ✅ https://goldenrod-cormorant-780503.hostingersite.com
 
 **Authorized redirect URIs:**
 - ✅ http://localhost:4000/api/auth/google/callback
-- ✅ https://myappcftcorreo.vercel.app/api/auth/google/callback
+- ✅ https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback
 
 ---
 
@@ -82,7 +82,7 @@ https://myappcftcorreo.vercel.app/api/auth/google/callback
 5. ✅ Funciona!
 
 ### En Vercel:
-1. Abre: https://myappcftcorreo.vercel.app
+1. Abre: https://goldenrod-cormorant-780503.hostingersite.com
 2. Click en "Conectar Gmail"
 3. Autoriza con Google
 4. ✅ Funciona!
@@ -96,14 +96,14 @@ https://myappcftcorreo.vercel.app/api/auth/google/callback
 **Mensaje completo:**
 ```
 Error: redirect_uri_mismatch
-The redirect URI in the request, https://myappcftcorreo.vercel.app/api/auth/google/callback, 
+The redirect URI in the request, https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback, 
 does not match the ones authorized for the OAuth client.
 ```
 
 **Solución:**
 1. Verifica que agregaste EXACTAMENTE:
    ```
-   https://myappcftcorreo.vercel.app/api/auth/google/callback
+   https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback
    ```
 2. NO debe tener espacios extra, slash al final, o mayúsculas diferentes
 3. Espera 5 minutos después de guardar

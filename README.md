@@ -97,7 +97,7 @@ Todas las credenciales y configuraciones ya están incluidas en el archivo `.env
 ## 🌐 Deployment en Vercel
 
 ### URL de Producción
-**https://myappcftcorreo.vercel.app**
+**https://goldenrod-cormorant-780503.hostingersite.com**
 
 ### Deployment Automático
 
@@ -126,8 +126,8 @@ Ve a **Settings → Environment Variables** en tu proyecto de Vercel y agrega:
 - `GEMINI_API_KEY`
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
-- `GOOGLE_REDIRECT_URI` = `https://myappcftcorreo.vercel.app/api/auth/google/callback`
-- `APP_BASE_URL` = `https://myappcftcorreo.vercel.app`
+- `GOOGLE_REDIRECT_URI` = `https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback`
+- `APP_BASE_URL` = `https://goldenrod-cormorant-780503.hostingersite.com`
 - `SESSION_SECRET`
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
@@ -139,6 +139,6 @@ Ver `VERCEL_SETUP.md` para instrucciones detalladas.
 
 ```bash
 # Health check
-curl https://myappcftcorreo.vercel.app/api/health
+curl https://goldenrod-cormorant-780503.hostingersite.com/api/health
 # Debe retornar: {"ok":true}
 ```

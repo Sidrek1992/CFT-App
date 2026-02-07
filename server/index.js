@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import fs from 'fs';
 import path from 'path';
 import express from 'express';
 import session from 'express-session';
@@ -6,16 +7,24 @@ import dotenv from 'dotenv';
 import { google } from 'googleapis';
 import * as db from './supabaseClient.js';
 
+const envMode = process.env.NODE_ENV;
+
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+if (envMode === 'production') {
+  dotenv.config({ path: path.resolve(process.cwd(), '.env.production') });
+}
 dotenv.config();
 
 const PORT = Number(process.env.SERVER_PORT || process.env.PORT || 4000);
-const APP_BASE_URL = process.env.APP_BASE_URL || 'http://localhost:3000';
+const APP_BASE_URL =
+  process.env.APP_BASE_URL || 'https://goldenrod-cormorant-780503.hostingersite.com';
+const USE_HTTPS = APP_BASE_URL.startsWith('https://');
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_REDIRECT_URI =
-  process.env.GOOGLE_REDIRECT_URI || `http://localhost:${PORT}/api/auth/google/callback`;
+  process.env.GOOGLE_REDIRECT_URI ||
+  `${USE_HTTPS ? APP_BASE_URL : `http://localhost:${PORT}`}/api/auth/google/callback`;
 
 const SESSION_SECRET =
   process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
@@ -28,6 +37,9 @@ const OAUTH_SCOPES = [
 ];
 
 const app = express();
+if (USE_HTTPS) {
+  app.set('trust proxy', 1);
+}
 app.use(express.json({ limit: '20mb' }));
 app.use(
   session({
@@ -36,8 +48,8 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      sameSite: 'lax',
-      secure: false,
+      sameSite: process.env.SESSION_SAMESITE || 'lax',
+      secure: USE_HTTPS,
     },
   })
 );
@@ -475,6 +487,16 @@ app.post('/api/user/settings', requireAuth, (req, res) => {
   }
 });
 
+if (USE_HTTPS) {
+  const distPath = path.resolve(process.cwd(), 'dist');
+  if (fs.existsSync(distPath)) {
+    app.use(express.static(distPath));
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
+}
+
 app.listen(PORT, () => {
-  console.log(`Gmail server running on http://localhost:${PORT}`);
+  console.log(`Gmail server running on port ${PORT}`);
 });

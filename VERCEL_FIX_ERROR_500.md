@@ -2,7 +2,7 @@
 
 ## ❌ Problema
 
-Después de hacer login con Google en https://myappcftcorreo.vercel.app, recibes:
+Después de hacer login con Google en https://goldenrod-cormorant-780503.hostingersite.com, recibes:
 ```
 Esta página no funciona
 HTTP ERROR 500
@@ -52,8 +52,8 @@ Verifica que **TODAS** estas variables estén configuradas:
 GEMINI_API_KEY=AIzaSyBCCc5EsWW4PdN-F5FHwKpEvPpDJp_iZjM
 GOOGLE_CLIENT_ID=105444466970-787jho21mvt0ehs2mbtmgioigu6m6ns9.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=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
-GOOGLE_REDIRECT_URI=https://myappcftcorreo.vercel.app/api/auth/google/callback
-APP_BASE_URL=https://myappcftcorreo.vercel.app
+GOOGLE_REDIRECT_URI=https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback
+APP_BASE_URL=https://goldenrod-cormorant-780503.hostingersite.com
 SESSION_SECRET=7f4a8d09e3b2c1a6f5e8d7c4b3a2e1f9d8c7b6a5e4d3c2b1a0f9e8d7c6b5a4e3
 SUPABASE_URL=https://jfrrvxefpboginppevrb.supabase.co
 SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcnJ2eGVmcGJvZ2lucHBldnJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzODAwNzcsImV4cCI6MjA4NTk1NjA3N30.I1qtybXUDfoudJM_gVKDPmE9M8Lj8RfZ88E3ToaZTP8
@@ -101,7 +101,7 @@ Espera a que el deploy termine (usualmente 1-2 minutos).
 ### 2. Probar Health Check
 
 ```bash
-curl https://myappcftcorreo.vercel.app/api/health
+curl https://goldenrod-cormorant-780503.hostingersite.com/api/health
 ```
 
 Debe devolver:
@@ -111,7 +111,7 @@ Debe devolver:
 
 ### 3. Probar Login
 
-1. Abre: https://myappcftcorreo.vercel.app
+1. Abre: https://goldenrod-cormorant-780503.hostingersite.com
 2. Abre la consola del navegador (F12)
 3. Click en "Conectar Gmail"
 4. Autoriza con Google
@@ -120,7 +120,7 @@ Debe devolver:
 ### 4. Verificar Sesión
 
 Después del login, verifica que la cookie se haya creado:
-- F12 → Application → Cookies → https://myappcftcorreo.vercel.app
+- F12 → Application → Cookies → https://goldenrod-cormorant-780503.hostingersite.com
 - Debe haber una cookie llamada `cft_session`
 
 ---
@@ -205,7 +205,7 @@ Las cookies ahora están configuradas correctamente para producción:
 **Causa:** Configuración de dominio incorrecta
 
 **Solución:**
-1. Verifica que `APP_BASE_URL` en Vercel sea: `https://myappcftcorreo.vercel.app`
+1. Verifica que `APP_BASE_URL` en Vercel sea: `https://goldenrod-cormorant-780503.hostingersite.com`
 2. No debe tener slash al final
 3. Debe ser HTTPS, no HTTP
 

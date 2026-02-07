@@ -2,7 +2,7 @@ import { google } from 'googleapis';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const APP_BASE_URL = process.env.APP_BASE_URL || 'https://myappcftcorreo.vercel.app';
+const APP_BASE_URL = process.env.APP_BASE_URL || 'https://goldenrod-cormorant-780503.hostingersite.com';
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || `${APP_BASE_URL}/api/auth/google/callback`;
 
 const OAUTH_SCOPES = [

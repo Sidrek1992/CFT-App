@@ -2,7 +2,7 @@
 
 ## 🌐 Tu Aplicación
 
-**URL de Producción:** https://myappcftcorreo.vercel.app
+**URL de Producción:** https://goldenrod-cormorant-780503.hostingersite.com
 
 ---
 
@@ -54,8 +54,8 @@ https://vercel.com/[tu-usuario]/myappcftcorreo/settings/environment-variables
 GEMINI_API_KEY=AIzaSyBCCc5EsWW4PdN-F5FHwKpEvPpDJp_iZjM
 GOOGLE_CLIENT_ID=105444466970-787jho21mvt0ehs2mbtmgioigu6m6ns9.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=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
-GOOGLE_REDIRECT_URI=https://myappcftcorreo.vercel.app/api/auth/google/callback
-APP_BASE_URL=https://myappcftcorreo.vercel.app
+GOOGLE_REDIRECT_URI=https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback
+APP_BASE_URL=https://goldenrod-cormorant-780503.hostingersite.com
 SESSION_SECRET=7f4a8d09e3b2c1a6f5e8d7c4b3a2e1f9d8c7b6a5e4d3c2b1a0f9e8d7c6b5a4e3
 SUPABASE_URL=https://jfrrvxefpboginppevrb.supabase.co
 SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcnJ2eGVmcGJvZ2lucHBldnJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzODAwNzcsImV4cCI6MjA4NTk1NjA3N30.I1qtybXUDfoudJM_gVKDPmE9M8Lj8RfZ88E3ToaZTP8
@@ -78,13 +78,13 @@ https://console.cloud.google.com/apis/credentials
 #### Authorized JavaScript origins:
 ```
 http://localhost:3000
-https://myappcftcorreo.vercel.app
+https://goldenrod-cormorant-780503.hostingersite.com
 ```
 
 #### Authorized redirect URIs:
 ```
 http://localhost:4000/api/auth/google/callback
-https://myappcftcorreo.vercel.app/api/auth/google/callback
+https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback
 ```
 
 📝 **Ver guía completa en:** `GOOGLE_OAUTH_UPDATE.md`
@@ -119,13 +119,13 @@ vercel --prod
 
 ### 1. Health Check
 ```
-https://myappcftcorreo.vercel.app/api/health
+https://goldenrod-cormorant-780503.hostingersite.com/api/health
 ```
 **Respuesta esperada:** `{"ok":true}`
 
 ### 2. Frontend
 ```
-https://myappcftcorreo.vercel.app
+https://goldenrod-cormorant-780503.hostingersite.com
 ```
 **Debe cargar:** Interfaz de login
 
@@ -201,8 +201,8 @@ CFT CORREOS/
    - Opción script: `./deploy.sh`
 
 4. [ ] Verificar
-   - Health check: https://myappcftcorreo.vercel.app/api/health
-   - Login: https://myappcftcorreo.vercel.app
+    - Health check: https://goldenrod-cormorant-780503.hostingersite.com/api/health
+    - Login: https://goldenrod-cormorant-780503.hostingersite.com
 
 ---
 
@@ -251,7 +251,7 @@ https://vercel.com/[tu-usuario]/myappcftcorreo/logs
 
 Una vez completados los pasos pendientes, tendrás:
 
-- ✅ App funcionando en: https://myappcftcorreo.vercel.app
+- ✅ App funcionando en: https://goldenrod-cormorant-780503.hostingersite.com
 - ✅ Backend serverless en Vercel
 - ✅ Frontend optimizado
 - ✅ Base de datos en Supabase
@@ -265,4 +265,4 @@ Una vez completados los pasos pendientes, tendrás:
 ---
 
 **Última actualización:** Febrero 2026
-**Dominio:** https://myappcftcorreo.vercel.app
+**Dominio:** https://goldenrod-cormorant-780503.hostingersite.com
