@@ -86,42 +86,36 @@ Todas las credenciales y configuraciones ya están incluidas en el archivo `.env
 
 #### Arquitectura:
 - **Frontend**: React + TypeScript + Vite
-- **Backend**: Node.js + Express (Serverless en Vercel)
+- **Backend**: Node.js + Express (Hostinger)
 - **Base de datos**: Supabase (PostgreSQL)
 - **APIs**: Gmail API + Gemini AI
 - **Autenticación**: Google OAuth 2.0
-- **Hosting**: Vercel
+- **Hosting**: Hostinger
 
 ---
 
-## 🌐 Deployment en Vercel
+## 🌐 Deployment en Hostinger
 
 ### URL de Producción
 **https://goldenrod-cormorant-780503.hostingersite.com**
 
-### Deployment Automático
+### Deployment
 
-La aplicación está configurada para deployment automático en Vercel. Cada push a `main` despliega automáticamente.
+1. Sube el proyecto a Hostinger (Git/SSH/FTP).
+2. Instala dependencias y genera build:
+   ```bash
+   npm install
+   npm run build
+   ```
+3. Configura la app Node.js en hPanel:
+   - **Startup file**: `server/index.js`
+   - **Node.js**: 18+
+   - **Environment variables** (ver abajo)
+4. Inicia o reinicia la aplicación.
 
-### Deployment Manual
+### Configuración Requerida en Hostinger
 
-```bash
-# Opción 1: Script automatizado
-./deploy.sh
-
-# Opción 2: Vercel CLI
-npm i -g vercel
-vercel --prod
-
-# Opción 3: Git push
-git add .
-git commit -m "Deploy to production"
-git push origin main
-```
-
-### Configuración Requerida en Vercel
-
-Ve a **Settings → Environment Variables** en tu proyecto de Vercel y agrega:
+En hPanel → **Node.js** → **Environment Variables**, agrega:
 
 - `GEMINI_API_KEY`
 - `GOOGLE_CLIENT_ID`
@@ -133,7 +127,7 @@ Ve a **Settings → Environment Variables** en tu proyecto de Vercel y agrega:
 - `SUPABASE_ANON_KEY`
 - `NODE_ENV` = `production`
 
-Ver `VERCEL_SETUP.md` para instrucciones detalladas.
+Ver `VERCEL_SETUP.md` para instrucciones detalladas en Hostinger.
 
 ### Verificar Deployment
 

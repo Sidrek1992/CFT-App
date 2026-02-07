@@ -2,7 +2,7 @@
 
 ## 👋 ¡Bienvenido!
 
-Tu aplicación **CFT Correos** está lista para ser desplegada en Vercel.
+Tu aplicación **CFT Correos** está lista para ser desplegada en Hostinger.
 
 **URL de Producción:** https://goldenrod-cormorant-780503.hostingersite.com
 
@@ -20,9 +20,9 @@ Este archivo te guía en 3 pasos simples para poner tu app en producción.
 
 ## 📚 ¿Qué Necesitas?
 
-### Para Deploy en Vercel:
+### Para Deploy en Hostinger:
 1. **`DEPLOY_NOW.md`** ← Empieza aquí (súper rápido)
-2. `VERCEL_ENV_VARIABLES.txt` ← Copia estas variables a Vercel
+2. `VERCEL_ENV_VARIABLES.txt` ← Copia estas variables a Hostinger
 3. `GOOGLE_OAUTH_UPDATE.md` ← Actualiza Google OAuth
 
 ### Para Entender Todo:
@@ -38,14 +38,14 @@ Este archivo te guía en 3 pasos simples para poner tu app en producción.
 ## 📋 Checklist Rápido
 
 ### Antes de Deploy:
-- [ ] Tienes acceso a Vercel Dashboard
+- [ ] Tienes acceso a Hostinger hPanel
 - [ ] Tienes acceso a Google Cloud Console
 - [ ] El código está en un repositorio Git
 
 ### Durante Deploy (5 min):
-- [ ] Configurar 9 variables en Vercel
+- [ ] Configurar 9 variables en Hostinger
 - [ ] Actualizar 2 URLs en Google OAuth
-- [ ] Hacer git push o deploy
+- [ ] Hacer build y arrancar en Hostinger
 
 ### Después de Deploy:
 - [ ] Verificar health check
@@ -97,12 +97,10 @@ Este archivo te guía en 3 pasos simples para poner tu app en producción.
 
 ### Opción 1: Deploy Ultra Rápido (Para expertos)
 ```bash
-# 1. Configura variables en Vercel Dashboard
+# 1. Configura variables en hPanel (Hostinger)
 # 2. Actualiza OAuth en Google Cloud Console
-# 3. Deploy
-git add .
-git commit -m "Deploy to production"
-git push origin main
+# 3. Ejecuta build y sube archivos
+# 4. Inicia la app Node.js (server/index.js)
 ```
 
 ### Opción 2: Deploy Guiado (Recomendado)
@@ -133,8 +131,8 @@ git push origin main
 ## ✅ Todo Está Listo
 
 - ✅ Código funcionando en local
-- ✅ API serverless creada
-- ✅ Configuración de Vercel lista
+- ✅ API Node.js lista
+- ✅ Configuración de Hostinger lista
 - ✅ Variables de entorno preparadas
 - ✅ Documentación completa
 - ✅ Scripts de deployment
@@ -148,8 +146,6 @@ git push origin main
 **→ Abre:** `DEPLOY_NOW.md`
 
 **→ O ejecuta:** `./deploy.sh`
-
-**→ O haz:** `git push origin main`
 
 ---
 
