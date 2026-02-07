@@ -57,8 +57,8 @@ GOOGLE_CLIENT_SECRET=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
 GOOGLE_REDIRECT_URI=https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback
 APP_BASE_URL=https://goldenrod-cormorant-780503.hostingersite.com
 SESSION_SECRET=7f4a8d09e3b2c1a6f5e8d7c4b3a2e1f9d8c7b6a5e4d3c2b1a0f9e8d7c6b5a4e3
-SUPABASE_URL=https://jfrrvxefpboginppevrb.supabase.co
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcnJ2eGVmcGJvZ2lucHBldnJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzODAwNzcsImV4cCI6MjA4NTk1NjA3N30.I1qtybXUDfoudJM_gVKDPmE9M8Lj8RfZ88E3ToaZTP8
+FIREBASE_PROJECT_ID=https://jfrrvxefpboginppevrb.firebase.co
+FIREBASE_CLIENT_EMAIL=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcnJ2eGVmcGJvZ2lucHBldnJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzODAwNzcsImV4cCI6MjA4NTk1NjA3N30.I1qtybXUDfoudJM_gVKDPmE9M8Lj8RfZ88E3ToaZTP8
 NODE_ENV=production
 ```
 
@@ -151,7 +151,7 @@ CFT CORREOS/
 │   └── index.js                    # API serverless para Vercel
 ├── server/
 │   ├── index.js                    # Servidor local (desarrollo)
-│   └── supabaseClient.js           # Cliente de Supabase
+│   └── firebaseClient.js           # Cliente de Firebase
 ├── components/                      # Componentes React
 ├── services/                        # Servicios (Gmail, Gemini, User)
 ├── vercel.json                     # Config de Vercel
@@ -254,7 +254,7 @@ Una vez completados los pasos pendientes, tendrás:
 - ✅ App funcionando en: https://goldenrod-cormorant-780503.hostingersite.com
 - ✅ Backend serverless en Vercel
 - ✅ Frontend optimizado
-- ✅ Base de datos en Supabase
+- ✅ Base de datos en Firebase
 - ✅ Autenticación con Google OAuth
 - ✅ Gmail API integrada
 - ✅ Gemini AI integrada

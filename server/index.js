@@ -5,7 +5,7 @@ import express from 'express';
 import session from 'express-session';
 import dotenv from 'dotenv';
 import { google } from 'googleapis';
-import * as db from './supabaseClient.js';
+import * as db from './firebaseClient.js';
 
 const envMode = process.env.NODE_ENV;
 
