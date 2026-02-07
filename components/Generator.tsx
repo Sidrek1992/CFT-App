@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Official, EmailTemplate, Gender } from '../types';
 import { refineEmailWithAI } from '../services/geminiService';
-import { getGmailAuthStatus, logoutGmail, sendGmailMessage, startGmailAuth } from '../services/gmailService';
+import { getGmailAuthStatus, sendGmailMessage, startGmailAuth } from '../services/gmailService';
 import { Copy, AlertCircle, CheckSquare, Square, User, UserCheck, Search, ChevronLeft, ChevronRight, Check, Filter, Download, Sparkles, Building2, UserPlus, X, LayoutList, LayoutGrid, ChevronDown, ChevronUp, CopyPlus, UserCog, ArrowUpDown, Mail, Send } from 'lucide-react';
 
 interface GeneratorProps {
@@ -276,20 +276,6 @@ export const Generator: React.FC<GeneratorProps> = ({ officials, template, files
     startGmailAuth();
   };
 
-  const handleGmailDisconnect = async () => {
-    setGmailActionLoading(true);
-    try {
-      await logoutGmail();
-      setGmailStatus({ authenticated: false, email: '', loading: false });
-      onToast('Gmail desconectado', 'success');
-    } catch (error) {
-      console.error('Error disconnecting Gmail', error);
-      onToast('Error desconectando Gmail', 'error');
-    } finally {
-      setGmailActionLoading(false);
-    }
-  };
-
   const buildGmailAttachments = async () => {
     if (files.length === 0) return [];
     return Promise.all(
@@ -338,6 +324,11 @@ export const Generator: React.FC<GeneratorProps> = ({ officials, template, files
       setEditableEmails(prev => prev.map(e =>
         e.id === email.id ? { ...e, sending: false } : e
       ));
+      if (error instanceof Error && error.message === 'not_authenticated') {
+        onToast('Sesion de Gmail expirada. Vuelve a iniciar sesion.', 'error');
+        refreshGmailStatus();
+        return;
+      }
       onToast('Error al enviar con Gmail', 'error');
     }
   };
@@ -569,42 +560,42 @@ export const Generator: React.FC<GeneratorProps> = ({ officials, template, files
 
   return (
     <div className="space-y-6">
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${gmailStatus.authenticated ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
-            <Mail className="w-5 h-5" />
+      {gmailStatus.authenticated ? (
+        <div className="bg-green-50 p-3 rounded-xl border border-green-200 shadow-sm flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-green-100 text-green-700">
+            <Mail className="w-4 h-4" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-800">Gmail integrado</p>
-            <p className="text-xs text-slate-500">
-              {gmailStatus.loading
-                ? 'Revisando sesion...'
-                : gmailStatus.authenticated
-                ? `Conectado como ${gmailStatus.email || 'Cuenta Google'}`
-                : 'No conectado'}
-            </p>
+            <p className="text-sm font-semibold text-green-900">Gmail conectado</p>
+            <p className="text-xs text-green-700">Conectado como {gmailStatus.email || 'Cuenta Google'}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {gmailStatus.authenticated ? (
-            <button
-              onClick={handleGmailDisconnect}
-              disabled={gmailActionLoading}
-              className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {gmailActionLoading ? 'Desconectando...' : 'Desconectar'}
-            </button>
-          ) : (
-            <button
-              onClick={handleGmailConnect}
-              disabled={gmailActionLoading}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {gmailActionLoading ? 'Abriendo Google...' : 'Conectar Gmail'}
-            </button>
+      ) : (
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-slate-100 text-slate-500">
+              <Mail className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-800">Gmail integrado</p>
+              <p className="text-xs text-slate-500">
+                {gmailStatus.loading ? 'Revisando sesion...' : 'No conectado'}
+              </p>
+            </div>
+          </div>
+          {!gmailStatus.loading && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleGmailConnect}
+                disabled={gmailActionLoading}
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {gmailActionLoading ? 'Abriendo Google...' : 'Conectar Gmail'}
+              </button>
+            </div>
           )}
         </div>
-      </div>
+      )}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
         
         {/* Global Controls Row */}
