@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Official, EmailTemplate, Gender } from '../types';
 import { refineEmailWithAI } from '../services/geminiService';
-import { getGmailAuthStatus, sendGmailMessage, startGmailAuth } from '../services/gmailService';
+import { getGmailAuthStatus, sendGmailMessage } from '../services/gmailService';
 import { Copy, AlertCircle, CheckSquare, Square, User, UserCheck, Search, ChevronLeft, ChevronRight, Check, Filter, Download, Sparkles, Building2, UserPlus, X, LayoutList, LayoutGrid, ChevronDown, ChevronUp, CopyPlus, UserCog, ArrowUpDown, Mail, Send } from 'lucide-react';
 
 interface GeneratorProps {
@@ -73,7 +73,6 @@ export const Generator: React.FC<GeneratorProps> = ({ officials, template, files
     email: '',
     loading: true,
   });
-  const [gmailActionLoading, setGmailActionLoading] = useState(false);
 
   // Filters State
   const [selectedPosition, setSelectedPosition] = useState<string>('Todos');
@@ -119,7 +118,7 @@ export const Generator: React.FC<GeneratorProps> = ({ officials, template, files
       });
     } catch (error) {
       console.warn('Gmail status check failed', error);
-      setGmailStatus({ authenticated: false, email: '', loading: false });
+      setGmailStatus((prev) => ({ ...prev, loading: false }));
     }
   };
 
@@ -271,11 +270,6 @@ export const Generator: React.FC<GeneratorProps> = ({ officials, template, files
     return { to, cc };
   };
 
-  const handleGmailConnect = () => {
-    setGmailActionLoading(true);
-    startGmailAuth();
-  };
-
   const buildGmailAttachments = async () => {
     if (files.length === 0) return [];
     return Promise.all(
@@ -288,11 +282,6 @@ export const Generator: React.FC<GeneratorProps> = ({ officials, template, files
   };
 
   const handleSendGmail = async (email: EditableEmail) => {
-    if (!gmailStatus.authenticated) {
-      onToast('Conecta Gmail para enviar', 'error');
-      return;
-    }
-
     const { to, cc } = getEmailAddresses(email);
     if (!to || !to.includes('@')) {
       onToast('Destinatario sin correo valido', 'error');
@@ -583,17 +572,7 @@ export const Generator: React.FC<GeneratorProps> = ({ officials, template, files
               </p>
             </div>
           </div>
-          {!gmailStatus.loading && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleGmailConnect}
-                disabled={gmailActionLoading}
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {gmailActionLoading ? 'Abriendo Google...' : 'Conectar Gmail'}
-              </button>
-            </div>
-          )}
+          {!gmailStatus.loading && <p className="text-xs text-slate-500">Vuelve a iniciar sesion desde la pantalla principal.</p>}
         </div>
       )}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
@@ -729,10 +708,8 @@ export const Generator: React.FC<GeneratorProps> = ({ officials, template, files
           // CARD VIEW MODE
           <div className="grid grid-cols-1 gap-6">
             {currentItems.map((item) => {
-              const sendDisabled = !gmailStatus.authenticated || item.sending;
-              const sendTitle = !gmailStatus.authenticated
-                ? 'Conecta Gmail para enviar'
-                : item.sending
+              const sendDisabled = item.sending;
+              const sendTitle = item.sending
                 ? 'Enviando...'
                 : 'Enviar con Gmail';
 
@@ -950,10 +927,8 @@ export const Generator: React.FC<GeneratorProps> = ({ officials, template, files
                      </thead>
                      <tbody className="divide-y divide-slate-100">
                           {currentItems.map(item => {
-                              const sendDisabled = !gmailStatus.authenticated || item.sending;
-                              const sendTitle = !gmailStatus.authenticated
-                                ? 'Conecta Gmail para enviar'
-                                : item.sending
+                              const sendDisabled = item.sending;
+                              const sendTitle = item.sending
                                 ? 'Enviando...'
                                 : 'Enviar con Gmail';
 

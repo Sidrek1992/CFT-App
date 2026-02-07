@@ -8,28 +8,50 @@ interface LoginScreenProps {
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, loading = false }) => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        {/* Logo/Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-indigo-600 rounded-2xl shadow-2xl mb-4">
-            <Mail className="w-10 h-10 text-white" />
-          </div>
-          <h1 className="text-4xl font-bold text-white mb-2">Gestor AI</h1>
-          <p className="text-indigo-200">Correos Corporativos</p>
-        </div>
+    <div className="min-h-screen bg-slate-100 p-4 md:p-8 flex items-center justify-center">
+      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-5 rounded-2xl overflow-hidden border border-slate-200 shadow-xl bg-white">
+        <section className="lg:col-span-3 p-8 md:p-10 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 text-white relative">
+          <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_right,_#60a5fa_0%,_transparent_45%)]" />
+          <div className="relative">
+            <div className="inline-flex items-center gap-3 px-3 py-2 rounded-lg bg-white/10 border border-white/15 mb-6">
+              <Mail className="w-4 h-4 text-indigo-200" />
+              <span className="text-sm font-medium text-indigo-100">CFT Correos</span>
+            </div>
+            <h1 className="text-3xl md:text-4xl font-bold leading-tight">Gestor de Correos Corporativos</h1>
+            <p className="mt-3 text-sm md:text-base text-slate-200 max-w-xl">
+              Gestiona bases de funcionarios, redacta contenido con IA y envia correos desde Gmail en un solo flujo.
+            </p>
 
-        {/* Login Card */}
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">Bienvenido</h2>
-          <p className="text-slate-500 mb-6">
-            Inicia sesión con tu cuenta de Google para acceder al sistema
+            <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="rounded-xl bg-white/10 border border-white/15 p-4">
+                <Sparkles className="w-5 h-5 text-indigo-200 mb-2" />
+                <p className="text-sm font-semibold">IA Integrada</p>
+                <p className="text-xs text-slate-200 mt-1">Redaccion asistida y mejora de contenido.</p>
+              </div>
+              <div className="rounded-xl bg-white/10 border border-white/15 p-4">
+                <Database className="w-5 h-5 text-indigo-200 mb-2" />
+                <p className="text-sm font-semibold">Multi-Base</p>
+                <p className="text-xs text-slate-200 mt-1">Organiza funcionarios por base de datos.</p>
+              </div>
+              <div className="rounded-xl bg-white/10 border border-white/15 p-4">
+                <Shield className="w-5 h-5 text-indigo-200 mb-2" />
+                <p className="text-sm font-semibold">Acceso Seguro</p>
+                <p className="text-xs text-slate-200 mt-1">Sesion protegida con Google OAuth.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="lg:col-span-2 p-8 md:p-10 flex flex-col justify-center">
+          <h2 className="text-2xl font-bold text-slate-900">Iniciar sesion</h2>
+          <p className="text-sm text-slate-500 mt-2 mb-6">
+            Usa la misma cuenta de Gmail con la que enviaras los correos.
           </p>
 
           <button
             onClick={onLogin}
             disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-3 transition-colors shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-3 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? (
               <>
@@ -61,32 +83,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, loading = fal
             )}
           </button>
 
-          <div className="mt-6 pt-6 border-t border-slate-100">
-            <p className="text-xs text-slate-400 text-center mb-4">
-              Al iniciar sesión, se creará automáticamente tu perfil de usuario
+          <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <p className="text-xs text-slate-500">
+              Al iniciar sesion, se creara tu perfil de usuario automaticamente y podras enviar correos con esa cuenta.
             </p>
           </div>
-        </div>
-
-        {/* Features */}
-        <div className="mt-8 grid grid-cols-3 gap-4">
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
-            <Sparkles className="w-6 h-6 text-indigo-300 mx-auto mb-2" />
-            <p className="text-xs text-white font-medium">IA Integrada</p>
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
-            <Database className="w-6 h-6 text-indigo-300 mx-auto mb-2" />
-            <p className="text-xs text-white font-medium">Multi-Base</p>
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
-            <Shield className="w-6 h-6 text-indigo-300 mx-auto mb-2" />
-            <p className="text-xs text-white font-medium">Seguro</p>
-          </div>
-        </div>
-
-        <p className="text-center text-indigo-200 text-xs mt-6">
-          v1.4.0 Multi-User
-        </p>
+        </section>
       </div>
     </div>
   );
