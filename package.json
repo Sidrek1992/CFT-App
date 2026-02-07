@@ -9,6 +9,7 @@
     "server:4001": "SERVER_PORT=4001 node server/index.js",
     "start": "concurrently \"npm run server\" \"npm run dev\"",
     "build": "vite build",
+    "build:hostinger": "npm run build && node scripts/sync-hostinger-build.js",
     "preview": "vite preview"
   },
   "dependencies": {
