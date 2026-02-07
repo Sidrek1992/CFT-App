@@ -1,9 +1,8 @@
 import { google } from 'googleapis';
+import { getBaseUrl } from '../lib/base-url.js';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const APP_BASE_URL = process.env.APP_BASE_URL || 'https://goldenrod-cormorant-780503.hostingersite.com';
-const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || `${APP_BASE_URL}/api/auth/google/callback`;
 
 const OAUTH_SCOPES = [
   'https://www.googleapis.com/auth/gmail.send',
@@ -13,10 +12,14 @@ const OAUTH_SCOPES = [
 ];
 
 export default function handler(req, res) {
+  const appBaseUrl = getBaseUrl(req);
+  const googleRedirectUri = process.env.GOOGLE_REDIRECT_URI || `${appBaseUrl}/api/auth/google/callback`;
+
   console.log('=== OAuth Google Init ===');
   console.log('GOOGLE_CLIENT_ID:', GOOGLE_CLIENT_ID ? 'Set' : 'NOT SET');
   console.log('GOOGLE_CLIENT_SECRET:', GOOGLE_CLIENT_SECRET ? 'Set' : 'NOT SET');
-  console.log('GOOGLE_REDIRECT_URI:', GOOGLE_REDIRECT_URI);
+  console.log('APP_BASE_URL:', appBaseUrl);
+  console.log('GOOGLE_REDIRECT_URI:', googleRedirectUri);
   
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
     console.error('Missing Google credentials');
@@ -27,7 +30,7 @@ export default function handler(req, res) {
     const oauth2Client = new google.auth.OAuth2(
       GOOGLE_CLIENT_ID,
       GOOGLE_CLIENT_SECRET,
-      GOOGLE_REDIRECT_URI
+      googleRedirectUri
     );
 
     const authUrl = oauth2Client.generateAuthUrl({

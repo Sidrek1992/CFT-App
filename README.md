@@ -86,53 +86,48 @@ Todas las credenciales y configuraciones ya están incluidas en el archivo `.env
 
 #### Arquitectura:
 - **Frontend**: React + TypeScript + Vite
-- **Backend**: Node.js + Express (Hostinger)
+- **Backend**: Serverless Functions en Vercel (`/api/*`)
 - **Base de datos**: Supabase (PostgreSQL)
 - **APIs**: Gmail API + Gemini AI
 - **Autenticación**: Google OAuth 2.0
-- **Hosting**: Hostinger
+- **Hosting**: Vercel
 
 ---
 
-## 🌐 Deployment en Hostinger
+## 🌐 Deployment en Vercel
 
-### URL de Producción
-**https://goldenrod-cormorant-780503.hostingersite.com**
+### URL de Produccion
+**https://tu-app.vercel.app**
 
 ### Deployment
 
-1. Sube el proyecto a Hostinger (Git/SSH/FTP).
-2. Instala dependencias y genera build:
+1. Conecta el repositorio en Vercel.
+2. En **Project Settings -> Environment Variables** configura las variables (ver abajo).
+3. Deploy en `main` (automatico) o con CLI:
    ```bash
-   npm install
-   npm run build
+   vercel --prod
    ```
-3. Configura la app Node.js en hPanel:
-   - **Startup file**: `server/index.js`
-   - **Node.js**: 18+
-   - **Environment variables** (ver abajo)
-4. Inicia o reinicia la aplicación.
 
-### Configuración Requerida en Hostinger
+### Configuracion Requerida en Vercel
 
-En hPanel → **Node.js** → **Environment Variables**, agrega:
+En Vercel -> **Project Settings -> Environment Variables**, agrega:
 
 - `GEMINI_API_KEY`
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
-- `GOOGLE_REDIRECT_URI` = `https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback`
-- `APP_BASE_URL` = `https://goldenrod-cormorant-780503.hostingersite.com`
+- `GOOGLE_REDIRECT_URI` = `https://tu-app.vercel.app/api/auth/google/callback`
+- `APP_BASE_URL` = `https://tu-app.vercel.app`
 - `SESSION_SECRET`
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `NODE_ENV` = `production`
 
-Ver `VERCEL_SETUP.md` para instrucciones detalladas en Hostinger.
+Ver `VERCEL_SETUP.md` para instrucciones detalladas.
 
 ### Verificar Deployment
 
 ```bash
 # Health check
-curl https://goldenrod-cormorant-780503.hostingersite.com/api/health
+curl https://tu-app.vercel.app/api/health
 # Debe retornar: {"ok":true}
 ```
