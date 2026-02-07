@@ -2,7 +2,7 @@
 
 ## Configuración de Google Cloud Console
 
-Para que la autenticación funcione correctamente en Vercel, necesitas actualizar las URIs autorizadas en Google Cloud Console.
+Para que la autenticación funcione correctamente en Hostinger, necesitas actualizar las URIs autorizadas en Google Cloud Console.
 
 ---
 
@@ -102,7 +102,7 @@ Después de guardar:
 2. Copia estos valores
 3. Úsalos en tus variables de entorno:
    - Local: `.env.local`
-   - Vercel: Dashboard → Settings → Environment Variables
+   - Hostinger: hPanel → Node.js → Environment Variables
 
 ---
 
@@ -117,9 +117,9 @@ GOOGLE_REDIRECT_URI=http://localhost:4000/api/auth/google/callback
 APP_BASE_URL=http://localhost:3000
 ```
 
-#### Para producción (Vercel):
+#### Para producción (Hostinger):
 
-Ve a tu proyecto en Vercel → **Settings** → **Environment Variables**
+Ve a hPanel → **Node.js** → **Environment Variables**
 
 Agrega:
 ```
@@ -154,7 +154,7 @@ Abre https://goldenrod-cormorant-780503.hostingersite.com y haz clic en "Conecta
 **Causa**: La URL de redirección no coincide con las configuradas en Google Cloud Console.
 
 **Solución**:
-1. Verifica que `GOOGLE_REDIRECT_URI` en Vercel sea exactamente:
+1. Verifica que `GOOGLE_REDIRECT_URI` en Hostinger sea exactamente:
    ```
    https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback
    ```
@@ -187,9 +187,9 @@ Abre https://goldenrod-cormorant-780503.hostingersite.com y haz clic en "Conecta
 **Causa**: El Client ID o Client Secret son incorrectos.
 
 **Solución**:
-1. Verifica que `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` en Vercel coincidan con los de Google Cloud Console
+1. Verifica que `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` en Hostinger coincidan con los de Google Cloud Console
 2. No debe haber espacios extra al inicio o final
-3. Redeploy en Vercel después de actualizar
+3. Reinicia la app en Hostinger después de actualizar
 
 ---
 
@@ -206,10 +206,10 @@ Abre https://goldenrod-cormorant-780503.hostingersite.com y haz clic en "Conecta
 - [ ] Gmail API habilitada
 - [ ] OAuth Consent Screen configurado
 - [ ] OAuth Client ID creado
-- [ ] JavaScript origins configuradas (localhost + Vercel)
-- [ ] Redirect URIs configuradas (localhost + Vercel)
+- [ ] JavaScript origins configuradas (localhost + Hostinger)
+- [ ] Redirect URIs configuradas (localhost + Hostinger)
 - [ ] Test users agregados (si está en Testing)
-- [ ] Variables de entorno configuradas en Vercel
+- [ ] Variables de entorno configuradas en Hostinger
 - [ ] Autenticación probada en local
 - [ ] Autenticación probada en producción
 

@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Script de Deployment para Vercel - CFT Correos
+# Script de Build para Hostinger - CFT Correos
 
-echo "🚀 Iniciando deployment a Vercel..."
+echo "🚀 Preparando build para Hostinger..."
 
 # Colores para output
 GREEN='\033[0;32m'
@@ -17,25 +17,21 @@ if [ ! -f "package.json" ]; then
     exit 1
 fi
 
-# Verificar que tenemos vercel CLI
-if ! command -v vercel &> /dev/null; then
-    echo -e "${YELLOW}⚠️  Vercel CLI no está instalado.${NC}"
-    echo -e "${BLUE}Instalando Vercel CLI...${NC}"
-    npm i -g vercel
-fi
-
-# Verificar variables de entorno
-echo -e "${BLUE}📋 Verificando variables de entorno...${NC}"
+# Verificar variables de entorno (opcional en Hostinger)
+echo -e "${BLUE}📋 Verificando variables de entorno locales...${NC}"
 
 if [ ! -f ".env.production" ]; then
-    echo -e "${RED}❌ Error: No se encuentra .env.production${NC}"
-    exit 1
+    echo -e "${YELLOW}⚠️  No se encuentra .env.production (usa variables en Hostinger).${NC}"
+else
+    echo -e "${GREEN}✅ Archivo .env.production encontrado${NC}"
 fi
 
-echo -e "${GREEN}✅ Archivo .env.production encontrado${NC}"
+# Instalar dependencias
+echo -e "${BLUE}📦 Instalando dependencias...${NC}"
+npm install
 
-# Build local para verificar
-echo -e "${BLUE}🔨 Construyendo proyecto localmente...${NC}"
+# Build local para producción
+echo -e "${BLUE}🔨 Construyendo proyecto para producción...${NC}"
 npm run build
 
 if [ $? -ne 0 ]; then
@@ -45,28 +41,9 @@ fi
 
 echo -e "${GREEN}✅ Build exitoso${NC}"
 
-# Preguntar si quiere hacer deploy
-echo -e "${YELLOW}¿Deseas hacer deploy a producción? (y/n)${NC}"
-read -r response
-
-if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-    echo -e "${BLUE}🚀 Deployando a Vercel...${NC}"
-    vercel --prod
-    
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✅ Deploy exitoso!${NC}"
-        echo -e "${BLUE}🌐 Tu aplicación está en: https://goldenrod-cormorant-780503.hostingersite.com${NC}"
-        echo ""
-        echo -e "${YELLOW}📝 Próximos pasos:${NC}"
-        echo "1. Verifica que las variables de entorno estén configuradas en Vercel"
-        echo "2. Actualiza los redirect URIs en Google Cloud Console"
-        echo "3. Prueba la autenticación OAuth"
-        echo "4. Verifica el health check: https://goldenrod-cormorant-780503.hostingersite.com/api/health"
-    else
-        echo -e "${RED}❌ Error en el deploy${NC}"
-        exit 1
-    fi
-else
-    echo -e "${YELLOW}Deploy cancelado${NC}"
-    exit 0
-fi
+echo -e "${BLUE}🌐 Siguientes pasos en Hostinger:${NC}"
+echo "1. Sube el proyecto (incluye dist/ y server/)"
+echo "2. Configura la app Node.js con entry: server/index.js"
+echo "3. Define las variables de entorno en hPanel"
+echo "4. Reinicia la aplicación"
+echo "5. Verifica: https://goldenrod-cormorant-780503.hostingersite.com/api/health"

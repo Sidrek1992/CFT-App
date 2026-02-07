@@ -1,10 +1,10 @@
-# ⚡ Guía Rápida de Deployment - Vercel
+# ⚡ Guía Rápida de Deployment - Hostinger
 
 ## 🚀 Deploy en 5 minutos
 
-### Paso 1: Configurar Variables de Entorno en Vercel
+### Paso 1: Configurar Variables de Entorno en Hostinger
 
-Ve a: `https://vercel.com/[tu-usuario]/myappcftcorreo/settings/environment-variables`
+Ve a: hPanel → **Node.js** → **Environment Variables**
 
 Copia y pega estas variables (una por una):
 
@@ -64,10 +64,10 @@ NODE_ENV=production
 
 ### Paso 3: Deploy
 
-Opción A - Git Push (Recomendado):
+Opción A - Git (si usas Git Deploy):
 ```bash
 git add .
-git commit -m "Configure for Vercel deployment"
+git commit -m "Configure for Hostinger deployment"
 git push origin main
 ```
 
@@ -76,10 +76,10 @@ Opción B - Script Automatizado:
 ./deploy.sh
 ```
 
-Opción C - Vercel CLI:
-```bash
-vercel --prod
-```
+Opción C - Manual (SSH/FTP):
+1. Sube el proyecto a Hostinger.
+2. Ejecuta `npm install` y `npm run build`.
+3. Inicia la app Node.js con `server/index.js`.
 
 ---
 
@@ -101,7 +101,7 @@ vercel --prod
 
 ## ✅ Checklist
 
-- [ ] Variables de entorno configuradas en Vercel
+- [ ] Variables de entorno configuradas en Hostinger
 - [ ] Google OAuth redirect URIs actualizados
 - [ ] Deploy realizado
 - [ ] Health check funciona
@@ -126,15 +126,15 @@ https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback
 
 ### Error 500 en API
 
-1. Verifica que TODAS las variables de entorno estén en Vercel
-2. Redeploy: `vercel --prod --force`
+1. Verifica que TODAS las variables de entorno estén en Hostinger
+2. Reinicia la app en hPanel
 
 ---
 
 ## 📞 Necesitas ayuda?
 
 Ver documentación completa:
-- `VERCEL_SETUP.md` - Configuración detallada de Vercel
+- `VERCEL_SETUP.md` - Configuración detallada en Hostinger
 - `GOOGLE_OAUTH_SETUP.md` - Configuración de Google OAuth
 
 ---

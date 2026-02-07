@@ -3,29 +3,27 @@
 ## 📋 Pre-Deployment
 
 ### Código y Configuración
-- [x] `vercel.json` creado con configuración serverless
-- [x] API serverless creada en `/api/index.js`
+- [x] `server/index.js` listo para producción (sirve `dist/`)
 - [x] Variables de entorno documentadas en `.env.production`
 - [x] `.gitignore` actualizado para excluir archivos sensibles
-- [x] Scripts de deployment creados (`deploy.sh`)
+- [x] Scripts de build creados (`deploy.sh`)
 - [x] Documentación completa creada
 
 ### Archivos Clave Creados
-- [x] `/api/index.js` - API serverless para Vercel
-- [x] `vercel.json` - Configuración de Vercel
+- [x] `server/index.js` - Backend Node.js (Hostinger)
 - [x] `.env.production` - Variables de entorno de producción
-- [x] `VERCEL_SETUP.md` - Guía completa de setup
+- [x] `VERCEL_SETUP.md` - Guía completa de setup en Hostinger
 - [x] `GOOGLE_OAUTH_SETUP.md` - Configuración de Google OAuth
 - [x] `DEPLOY_QUICK_START.md` - Guía rápida de deployment
-- [x] `deploy.sh` - Script automatizado de deployment
+- [x] `deploy.sh` - Script de build
 
 ---
 
-## 🔧 Configuración en Vercel
+## 🔧 Configuración en Hostinger
 
 ### 1. Variables de Entorno
 
-Ve a: **Settings → Environment Variables** en Vercel
+Ve a: hPanel → **Node.js** → **Environment Variables**
 
 | Variable | Valor | Status |
 |----------|-------|--------|

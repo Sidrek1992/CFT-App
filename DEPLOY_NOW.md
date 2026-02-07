@@ -4,18 +4,16 @@
 
 ---
 
-## 🚀 Paso 1: Variables de Entorno en Vercel (2 min)
+## 🚀 Paso 1: Variables de Entorno en Hostinger (2 min)
 
 ### Abre:
-```
-https://vercel.com/[tu-usuario]/myappcftcorreo/settings/environment-variables
-```
+En hPanel → **Node.js** → **Environment Variables**
 
 ### Copia el contenido del archivo `VERCEL_ENV_VARIABLES.txt`
 - Abre el archivo `VERCEL_ENV_VARIABLES.txt`
 - Copia cada línea `NOMBRE=valor`
-- Pégala en Vercel
-- Vercel detectará automáticamente nombre y valor
+- Pégala en Hostinger
+- Hostinger detectará automáticamente nombre y valor
 - Haz clic en "Add"
 
 **Total: 9 variables**
@@ -43,23 +41,17 @@ https://console.cloud.google.com/apis/credentials
 
 ---
 
-## 📦 Paso 3: Deploy (30 segundos)
+## 📦 Paso 3: Deploy (2-3 minutos)
 
-### Opción A - Git Push:
-```bash
-git add .
-git commit -m "Deploy to Vercel"
-git push origin main
-```
-
-### Opción B - Vercel CLI:
-```bash
-vercel --prod
-```
-
-### Opción C - Vercel Dashboard:
-- Ve a tu proyecto en Vercel
-- Click en "Redeploy"
+### Pasos:
+1. Sube el proyecto a Hostinger (Git/SSH/FTP).
+2. Ejecuta:
+   ```bash
+   npm install
+   npm run build
+   ```
+3. Configura la app Node.js con **startup file**: `server/index.js`.
+4. Inicia o reinicia la aplicación.
 
 ---
 
@@ -85,8 +77,8 @@ https://goldenrod-cormorant-780503.hostingersite.com
 ## ❌ Si algo falla:
 
 ### Error en Health Check
-→ Revisa que las 9 variables estén en Vercel
-→ Redeploy
+→ Revisa que las 9 variables estén en Hostinger
+→ Reinicia la app
 
 ### Error de OAuth
 → Verifica la URL en Google Cloud Console:
@@ -102,7 +94,7 @@ https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback
 
 - `DEPLOY_QUICK_START.md` - Guía detallada
 - `GOOGLE_OAUTH_UPDATE.md` - Config OAuth paso a paso
-- `VERCEL_SETUP.md` - Configuración completa
+- `VERCEL_SETUP.md` - Configuración completa en Hostinger
 
 ---
 

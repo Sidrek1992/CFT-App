@@ -38,7 +38,7 @@ const OAUTH_SCOPES = [
 
 const app = express();
 if (USE_HTTPS) {
-  app.set('trust proxy', 1);
+  app.set('trust proxy', true);
 }
 app.use(express.json({ limit: '20mb' }));
 app.use(

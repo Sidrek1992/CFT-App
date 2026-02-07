@@ -1,8 +1,8 @@
-# 🔐 Actualizar Google OAuth para Vercel
+# 🔐 Actualizar Google OAuth para Hostinger
 
 ## ⚡ Configuración Rápida (3 minutos)
 
-Tu aplicación Vercel está en: **https://goldenrod-cormorant-780503.hostingersite.com**
+Tu aplicación en Hostinger está en: **https://goldenrod-cormorant-780503.hostingersite.com**
 
 Necesitas actualizar Google Cloud Console para autorizar este dominio.
 
@@ -81,7 +81,7 @@ https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback
 4. Autoriza con Google
 5. ✅ Funciona!
 
-### En Vercel:
+### En producción (Hostinger):
 1. Abre: https://goldenrod-cormorant-780503.hostingersite.com
 2. Click en "Conectar Gmail"
 3. Autoriza con Google
@@ -147,14 +147,14 @@ does not match the ones authorized for the OAuth client.
 ## 📝 Checklist Final
 
 - [ ] OAuth Client ID creado o existente
-- [ ] JavaScript origins agregados (localhost + Vercel)
-- [ ] Redirect URIs agregados (localhost + Vercel)
+- [ ] JavaScript origins agregados (localhost + Hostinger)
+- [ ] Redirect URIs agregados (localhost + Hostinger)
 - [ ] Cambios guardados
 - [ ] Esperado 5 minutos
 - [ ] OAuth Consent Screen configurado
 - [ ] Test users agregados (si está en Testing)
 - [ ] Autenticación probada en local
-- [ ] Autenticación probada en Vercel
+- [ ] Autenticación probada en Hostinger
 
 ---
 
@@ -167,7 +167,7 @@ GOOGLE_CLIENT_ID=105444466970-787jho21mvt0ehs2mbtmgioigu6m6ns9.apps.googleuserco
 GOOGLE_CLIENT_SECRET=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
 ```
 
-✅ Ya están configuradas en `.env.local` y en Vercel
+✅ Ya están configuradas en `.env.local` y en Hostinger
 
 ---
 
@@ -181,4 +181,4 @@ GOOGLE_CLIENT_SECRET=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
 
 **¡Configuración completada!** 🎉
 
-Ahora tu app puede autenticar usuarios tanto en local como en Vercel.
+Ahora tu app puede autenticar usuarios tanto en local como en Hostinger.
