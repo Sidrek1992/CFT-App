@@ -1,6 +1,9 @@
 import { google } from 'googleapis';
 import { getSession } from '../lib/session.js';
 import * as db from '../lib/db.js';
+import { sanitizeGmailPayload } from '../lib/validation.js';
+import { consumeRateLimit } from '../lib/rate-limit.js';
+import { attachRequestContext, logError, logInfo } from '../lib/observability.js';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -77,6 +80,7 @@ function buildMimeMessage({ to, cc, subject, html, attachments }) {
 }
 
 export default async function handler(req, res) {
+  attachRequestContext(req, res);
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -90,12 +94,26 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'missing_google_credentials' });
   }
 
-  const { to, cc, subject, body, attachments, officialId } = req.body || {};
-  if (!to) {
-    return res.status(400).json({ error: 'missing_fields' });
+  const rate = consumeRateLimit({
+    key: `gmail-send:${session.userId}`,
+    limit: 25,
+    windowMs: 60_000,
+  });
+  if (!rate.allowed) {
+    res.setHeader('retry-after', String(Math.ceil((rate.retryAfterMs || 1000) / 1000)));
+    return res.status(429).json({ error: 'rate_limit_exceeded', requestId: req.requestId });
   }
 
   try {
+    const { to, cc, subject, body, attachments, officialId } = sanitizeGmailPayload(req.body || {});
+
+    if (officialId) {
+      const ownsOfficial = await db.isOfficialOwnedByUser(session.userId, officialId);
+      if (!ownsOfficial) {
+        return res.status(404).json({ error: 'official_not_found' });
+      }
+    }
+
     const oauth2Client = new google.auth.OAuth2(
       GOOGLE_CLIENT_ID,
       GOOGLE_CLIENT_SECRET
@@ -126,9 +144,11 @@ export default async function handler(req, res) {
       await db.markAsSent(session.userId, officialId);
     }
 
+    logInfo(req, 'gmail_send_success', { userId: session.userId, officialId: officialId || null });
     res.status(200).json({ id: response.data.id });
   } catch (error) {
-    console.error('Gmail send error:', error);
-    res.status(500).json({ error: 'send_failed', message: error.message });
+    const statusCode = error.statusCode || 500;
+    logError(req, 'Gmail send error', error, { userId: session.userId });
+    res.status(statusCode).json({ error: 'send_failed', message: error.message, requestId: req.requestId });
   }
 }

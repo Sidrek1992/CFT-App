@@ -1,9 +1,13 @@
 import jwt from 'jsonwebtoken';
 import { parse, serialize } from 'cookie';
 
-const SESSION_SECRET = process.env.SESSION_SECRET || 'fallback-secret-change-in-production';
+const SESSION_SECRET = process.env.SESSION_SECRET;
 const COOKIE_NAME = 'cft_session';
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 días
+
+if (!SESSION_SECRET) {
+  throw new Error('Missing required env var: SESSION_SECRET');
+}
 
 export function getSession(req) {
   try {

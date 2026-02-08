@@ -5,7 +5,15 @@ import express from 'express';
 import session from 'express-session';
 import dotenv from 'dotenv';
 import { google } from 'googleapis';
-import * as db from './firebaseClient.js';
+import * as db from './dbClient.js';
+import {
+  asString,
+  assertNonEmpty,
+  sanitizeGmailPayload,
+  sanitizeOfficial,
+  sanitizeTemplate,
+} from '../api/lib/validation.js';
+import { consumeRateLimit } from '../api/lib/rate-limit.js';
 
 const envMode = process.env.NODE_ENV;
 
@@ -16,8 +24,7 @@ if (envMode === 'production') {
 dotenv.config();
 
 const PORT = Number(process.env.SERVER_PORT || process.env.PORT || 4000);
-const APP_BASE_URL =
-  process.env.APP_BASE_URL || 'https://goldenrod-cormorant-780503.hostingersite.com';
+const APP_BASE_URL = process.env.APP_BASE_URL || 'http://localhost:3000';
 const USE_HTTPS = APP_BASE_URL.startsWith('https://');
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -26,8 +33,11 @@ const GOOGLE_REDIRECT_URI =
   process.env.GOOGLE_REDIRECT_URI ||
   `${USE_HTTPS ? APP_BASE_URL : `http://localhost:${PORT}`}/api/auth/google/callback`;
 
-const SESSION_SECRET =
-  process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-only-session-secret';
+
+if (!process.env.SESSION_SECRET && envMode === 'production') {
+  throw new Error('Missing required env var: SESSION_SECRET');
+}
 
 const OAUTH_SCOPES = [
   'https://www.googleapis.com/auth/gmail.send',
@@ -51,13 +61,18 @@ const sessionSecure =
       : 'auto';
 
 const app = express();
+app.use((req, res, next) => {
+  req.requestId = req.headers['x-request-id'] || crypto.randomUUID();
+  res.setHeader('x-request-id', req.requestId);
+  next();
+});
 if (USE_HTTPS) {
   app.set('trust proxy', true);
 }
 app.use(express.json({ limit: '20mb' }));
 app.use(
   session({
-    name: 'cft_session',
+    name: 'cft_server_session',
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
@@ -271,16 +286,43 @@ app.post('/api/auth/logout', async (req, res) => {
 
 app.post('/api/gmail/send', requireAuth, async (req, res) => {
   if (!ensureConfigured(res)) return;
+  const rate = consumeRateLimit({
+    key: `gmail-send:${req.session.userId}`,
+    limit: 25,
+    windowMs: 60_000,
+  });
+  if (!rate.allowed) {
+    res.setHeader('retry-after', String(Math.ceil((rate.retryAfterMs || 1000) / 1000)));
+    res.status(429).json({ error: 'rate_limit_exceeded' });
+    return;
+  }
+
   const client = getAuthorizedClient(req);
   if (!client) {
     res.status(401).json({ error: 'not_authenticated' });
     return;
   }
 
-  const { to, cc, subject, body, attachments, officialId } = req.body || {};
-  if (!to) {
-    res.status(400).json({ error: 'missing_fields' });
+  let to;
+  let cc;
+  let subject;
+  let body;
+  let attachments;
+  let officialId;
+
+  try {
+    ({ to, cc, subject, body, attachments, officialId } = sanitizeGmailPayload(req.body || {}));
+  } catch (error) {
+    res.status(error.statusCode || 400).json({ error: error.message || 'invalid_payload' });
     return;
+  }
+
+  if (officialId) {
+    const ownsOfficial = await db.isOfficialOwnedByUser(req.session.userId, officialId);
+    if (!ownsOfficial) {
+      res.status(404).json({ error: 'official_not_found' });
+      return;
+    }
   }
 
   const safeSubject = typeof subject === 'string' ? subject : '';
@@ -304,7 +346,7 @@ app.post('/api/gmail/send', requireAuth, async (req, res) => {
     });
 
     if (officialId) {
-      db.markAsSent(req.session.userId, officialId);
+      await db.markAsSent(req.session.userId, officialId);
     }
 
     res.json({ id: response.data.id });
@@ -316,9 +358,9 @@ app.post('/api/gmail/send', requireAuth, async (req, res) => {
 
 // ========== USER DATA ENDPOINTS ==========
 
-app.get('/api/user/databases', requireAuth, (req, res) => {
+app.get('/api/user/databases', requireAuth, async (req, res) => {
   try {
-    const databases = db.getUserDatabases(req.session.userId);
+    const databases = await db.getUserDatabases(req.session.userId);
     res.json(databases);
   } catch (error) {
     console.error('Error fetching databases', error);
@@ -326,13 +368,11 @@ app.get('/api/user/databases', requireAuth, (req, res) => {
   }
 });
 
-app.post('/api/user/databases', requireAuth, (req, res) => {
+app.post('/api/user/databases', requireAuth, async (req, res) => {
   try {
-    const { id, name } = req.body;
-    if (!id || !name) {
-      return res.status(400).json({ error: 'missing_fields' });
-    }
-    db.createDatabase(req.session.userId, id, name);
+    const id = assertNonEmpty(req.body?.id, 'id');
+    const name = assertNonEmpty(req.body?.name, 'name');
+    await db.createDatabase(req.session.userId, id, name);
     res.json({ ok: true });
   } catch (error) {
     console.error('Error creating database', error);
@@ -340,13 +380,14 @@ app.post('/api/user/databases', requireAuth, (req, res) => {
   }
 });
 
-app.put('/api/user/databases/:id', requireAuth, (req, res) => {
+app.put('/api/user/databases/:id', requireAuth, async (req, res) => {
   try {
-    const { name } = req.body;
-    if (!name) {
-      return res.status(400).json({ error: 'missing_fields' });
+    const ownsDb = await db.isDatabaseOwnedByUser(req.session.userId, req.params.id);
+    if (!ownsDb) {
+      return res.status(404).json({ error: 'database_not_found' });
     }
-    db.updateDatabase(req.params.id, name);
+    const name = assertNonEmpty(req.body?.name, 'name');
+    await db.updateDatabase(req.params.id, name);
     res.json({ ok: true });
   } catch (error) {
     console.error('Error updating database', error);
@@ -354,9 +395,13 @@ app.put('/api/user/databases/:id', requireAuth, (req, res) => {
   }
 });
 
-app.delete('/api/user/databases/:id', requireAuth, (req, res) => {
+app.delete('/api/user/databases/:id', requireAuth, async (req, res) => {
   try {
-    db.deleteDatabase(req.params.id);
+    const ownsDb = await db.isDatabaseOwnedByUser(req.session.userId, req.params.id);
+    if (!ownsDb) {
+      return res.status(404).json({ error: 'database_not_found' });
+    }
+    await db.deleteDatabase(req.params.id);
     res.json({ ok: true });
   } catch (error) {
     console.error('Error deleting database', error);
@@ -364,9 +409,13 @@ app.delete('/api/user/databases/:id', requireAuth, (req, res) => {
   }
 });
 
-app.get('/api/user/databases/:id/officials', requireAuth, (req, res) => {
+app.get('/api/user/databases/:id/officials', requireAuth, async (req, res) => {
   try {
-    const officials = db.getOfficials(req.params.id);
+    const ownsDb = await db.isDatabaseOwnedByUser(req.session.userId, req.params.id);
+    if (!ownsDb) {
+      return res.status(404).json({ error: 'database_not_found' });
+    }
+    const officials = await db.getOfficials(req.params.id);
     const mapped = officials.map(o => ({
       id: o.id,
       name: o.name,
@@ -388,10 +437,14 @@ app.get('/api/user/databases/:id/officials', requireAuth, (req, res) => {
   }
 });
 
-app.post('/api/user/databases/:id/officials', requireAuth, (req, res) => {
+app.post('/api/user/databases/:id/officials', requireAuth, async (req, res) => {
   try {
-    const official = req.body;
-    db.createOfficial(official, req.params.id);
+    const ownsDb = await db.isDatabaseOwnedByUser(req.session.userId, req.params.id);
+    if (!ownsDb) {
+      return res.status(404).json({ error: 'database_not_found' });
+    }
+    const official = sanitizeOfficial(req.body || {});
+    await db.createOfficial(official, req.params.id);
     res.json({ ok: true });
   } catch (error) {
     console.error('Error creating official', error);
@@ -399,10 +452,14 @@ app.post('/api/user/databases/:id/officials', requireAuth, (req, res) => {
   }
 });
 
-app.put('/api/user/officials/:id', requireAuth, (req, res) => {
+app.put('/api/user/officials/:id', requireAuth, async (req, res) => {
   try {
-    const official = { ...req.body, id: req.params.id };
-    db.updateOfficial(official);
+    const ownsOfficial = await db.isOfficialOwnedByUser(req.session.userId, req.params.id);
+    if (!ownsOfficial) {
+      return res.status(404).json({ error: 'official_not_found' });
+    }
+    const official = sanitizeOfficial({ ...req.body, id: req.params.id });
+    await db.updateOfficial(official);
     res.json({ ok: true });
   } catch (error) {
     console.error('Error updating official', error);
@@ -410,9 +467,13 @@ app.put('/api/user/officials/:id', requireAuth, (req, res) => {
   }
 });
 
-app.delete('/api/user/officials/:id', requireAuth, (req, res) => {
+app.delete('/api/user/officials/:id', requireAuth, async (req, res) => {
   try {
-    db.deleteOfficial(req.params.id);
+    const ownsOfficial = await db.isOfficialOwnedByUser(req.session.userId, req.params.id);
+    if (!ownsOfficial) {
+      return res.status(404).json({ error: 'official_not_found' });
+    }
+    await db.deleteOfficial(req.params.id);
     res.json({ ok: true });
   } catch (error) {
     console.error('Error deleting official', error);
@@ -420,9 +481,9 @@ app.delete('/api/user/officials/:id', requireAuth, (req, res) => {
   }
 });
 
-app.get('/api/user/templates', requireAuth, (req, res) => {
+app.get('/api/user/templates', requireAuth, async (req, res) => {
   try {
-    const templates = db.getSavedTemplates(req.session.userId);
+    const templates = await db.getSavedTemplates(req.session.userId);
     res.json(templates);
   } catch (error) {
     console.error('Error fetching templates', error);
@@ -430,10 +491,10 @@ app.get('/api/user/templates', requireAuth, (req, res) => {
   }
 });
 
-app.post('/api/user/templates', requireAuth, (req, res) => {
+app.post('/api/user/templates', requireAuth, async (req, res) => {
   try {
-    const template = req.body;
-    db.createTemplate(req.session.userId, template);
+    const template = sanitizeTemplate(req.body || {});
+    await db.createTemplate(req.session.userId, template);
     res.json({ ok: true });
   } catch (error) {
     console.error('Error creating template', error);
@@ -441,9 +502,13 @@ app.post('/api/user/templates', requireAuth, (req, res) => {
   }
 });
 
-app.delete('/api/user/templates/:id', requireAuth, (req, res) => {
+app.delete('/api/user/templates/:id', requireAuth, async (req, res) => {
   try {
-    db.deleteTemplate(req.params.id);
+    const ownsTemplate = await db.isTemplateOwnedByUser(req.session.userId, req.params.id);
+    if (!ownsTemplate) {
+      return res.status(404).json({ error: 'template_not_found' });
+    }
+    await db.deleteTemplate(req.params.id);
     res.json({ ok: true });
   } catch (error) {
     console.error('Error deleting template', error);
@@ -451,9 +516,9 @@ app.delete('/api/user/templates/:id', requireAuth, (req, res) => {
   }
 });
 
-app.get('/api/user/current-template', requireAuth, (req, res) => {
+app.get('/api/user/current-template', requireAuth, async (req, res) => {
   try {
-    const template = db.getCurrentTemplate(req.session.userId);
+    const template = await db.getCurrentTemplate(req.session.userId);
     res.json(template || { subject: '', body: '' });
   } catch (error) {
     console.error('Error fetching current template', error);
@@ -461,10 +526,11 @@ app.get('/api/user/current-template', requireAuth, (req, res) => {
   }
 });
 
-app.post('/api/user/current-template', requireAuth, (req, res) => {
+app.post('/api/user/current-template', requireAuth, async (req, res) => {
   try {
-    const { subject, body } = req.body;
-    db.saveCurrentTemplate(req.session.userId, subject, body);
+    const subject = asString(req.body?.subject, 300);
+    const body = asString(req.body?.body, 20000);
+    await db.saveCurrentTemplate(req.session.userId, subject, body);
     res.json({ ok: true });
   } catch (error) {
     console.error('Error saving current template', error);
@@ -472,9 +538,9 @@ app.post('/api/user/current-template', requireAuth, (req, res) => {
   }
 });
 
-app.get('/api/user/sent-history', requireAuth, (req, res) => {
+app.get('/api/user/sent-history', requireAuth, async (req, res) => {
   try {
-    const history = db.getSentHistory(req.session.userId);
+    const history = await db.getSentHistory(req.session.userId);
     res.json(history);
   } catch (error) {
     console.error('Error fetching sent history', error);
@@ -482,9 +548,9 @@ app.get('/api/user/sent-history', requireAuth, (req, res) => {
   }
 });
 
-app.get('/api/user/settings', requireAuth, (req, res) => {
+app.get('/api/user/settings', requireAuth, async (req, res) => {
   try {
-    const settings = db.getUserSettings(req.session.userId);
+    const settings = await db.getUserSettings(req.session.userId);
     res.json(settings || { active_db_id: null });
   } catch (error) {
     console.error('Error fetching settings', error);
@@ -492,10 +558,16 @@ app.get('/api/user/settings', requireAuth, (req, res) => {
   }
 });
 
-app.post('/api/user/settings', requireAuth, (req, res) => {
+app.post('/api/user/settings', requireAuth, async (req, res) => {
   try {
-    const { activeDbId } = req.body;
-    db.saveUserSettings(req.session.userId, activeDbId);
+    const activeDbId = asString(req.body?.activeDbId, 120);
+    if (activeDbId) {
+      const ownsDb = await db.isDatabaseOwnedByUser(req.session.userId, activeDbId);
+      if (!ownsDb) {
+        return res.status(404).json({ error: 'database_not_found' });
+      }
+    }
+    await db.saveUserSettings(req.session.userId, activeDbId);
     res.json({ ok: true });
   } catch (error) {
     console.error('Error saving settings', error);

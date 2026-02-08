@@ -164,7 +164,7 @@ Tus credenciales OAuth ya están en el proyecto:
 
 ```
 GOOGLE_CLIENT_ID=105444466970-787jho21mvt0ehs2mbtmgioigu6m6ns9.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=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
+GOOGLE_CLIENT_SECRET=YOUR_GOOGLE_CLIENT_SECRET
 ```
 
 ✅ Ya están configuradas en `.env.local` y en Hostinger

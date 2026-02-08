@@ -1,7 +1,9 @@
 import { getSession } from '../lib/session.js';
 import * as db from '../lib/db.js';
+import { attachRequestContext, logError } from '../lib/observability.js';
 
 export default async function handler(req, res) {
+  attachRequestContext(req, res);
   const session = getSession(req);
   if (!session?.userId) {
     return res.status(401).json({ error: 'not_authenticated' });
@@ -15,7 +17,8 @@ export default async function handler(req, res) {
 
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (error) {
-    console.error('Sent history error:', error);
-    res.status(500).json({ error: 'operation_failed', message: error.message });
+    const statusCode = error.statusCode || 500;
+    logError(req, 'Sent history error', error, { route: 'user/sent-history' });
+    res.status(statusCode).json({ error: 'operation_failed', message: error.message, requestId: req.requestId });
   }
 }

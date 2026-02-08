@@ -118,7 +118,7 @@ Si ves un error, te mostrará exactamente dónde falló.
 1. Verifica en `.env.local`:
    ```
    GOOGLE_CLIENT_ID=105444466970-...apps.googleusercontent.com
-   GOOGLE_CLIENT_SECRET=GOCSPX-...
+   GOOGLE_CLIENT_SECRET=YOUR_GOOGLE_CLIENT_SECRET
    ```
 
 2. Ve a Google Cloud Console → Credentials

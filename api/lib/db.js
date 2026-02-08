@@ -1,1 +1,1 @@
-export * from '../../lib/firebase-db.js';
+export * from '../../lib/supabase-db.js';

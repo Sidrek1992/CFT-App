@@ -9,7 +9,7 @@ Ve a: hPanel → **Node.js** → **Environment Variables**
 Copia y pega estas variables (una por una):
 
 ```
-GEMINI_API_KEY=AIzaSyBCCc5EsWW4PdN-F5FHwKpEvPpDJp_iZjM
+GEMINI_API_KEY=YOUR_GEMINI_API_KEY
 ```
 
 ```
@@ -17,7 +17,7 @@ GOOGLE_CLIENT_ID=105444466970-787jho21mvt0ehs2mbtmgioigu6m6ns9.apps.googleuserco
 ```
 
 ```
-GOOGLE_CLIENT_SECRET=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
+GOOGLE_CLIENT_SECRET=YOUR_GOOGLE_CLIENT_SECRET
 ```
 
 ```
@@ -29,15 +29,15 @@ APP_BASE_URL=https://goldenrod-cormorant-780503.hostingersite.com
 ```
 
 ```
-SESSION_SECRET=7f4a8d09e3b2c1a6f5e8d7c4b3a2e1f9d8c7b6a5e4d3c2b1a0f9e8d7c6b5a4e3
+SESSION_SECRET=YOUR_SESSION_SECRET
 ```
 
 ```
-FIREBASE_PROJECT_ID=https://jfrrvxefpboginppevrb.firebase.co
+SUPABASE_URL=https://tu-proyecto.supabase.co
 ```
 
 ```
-FIREBASE_CLIENT_EMAIL=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcnJ2eGVmcGJvZ2lucHBldnJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzODAwNzcsImV4cCI6MjA4NTk1NjA3N30.I1qtybXUDfoudJM_gVKDPmE9M8Lj8RfZ88E3ToaZTP8
+SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
 ```
 
 ```
