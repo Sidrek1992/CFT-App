@@ -4,7 +4,7 @@
 
 Tu aplicación **CFT Correos** está lista para ser desplegada en Hostinger.
 
-**URL de Producción:** https://goldenrod-cormorant-780503.hostingersite.com
+**URL de Producción:** https://myappcftcorreo.vercel.app
 
 ---
 
@@ -56,7 +56,7 @@ Este archivo te guía en 3 pasos simples para poner tu app en producción.
 
 ## 🎯 Tu Objetivo
 
-**Poner la app en producción en:** https://goldenrod-cormorant-780503.hostingersite.com
+**Poner la app en producción en:** https://myappcftcorreo.vercel.app
 
 **Tiempo estimado:** 5-10 minutos
 
@@ -149,4 +149,4 @@ Este archivo te guía en 3 pasos simples para poner tu app en producción.
 
 ---
 
-**¡Tu app estará en https://goldenrod-cormorant-780503.hostingersite.com en 5 minutos!** ⚡
+**¡Tu app estará en https://myappcftcorreo.vercel.app en 5 minutos!** ⚡

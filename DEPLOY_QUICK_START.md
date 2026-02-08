@@ -21,11 +21,11 @@ GOOGLE_CLIENT_SECRET=YOUR_GOOGLE_CLIENT_SECRET
 ```
 
 ```
-GOOGLE_REDIRECT_URI=https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback
+GOOGLE_REDIRECT_URI=https://myappcftcorreo.vercel.app/api/auth/google/callback
 ```
 
 ```
-APP_BASE_URL=https://goldenrod-cormorant-780503.hostingersite.com
+APP_BASE_URL=https://myappcftcorreo.vercel.app
 ```
 
 ```
@@ -52,11 +52,11 @@ NODE_ENV=production
 2. Selecciona tu OAuth Client ID
 3. En **Authorized redirect URIs**, agrega:
    ```
-   https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback
+   https://myappcftcorreo.vercel.app/api/auth/google/callback
    ```
 4. En **Authorized JavaScript origins**, agrega:
    ```
-   https://goldenrod-cormorant-780503.hostingersite.com
+   https://myappcftcorreo.vercel.app
    ```
 5. Guarda
 
@@ -87,12 +87,12 @@ Opción C - Manual (SSH/FTP):
 
 1. **Health Check**:
    ```
-   https://goldenrod-cormorant-780503.hostingersite.com/api/health
+   https://myappcftcorreo.vercel.app/api/health
    ```
    Debe devolver: `{"ok":true}`
 
 2. **Autenticación**:
-   - Abre: https://goldenrod-cormorant-780503.hostingersite.com
+   - Abre: https://myappcftcorreo.vercel.app
    - Click en "Conectar Gmail"
    - Autoriza con Google
    - ✅ ¡Funciona!
@@ -115,7 +115,7 @@ Opción C - Manual (SSH/FTP):
 
 Verifica que en Google Cloud Console tengas exactamente:
 ```
-https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback
+https://myappcftcorreo.vercel.app/api/auth/google/callback
 ```
 
 ### Error "This app's request is invalid"

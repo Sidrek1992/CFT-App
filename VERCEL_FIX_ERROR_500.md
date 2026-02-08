@@ -2,7 +2,7 @@
 
 ## ❌ Problema
 
-Después de hacer login con Google en https://goldenrod-cormorant-780503.hostingersite.com, recibes:
+Después de hacer login con Google en https://myappcftcorreo.vercel.app, recibes:
 ```
 Esta página no funciona
 HTTP ERROR 500
@@ -52,8 +52,8 @@ Verifica que **TODAS** estas variables estén configuradas:
 GEMINI_API_KEY=YOUR_GEMINI_API_KEY
 GOOGLE_CLIENT_ID=105444466970-787jho21mvt0ehs2mbtmgioigu6m6ns9.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=YOUR_GOOGLE_CLIENT_SECRET
-GOOGLE_REDIRECT_URI=https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback
-APP_BASE_URL=https://goldenrod-cormorant-780503.hostingersite.com
+GOOGLE_REDIRECT_URI=https://myappcftcorreo.vercel.app/api/auth/google/callback
+APP_BASE_URL=https://myappcftcorreo.vercel.app
 SESSION_SECRET=7f4a8d09e3b2c1a6f5e8d7c4b3a2e1f9d8c7b6a5e4d3c2b1a0f9e8d7c6b5a4e3
 FIREBASE_PROJECT_ID=https://jfrrvxefpboginppevrb.firebase.co
 FIREBASE_CLIENT_EMAIL=YOUR_SUPABASE_SERVICE_ROLE_KEY
@@ -101,7 +101,7 @@ Espera a que el deploy termine (usualmente 1-2 minutos).
 ### 2. Probar Health Check
 
 ```bash
-curl https://goldenrod-cormorant-780503.hostingersite.com/api/health
+curl https://myappcftcorreo.vercel.app/api/health
 ```
 
 Debe devolver:
@@ -111,7 +111,7 @@ Debe devolver:
 
 ### 3. Probar Login
 
-1. Abre: https://goldenrod-cormorant-780503.hostingersite.com
+1. Abre: https://myappcftcorreo.vercel.app
 2. Abre la consola del navegador (F12)
 3. Click en "Conectar Gmail"
 4. Autoriza con Google
@@ -120,7 +120,7 @@ Debe devolver:
 ### 4. Verificar Sesión
 
 Después del login, verifica que la cookie se haya creado:
-- F12 → Application → Cookies → https://goldenrod-cormorant-780503.hostingersite.com
+- F12 → Application → Cookies → https://myappcftcorreo.vercel.app
 - Debe haber una cookie llamada `cft_session`
 
 ---
@@ -205,7 +205,7 @@ Las cookies ahora están configuradas correctamente para producción:
 **Causa:** Configuración de dominio incorrecta
 
 **Solución:**
-1. Verifica que `APP_BASE_URL` en Vercel sea: `https://goldenrod-cormorant-780503.hostingersite.com`
+1. Verifica que `APP_BASE_URL` en Vercel sea: `https://myappcftcorreo.vercel.app`
 2. No debe tener slash al final
 3. Debe ser HTTPS, no HTTP
 

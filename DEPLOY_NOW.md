@@ -1,6 +1,6 @@
 # ⚡ DEPLOY AHORA - 3 Pasos Simples
 
-## Tu app está en: https://goldenrod-cormorant-780503.hostingersite.com
+## Tu app está en: https://myappcftcorreo.vercel.app
 
 ---
 
@@ -31,11 +31,11 @@ https://console.cloud.google.com/apis/credentials
 1. Click en tu OAuth Client ID
 2. En **Authorized redirect URIs**, agrega:
    ```
-   https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback
+   https://myappcftcorreo.vercel.app/api/auth/google/callback
    ```
 3. En **Authorized JavaScript origins**, agrega:
    ```
-   https://goldenrod-cormorant-780503.hostingersite.com
+   https://myappcftcorreo.vercel.app
    ```
 4. SAVE
 
@@ -60,13 +60,13 @@ https://console.cloud.google.com/apis/credentials
 ### 1. Health Check:
 Abre en tu navegador:
 ```
-https://goldenrod-cormorant-780503.hostingersite.com/api/health
+https://myappcftcorreo.vercel.app/api/health
 ```
 Debe mostrar: `{"ok":true}`
 
 ### 2. Test Completo:
 ```
-https://goldenrod-cormorant-780503.hostingersite.com
+https://myappcftcorreo.vercel.app
 ```
 1. Click en "Conectar Gmail"
 2. Autoriza con Google
@@ -83,7 +83,7 @@ https://goldenrod-cormorant-780503.hostingersite.com
 ### Error de OAuth
 → Verifica la URL en Google Cloud Console:
 ```
-https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback
+https://myappcftcorreo.vercel.app/api/auth/google/callback
 ```
 → Espera 5 minutos
 → Vuelve a intentar
