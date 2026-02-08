@@ -1,7 +1,6 @@
 
 import React, { Suspense, lazy, useState, useEffect, useRef, useMemo } from 'react';
 import { FileEdit, Send, Plus, Database, LayoutDashboard, Upload, Download, AlertTriangle, X, RefreshCw, SkipForward, Trash2, FileSpreadsheet, Menu, Briefcase, CheckCircle2, Settings, ChevronDown, FolderPlus, PenLine, FolderInput, FolderOutput } from 'lucide-react';
-import * as XLSX from 'xlsx';
 import { Official, EmailTemplate, ViewState, ToastNotification, SavedTemplate, Gender, SortOption, FilterCriteria, OfficialDatabase } from './types';
 import { OfficialForm } from './components/OfficialForm';
 import { ToastContainer } from './components/ToastContainer';
@@ -10,6 +9,14 @@ const OfficialList = lazy(() => import('./components/OfficialList').then((mod) =
 const TemplateEditor = lazy(() => import('./components/TemplateEditor').then((mod) => ({ default: mod.TemplateEditor })));
 const Generator = lazy(() => import('./components/Generator').then((mod) => ({ default: mod.Generator })));
 const Dashboard = lazy(() => import('./components/Dashboard').then((mod) => ({ default: mod.Dashboard })));
+
+let xlsxModulePromise: Promise<any> | null = null;
+const getXlsxModule = async () => {
+  if (!xlsxModulePromise) {
+    xlsxModulePromise = import('https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs').then((mod) => mod.default || mod);
+  }
+  return xlsxModulePromise;
+};
 
 // Safe ID generator that works in non-secure contexts (http) and fast loops
 let idCounter = 0;
@@ -389,8 +396,9 @@ export default function App() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       try {
+        const XLSX = await getXlsxModule();
         const buffer = evt.target?.result;
         const wb = XLSX.read(buffer, { type: 'array' });
         const wsname = wb.SheetNames[0];
@@ -503,7 +511,7 @@ export default function App() {
       setImportConflict(null);
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
       const dataToExport = officials.map(o => ({
           Nombre: o.name,
           Correo: o.email,
@@ -517,6 +525,7 @@ export default function App() {
           CorreoJefatura: o.bossEmail
       }));
 
+      const XLSX = await getXlsxModule();
       const ws = XLSX.utils.json_to_sheet(dataToExport);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, activeDatabase.name.substring(0, 30));
