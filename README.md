@@ -99,7 +99,7 @@ La app no incluye secretos en el repositorio. Debes definirlos en `.env.local` y
 ## 🌐 Deployment en Vercel
 
 ### URL de Produccion
-**https://tu-app.vercel.app**
+**https://myappcftcorreo.vercel.app**
 
 ### Deployment
 
@@ -117,8 +117,8 @@ En Vercel -> **Project Settings -> Environment Variables**, agrega:
 - `VITE_GEMINI_API_KEY`
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
-- `GOOGLE_REDIRECT_URI` = `https://tu-app.vercel.app/api/auth/google/callback`
-- `APP_BASE_URL` = `https://tu-app.vercel.app`
+- `GOOGLE_REDIRECT_URI` = `https://myappcftcorreo.vercel.app/api/auth/google/callback`
+- `APP_BASE_URL` = `https://myappcftcorreo.vercel.app`
 - `SESSION_SECRET`
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
@@ -130,6 +130,6 @@ Ver `VERCEL_SETUP.md` para instrucciones detalladas.
 
 ```bash
 # Health check
-curl https://tu-app.vercel.app/api/health
+curl https://myappcftcorreo.vercel.app/api/health
 # Debe retornar: {"ok":true}
 ```
