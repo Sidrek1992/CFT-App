@@ -53,8 +53,10 @@ export default function AppRoot() {
       if (localDbs) {
         const parsedDbs = JSON.parse(localDbs);
         for (const db of parsedDbs) {
+          if (!db?.id || !db?.name) continue;
           await userService.createDatabase(db.id, db.name);
-          for (const official of db.officials) {
+          const officials = Array.isArray(db.officials) ? db.officials : [];
+          for (const official of officials) {
             await userService.createOfficial(db.id, official);
           }
         }

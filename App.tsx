@@ -1,14 +1,15 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { Suspense, lazy, useState, useEffect, useRef, useMemo } from 'react';
 import { FileEdit, Send, Plus, Database, LayoutDashboard, Upload, Download, AlertTriangle, X, RefreshCw, SkipForward, Trash2, FileSpreadsheet, Menu, Briefcase, CheckCircle2, Settings, ChevronDown, FolderPlus, PenLine, FolderInput, FolderOutput } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Official, EmailTemplate, ViewState, ToastNotification, SavedTemplate, Gender, SortOption, FilterCriteria, OfficialDatabase } from './types';
 import { OfficialForm } from './components/OfficialForm';
-import { OfficialList } from './components/OfficialList';
-import { TemplateEditor } from './components/TemplateEditor';
-import { Generator } from './components/Generator';
-import { Dashboard } from './components/Dashboard';
 import { ToastContainer } from './components/ToastContainer';
+
+const OfficialList = lazy(() => import('./components/OfficialList').then((mod) => ({ default: mod.OfficialList })));
+const TemplateEditor = lazy(() => import('./components/TemplateEditor').then((mod) => ({ default: mod.TemplateEditor })));
+const Generator = lazy(() => import('./components/Generator').then((mod) => ({ default: mod.Generator })));
+const Dashboard = lazy(() => import('./components/Dashboard').then((mod) => ({ default: mod.Dashboard })));
 
 // Safe ID generator that works in non-secure contexts (http) and fast loops
 let idCounter = 0;
@@ -26,6 +27,34 @@ const parseGender = (val: any): Gender => {
     if (['male', 'masculino', 'hombre', 'm', 'varon', 'caballero', 'h', 'masc', 'senor', 'sr', 'don'].includes(str)) return Gender.Male;
     if (['female', 'femenino', 'mujer', 'f', 'sra', 'srta', 'dama', 'fem', 'senora', 'dona'].includes(str)) return Gender.Female;
     return Gender.Unspecified;
+};
+
+const safeParseJson = <T,>(raw: string | null, fallback: T): T => {
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+};
+
+const createDefaultDatabase = (officials: Official[] = INITIAL_OFFICIALS_DATA): OfficialDatabase => ({
+  id: generateId(),
+  name: 'Funcionarios CFT',
+  officials: Array.isArray(officials) ? officials : [],
+  createdAt: Date.now(),
+});
+
+const sanitizeDatabases = (input: unknown): OfficialDatabase[] => {
+  if (!Array.isArray(input)) return [];
+  return input
+    .filter((db) => db && typeof db === 'object')
+    .map((db: any) => ({
+      id: String(db.id || generateId()),
+      name: String(db.name || 'Base sin nombre'),
+      officials: Array.isArray(db.officials) ? db.officials : [],
+      createdAt: Number(db.createdAt) || Date.now(),
+    }));
 };
 
 const INITIAL_OFFICIALS_DATA: Official[] = [
@@ -57,27 +86,20 @@ export default function App() {
   
   // Databases State (Migration Logic Included)
   const [databases, setDatabases] = useState<OfficialDatabase[]>(() => {
-    const savedDbs = localStorage.getItem('app_databases');
-    if (savedDbs) {
-        return JSON.parse(savedDbs);
+    const savedDbs = sanitizeDatabases(safeParseJson(localStorage.getItem('app_databases'), []));
+    if (savedDbs.length > 0) {
+      return savedDbs;
     }
     
     // Migration: If no DBs exist but old officials_db exists, migrate it.
-    const oldOfficials = localStorage.getItem('officials_db');
-    const initialData = oldOfficials ? JSON.parse(oldOfficials) : INITIAL_OFFICIALS_DATA;
-    
-    const defaultDb: OfficialDatabase = {
-        id: generateId(),
-        name: 'Funcionarios CFT',
-        officials: initialData,
-        createdAt: Date.now()
-    };
-    return [defaultDb];
+    const initialData = safeParseJson(localStorage.getItem('officials_db'), INITIAL_OFFICIALS_DATA);
+    return [createDefaultDatabase(Array.isArray(initialData) ? initialData : INITIAL_OFFICIALS_DATA)];
   });
 
   const [activeDbId, setActiveDbId] = useState<string>(() => {
       const savedActive = localStorage.getItem('active_db_id');
-      return savedActive || (databases.length > 0 ? databases[0].id : '');
+      const exists = savedActive ? databases.some((db) => db.id === savedActive) : false;
+      return exists ? savedActive as string : (databases[0]?.id || '');
   });
 
   // Derived State: The officials of the currently selected database
@@ -91,19 +113,16 @@ export default function App() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   
   const [template, setTemplate] = useState<EmailTemplate>(() => {
-    const saved = localStorage.getItem('current_template');
-    return saved ? JSON.parse(saved) : { subject: '', body: 'Estimado/a {nombre},\n\nEscriba aquí el contenido del correo...\n\nAtentamente,\n[Su Nombre]' };
+    return safeParseJson(localStorage.getItem('current_template'), { subject: '', body: 'Estimado/a {nombre},\n\nEscriba aquí el contenido del correo...\n\nAtentamente,\n[Su Nombre]' });
   });
 
   const [savedTemplates, setSavedTemplates] = useState<SavedTemplate[]>(() => {
-    const saved = localStorage.getItem('saved_templates');
-    return saved ? JSON.parse(saved) : [];
+    return safeParseJson(localStorage.getItem('saved_templates'), []);
   });
   
   const [files, setFiles] = useState<File[]>([]);
   const [sentHistory, setSentHistory] = useState<string[]>(() => {
-     const saved = localStorage.getItem('sent_history');
-     return saved ? JSON.parse(saved) : [];
+     return safeParseJson(localStorage.getItem('sent_history'), []);
   });
   
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
@@ -141,6 +160,18 @@ export default function App() {
   }, [databases, activeDatabase]);
 
   useEffect(() => { localStorage.setItem('active_db_id', activeDbId); }, [activeDbId]);
+  useEffect(() => {
+    if (databases.length === 0) {
+      const fallback = createDefaultDatabase();
+      setDatabases([fallback]);
+      setActiveDbId(fallback.id);
+      return;
+    }
+
+    if (!databases.some((db) => db.id === activeDbId)) {
+      setActiveDbId(databases[0].id);
+    }
+  }, [databases, activeDbId]);
   useEffect(() => { localStorage.setItem('current_template', JSON.stringify(template)); }, [template]);
   useEffect(() => { localStorage.setItem('saved_templates', JSON.stringify(savedTemplates)); }, [savedTemplates]);
   useEffect(() => { localStorage.setItem('sent_history', JSON.stringify(sentHistory)); }, [sentHistory]);
@@ -531,8 +562,16 @@ export default function App() {
               } 
               // Handle new backups
               else if (json.databases) {
-                  setDatabases(json.databases);
-                  if (json.activeDbId) setActiveDbId(json.activeDbId);
+                  const importedDatabases = sanitizeDatabases(json.databases);
+                  if (importedDatabases.length === 0) {
+                      addToast('El respaldo no contiene bases de datos válidas', 'error');
+                      return;
+                  }
+
+                  setDatabases(importedDatabases);
+                  const importedActive = typeof json.activeDbId === 'string' ? json.activeDbId : '';
+                  const hasImportedActive = importedDatabases.some((db) => db.id === importedActive);
+                  setActiveDbId(hasImportedActive ? importedActive : importedDatabases[0].id);
               }
               
               if (json.template) setTemplate(json.template);
@@ -697,6 +736,7 @@ export default function App() {
               {/* View Content */}
               <div className="max-w-7xl mx-auto">
                   
+                  <Suspense fallback={<div className="bg-white border border-slate-200 rounded-xl p-6 text-sm text-slate-500">Cargando vista...</div>}>
                   {view === 'dashboard' && (
                       <Dashboard 
                         officials={officials} 
@@ -810,6 +850,7 @@ export default function App() {
                           />
                        </div>
                   )}
+                  </Suspense>
               </div>
           </div>
       </main>

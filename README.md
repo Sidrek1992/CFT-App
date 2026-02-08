@@ -19,15 +19,16 @@ View your app in AI Studio: https://ai.studio/apps/drive/1GIJBjciX20cFpLqJ70Y9W1
 
 2. **Configurar variables de entorno**:
    - Copia el archivo `.env.local.example` a `.env.local`
-   - Todas las credenciales ya están configuradas y listas para usar
-   - El archivo `.env.local` incluye:
-     - ✅ **GEMINI_API_KEY**: API key de Gemini AI (ya configurada)
-     - ✅ **GOOGLE_CLIENT_ID**: ID de cliente OAuth de Google (ya configurado)
-     - ✅ **GOOGLE_CLIENT_SECRET**: Secret de cliente OAuth de Google (ya configurado)
-     - ✅ **FIREBASE_PROJECT_ID**: ID de tu proyecto Firebase
-     - ✅ **FIREBASE_CLIENT_EMAIL**: Email de la service account
-     - ✅ **FIREBASE_PRIVATE_KEY**: Private key de la service account
-     - ✅ **SESSION_SECRET**: Secreto para sesiones (ya configurado)
+   - Define credenciales reales en tu entorno (nunca en el repo)
+   - Variables requeridas:
+     - `VITE_GEMINI_API_KEY`
+     - `GOOGLE_CLIENT_ID`
+     - `GOOGLE_CLIENT_SECRET`
+     - `GOOGLE_REDIRECT_URI`
+     - `APP_BASE_URL`
+     - `SESSION_SECRET`
+     - `SUPABASE_URL`
+     - `SUPABASE_SERVICE_ROLE_KEY`
 
 3. **Ejecutar la aplicación**:
    ```bash
@@ -52,9 +53,9 @@ View your app in AI Studio: https://ai.studio/apps/drive/1GIJBjciX20cFpLqJ70Y9W1
 
 ## Características de la Aplicación
 
-### 🔐 Sistema Multi-Usuario con Firebase
+### 🔐 Sistema Multi-Usuario con Supabase
 
-Esta aplicación utiliza Gmail API para autenticación y envío de correos a través de un backend Node/Express con **Firebase Firestore**.
+Esta aplicación utiliza Gmail API para autenticación y envío de correos a través de un backend Node/Express con **Supabase**.
 
 #### ✨ Funcionalidades principales:
 
@@ -67,11 +68,11 @@ Esta aplicación utiliza Gmail API para autenticación y envío de correos a tra
 - 📎 **Adjuntos**: Soporte para archivos adjuntos
 - 📈 **Historial**: Seguimiento de correos enviados
 
-### 🔧 Configuración (Ya lista para usar)
+### 🔧 Configuración
 
-Todas las credenciales y configuraciones ya están incluidas en el archivo `.env.local`:
+La app no incluye secretos en el repositorio. Debes definirlos en `.env.local` y en tu plataforma de deploy.
 
-- ✅ **Firebase**: Firestore listo y configurado
+- ✅ **Supabase**: Base de datos relacional y persistencia multiusuario
 - ✅ **Google OAuth**: Autenticación configurada con Gmail API
 - ✅ **Gemini AI**: API key configurada para generación de contenido
 - ✅ **Sesiones**: Configuración de seguridad lista
@@ -82,13 +83,13 @@ Todas las credenciales y configuraciones ya están incluidas en el archivo `.env
 1. Abre `http://localhost:3000`
 2. Haz clic en "Conectar Gmail"
 3. Autentica con tu cuenta de Google
-4. Tu perfil de usuario se crea automáticamente en Firebase
+4. Tu perfil de usuario se crea automáticamente en Supabase
 5. Los datos de localStorage se migran a tu cuenta (solo una vez)
 
 #### Arquitectura:
 - **Frontend**: React + TypeScript + Vite
 - **Backend**: Serverless Functions en Vercel (`/api/*`)
-- **Base de datos**: Firebase Firestore
+- **Base de datos**: Supabase
 - **APIs**: Gmail API + Gemini AI
 - **Autenticación**: Google OAuth 2.0
 - **Hosting**: Vercel
@@ -113,15 +114,14 @@ Todas las credenciales y configuraciones ya están incluidas en el archivo `.env
 
 En Vercel -> **Project Settings -> Environment Variables**, agrega:
 
-- `GEMINI_API_KEY`
+- `VITE_GEMINI_API_KEY`
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
 - `GOOGLE_REDIRECT_URI` = `https://tu-app.vercel.app/api/auth/google/callback`
 - `APP_BASE_URL` = `https://tu-app.vercel.app`
 - `SESSION_SECRET`
-- `FIREBASE_PROJECT_ID`
-- `FIREBASE_CLIENT_EMAIL`
-- `FIREBASE_PRIVATE_KEY`
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
 - `NODE_ENV` = `production`
 
 Ver `VERCEL_SETUP.md` para instrucciones detalladas.

@@ -51,14 +51,14 @@ https://vercel.com/[tu-usuario]/myappcftcorreo/settings/environment-variables
 ### Variables Requeridas (9 total):
 
 ```env
-GEMINI_API_KEY=AIzaSyBCCc5EsWW4PdN-F5FHwKpEvPpDJp_iZjM
+GEMINI_API_KEY=YOUR_GEMINI_API_KEY
 GOOGLE_CLIENT_ID=105444466970-787jho21mvt0ehs2mbtmgioigu6m6ns9.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=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
+GOOGLE_CLIENT_SECRET=YOUR_GOOGLE_CLIENT_SECRET
 GOOGLE_REDIRECT_URI=https://goldenrod-cormorant-780503.hostingersite.com/api/auth/google/callback
 APP_BASE_URL=https://goldenrod-cormorant-780503.hostingersite.com
 SESSION_SECRET=7f4a8d09e3b2c1a6f5e8d7c4b3a2e1f9d8c7b6a5e4d3c2b1a0f9e8d7c6b5a4e3
 FIREBASE_PROJECT_ID=https://jfrrvxefpboginppevrb.firebase.co
-FIREBASE_CLIENT_EMAIL=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcnJ2eGVmcGJvZ2lucHBldnJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzODAwNzcsImV4cCI6MjA4NTk1NjA3N30.I1qtybXUDfoudJM_gVKDPmE9M8Lj8RfZ88E3ToaZTP8
+FIREBASE_CLIENT_EMAIL=YOUR_SUPABASE_SERVICE_ROLE_KEY
 NODE_ENV=production
 ```
 
@@ -151,7 +151,7 @@ CFT CORREOS/
 │   └── index.js                    # API serverless para Vercel
 ├── server/
 │   ├── index.js                    # Servidor local (desarrollo)
-│   └── firebaseClient.js           # Cliente de Firebase
+│   └── dbClient.js                 # Cliente de Supabase
 ├── components/                      # Componentes React
 ├── services/                        # Servicios (Gmail, Gemini, User)
 ├── vercel.json                     # Config de Vercel

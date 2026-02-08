@@ -3,7 +3,11 @@ import { Gender } from "../types";
 
 // Helper to get AI instance safely
 const getAiClient = () => {
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('missing_gemini_api_key');
+  }
+  return new GoogleGenAI({ apiKey });
 };
 
 interface GenderPrediction {

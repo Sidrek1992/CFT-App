@@ -1,6 +1,22 @@
 import type { OfficialDatabase, SavedTemplate, EmailTemplate } from '../types';
 
 const API_BASE = '/api/user';
+const REQUEST_TIMEOUT_MS = 15000;
+
+type ApiErrorCode = 'not_authenticated' | 'not_found' | 'validation_failed' | 'rate_limit' | 'server_error' | 'network_error';
+
+export class ApiError extends Error {
+  code: ApiErrorCode;
+  status: number;
+  requestId?: string;
+
+  constructor(message: string, code: ApiErrorCode, status = 0, requestId?: string) {
+    super(message);
+    this.code = code;
+    this.status = status;
+    this.requestId = requestId;
+  }
+}
 
 const safeJson = async (response: Response) => {
   try {
@@ -10,150 +26,145 @@ const safeJson = async (response: Response) => {
   }
 };
 
+const mapApiError = (status: number, payload: any) => {
+  const requestId = typeof payload?.requestId === 'string' ? payload.requestId : undefined;
+  const message = typeof payload?.message === 'string' ? payload.message : (typeof payload?.error === 'string' ? payload.error : 'request_failed');
+
+  if (status === 401) return new ApiError(message, 'not_authenticated', status, requestId);
+  if (status === 404) return new ApiError(message, 'not_found', status, requestId);
+  if (status === 400) return new ApiError(message, 'validation_failed', status, requestId);
+  if (status === 429) return new ApiError(message, 'rate_limit', status, requestId);
+  return new ApiError(message, 'server_error', status, requestId);
+};
+
+const request = async (path: string, init: RequestInit = {}) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(path, {
+      credentials: 'include',
+      ...init,
+      signal: controller.signal,
+    });
+
+    const payload = await safeJson(response);
+    if (!response.ok) {
+      throw mapApiError(response.status, payload);
+    }
+
+    return payload;
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      throw new ApiError('request_timeout', 'network_error');
+    }
+    if (error instanceof ApiError) throw error;
+    throw new ApiError('network_error', 'network_error');
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 // Databases
 export const fetchDatabases = async (): Promise<OfficialDatabase[]> => {
-  const response = await fetch(`${API_BASE}/databases`, { credentials: 'include' });
-  if (!response.ok) throw new Error('fetch_failed');
-  return response.json();
+  return request(`${API_BASE}/databases`);
 };
 
 export const createDatabase = async (id: string, name: string) => {
-  const response = await fetch(`${API_BASE}/databases`, {
+  return request(`${API_BASE}/databases`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
     body: JSON.stringify({ id, name }),
   });
-  if (!response.ok) throw new Error('create_failed');
-  return response.json();
 };
 
 export const updateDatabase = async (id: string, name: string) => {
-  const response = await fetch(`${API_BASE}/databases/${id}`, {
+  return request(`${API_BASE}/databases/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
     body: JSON.stringify({ name }),
   });
-  if (!response.ok) throw new Error('update_failed');
-  return response.json();
 };
 
 export const deleteDatabase = async (id: string) => {
-  const response = await fetch(`${API_BASE}/databases/${id}`, {
+  return request(`${API_BASE}/databases/${id}`, {
     method: 'DELETE',
-    credentials: 'include',
   });
-  if (!response.ok) throw new Error('delete_failed');
-  return response.json();
 };
 
 // Officials
 export const fetchOfficials = async (databaseId: string) => {
-  const response = await fetch(`${API_BASE}/databases/${databaseId}/officials`, {
-    credentials: 'include',
-  });
-  if (!response.ok) throw new Error('fetch_failed');
-  return response.json();
+  return request(`${API_BASE}/databases/${databaseId}/officials`);
 };
 
 export const createOfficial = async (databaseId: string, official: any) => {
-  const response = await fetch(`${API_BASE}/databases/${databaseId}/officials`, {
+  return request(`${API_BASE}/databases/${databaseId}/officials`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
     body: JSON.stringify(official),
   });
-  if (!response.ok) throw new Error('create_failed');
-  return response.json();
 };
 
 export const updateOfficial = async (official: any) => {
-  const response = await fetch(`${API_BASE}/officials/${official.id}`, {
+  return request(`${API_BASE}/officials/${official.id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
     body: JSON.stringify(official),
   });
-  if (!response.ok) throw new Error('update_failed');
-  return response.json();
 };
 
 export const deleteOfficial = async (id: string) => {
-  const response = await fetch(`${API_BASE}/officials/${id}`, {
+  return request(`${API_BASE}/officials/${id}`, {
     method: 'DELETE',
-    credentials: 'include',
   });
-  if (!response.ok) throw new Error('delete_failed');
-  return response.json();
 };
 
 // Templates
 export const fetchTemplates = async (): Promise<SavedTemplate[]> => {
-  const response = await fetch(`${API_BASE}/templates`, { credentials: 'include' });
-  if (!response.ok) throw new Error('fetch_failed');
-  return response.json();
+  return request(`${API_BASE}/templates`);
 };
 
 export const createTemplate = async (template: SavedTemplate) => {
-  const response = await fetch(`${API_BASE}/templates`, {
+  return request(`${API_BASE}/templates`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
     body: JSON.stringify(template),
   });
-  if (!response.ok) throw new Error('create_failed');
-  return response.json();
 };
 
 export const deleteTemplate = async (id: string) => {
-  const response = await fetch(`${API_BASE}/templates/${id}`, {
+  return request(`${API_BASE}/templates/${id}`, {
     method: 'DELETE',
-    credentials: 'include',
   });
-  if (!response.ok) throw new Error('delete_failed');
-  return response.json();
 };
 
 // Current Template
 export const fetchCurrentTemplate = async (): Promise<EmailTemplate> => {
-  const response = await fetch(`${API_BASE}/current-template`, { credentials: 'include' });
-  if (!response.ok) throw new Error('fetch_failed');
-  return response.json();
+  return request(`${API_BASE}/current-template`);
 };
 
 export const saveCurrentTemplate = async (subject: string, body: string) => {
-  const response = await fetch(`${API_BASE}/current-template`, {
+  return request(`${API_BASE}/current-template`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
     body: JSON.stringify({ subject, body }),
   });
-  if (!response.ok) throw new Error('save_failed');
-  return response.json();
 };
 
 // Sent History
 export const fetchSentHistory = async (): Promise<string[]> => {
-  const response = await fetch(`${API_BASE}/sent-history`, { credentials: 'include' });
-  if (!response.ok) throw new Error('fetch_failed');
-  return response.json();
+  return request(`${API_BASE}/sent-history`);
 };
 
 // Settings
 export const fetchSettings = async () => {
-  const response = await fetch(`${API_BASE}/settings`, { credentials: 'include' });
-  if (!response.ok) throw new Error('fetch_failed');
-  return response.json();
+  return request(`${API_BASE}/settings`);
 };
 
 export const saveSettings = async (activeDbId: string) => {
-  const response = await fetch(`${API_BASE}/settings`, {
+  return request(`${API_BASE}/settings`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
     body: JSON.stringify({ activeDbId }),
   });
-  if (!response.ok) throw new Error('save_failed');
-  return response.json();
 };

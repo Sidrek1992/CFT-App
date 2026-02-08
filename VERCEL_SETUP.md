@@ -14,9 +14,8 @@ Debes configurar las siguientes variables en el Dashboard de Vercel (Settings ->
 | `GOOGLE_REDIRECT_URI` | `https://tu-app.vercel.app/api/auth/google/callback` | Redirect URI para OAuth |
 | `APP_BASE_URL` | `https://tu-app.vercel.app` | URL base de la aplicación |
 | `SESSION_SECRET` | `TU_SESSION_SECRET` | Secret para sesiones |
-| `FIREBASE_PROJECT_ID` | `TU_FIREBASE_PROJECT_ID` | ID del proyecto Firebase |
-| `FIREBASE_CLIENT_EMAIL` | `firebase-adminsdk-xxx@tu-proyecto.iam.gserviceaccount.com` | Email de service account |
-| `FIREBASE_PRIVATE_KEY` | `-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n` | Private key (con \n escapados) |
+| `SUPABASE_URL` | `https://xxxx.supabase.co` | URL del proyecto Supabase |
+| `SUPABASE_SERVICE_ROLE_KEY` | `TU_SUPABASE_SERVICE_ROLE_KEY` | Service role key para backend |
 
 ## 2. Comandos de Build
 
