@@ -16,6 +16,9 @@ export default defineConfig(() => {
         },
       },
       plugins: [react()],
+      build: {
+        chunkSizeWarningLimit: 1500,
+      },
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
