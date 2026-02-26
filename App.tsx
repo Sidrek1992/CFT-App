@@ -673,17 +673,28 @@ export default function App() {
     };
 
     const handleLogout = async () => {
+        console.info("Logout initiated...");
         try {
-            await logout();
-            // Clear session-scoped localStorage keys so the next user starts clean
-            localStorage.removeItem('active_db_id');
-            localStorage.removeItem('current_template');
-            localStorage.removeItem('saved_templates');
-            localStorage.removeItem('officialFormDraft');
-            // Note: 'theme' is intentionally kept — it is a device preference, not user data
+            // Attempt clean sign out
+            await logout().catch(err => console.warn("Firebase signOut error, proceeding with local cleanup", err));
+
+            // Clear ALL local storage to avoid state persistence bugs
+            localStorage.clear();
+            sessionStorage.clear();
+
+            // Explicitly reset user state
+            setUser(null);
+
+            console.info("Logout complete, redirecting...");
+
+            // Force reload to ensure all app state is wiped and we hit the Login guard
+            window.location.href = window.location.origin;
         } catch (error) {
-            console.error("Error al cerrar sesión", error);
-            addToast("Error al cerrar sesión", "error");
+            console.error("Critical error during logout", error);
+            // Emergency cleanup
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.href = window.location.origin;
         }
     };
 
@@ -849,12 +860,29 @@ export default function App() {
                             <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">v2.0 Campaigns</span>
                         </div>
                         <div className="flex items-center justify-between gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-white/10">
-                            <div className="flex flex-col overflow-hidden">
-                                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">{user.email}</span>
-                                <span className="text-[10px] text-slate-500 dark:text-slate-500 uppercase">Admin</span>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setIsDarkMode(!isDarkMode)}
+                                    className="p-2 text-slate-500 hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400 hover:bg-slate-200 dark:hover:bg-white/5 rounded-xl transition-colors"
+                                    title={isDarkMode ? "Modo Claro" : "Modo Oscuro"}
+                                >
+                                    {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                                </button>
+                                <div className="flex flex-col overflow-hidden">
+                                    <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300 truncate max-w-[100px]">{user.email}</span>
+                                    <span className="text-[10px] text-slate-500 dark:text-slate-500 uppercase">Admin</span>
+                                </div>
                             </div>
-                            <button onClick={handleLogout} className="p-2 text-slate-600 dark:text-slate-400 hover:text-red-400 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors" title="Cerrar Sesión">
-                                <LogOut className="w-4 h-4" />
+                            <button
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleLogout();
+                                }}
+                                className="p-2.5 text-slate-600 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-all border border-transparent hover:border-red-200 dark:hover:border-red-800"
+                                title="Cerrar Sesión"
+                            >
+                                <LogOut className="w-5 h-5" />
                             </button>
                         </div>
                     </div>
@@ -879,7 +907,15 @@ export default function App() {
                         >
                             {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                         </button>
-                        <button onClick={handleLogout} className="p-2 text-slate-600 dark:text-slate-400 hover:text-red-400 hover:bg-slate-900/10 dark:hover:bg-white/10 rounded-lg transition-colors" title="Cerrar Sesión">
+                        <button
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleLogout();
+                            }}
+                            className="p-2 text-slate-600 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-all"
+                            title="Cerrar Sesión"
+                        >
                             <LogOut className="w-5 h-5" />
                         </button>
                         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-slate-700 dark:text-slate-300 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg transition-colors">
