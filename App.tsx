@@ -673,28 +673,18 @@ export default function App() {
     };
 
     const handleLogout = async () => {
-        console.info("Logout initiated...");
         try {
-            // Attempt clean sign out
-            await logout().catch(err => console.warn("Firebase signOut error, proceeding with local cleanup", err));
-
-            // Clear ALL local storage to avoid state persistence bugs
-            localStorage.clear();
-            sessionStorage.clear();
-
-            // Explicitly reset user state
-            setUser(null);
-
-            console.info("Logout complete, redirecting...");
-
-            // Force reload to ensure all app state is wiped and we hit the Login guard
-            window.location.href = window.location.origin;
+            await logout();
+            // Clear session-scoped keys (theme kept — it's a device preference)
+            localStorage.removeItem('active_db_id');
+            localStorage.removeItem('current_template');
+            localStorage.removeItem('saved_templates');
+            localStorage.removeItem('officialFormDraft');
+            sessionStorage.removeItem('gmail_access_token');
+            // onAuthStateChanged fires → setUser(null) → <Login /> renders automatically
         } catch (error) {
-            console.error("Critical error during logout", error);
-            // Emergency cleanup
-            localStorage.clear();
-            sessionStorage.clear();
-            window.location.href = window.location.origin;
+            console.error("Error al cerrar sesión", error);
+            addToast("Error al cerrar sesión", "error");
         }
     };
 
