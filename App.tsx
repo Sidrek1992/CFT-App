@@ -675,7 +675,12 @@ export default function App() {
     const handleLogout = async () => {
         try {
             await logout();
-            addToast("Sesión cerrada exitosamente", "success");
+            // Clear session-scoped localStorage keys so the next user starts clean
+            localStorage.removeItem('active_db_id');
+            localStorage.removeItem('current_template');
+            localStorage.removeItem('saved_templates');
+            localStorage.removeItem('officialFormDraft');
+            // Note: 'theme' is intentionally kept — it is a device preference, not user data
         } catch (error) {
             console.error("Error al cerrar sesión", error);
             addToast("Error al cerrar sesión", "error");
@@ -788,7 +793,7 @@ export default function App() {
                     </p>
                 </div>
 
-                <nav className="flex-1 p-4 space-y-2.5 overflow-y-auto custom-scrollbar">
+                <nav className="flex-1 min-h-0 p-4 space-y-2.5 overflow-y-auto custom-scrollbar">
                     <button
                         onClick={() => handleNavigate('dashboard')}
                         className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'dashboard' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
@@ -826,7 +831,7 @@ export default function App() {
                     </button>
                 </nav>
 
-                <div className="p-6 mt-auto">
+                <div className="p-6 shrink-0">
                     <div className="glass-panel rounded-2xl p-5 border border-slate-100 dark:border-white/5 shadow-2xl relative overflow-hidden group">
                         <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                         <p className="text-[11px] font-bold text-slate-500 dark:text-slate-500 uppercase tracking-widest mb-3">Estado del Sistema</p>
