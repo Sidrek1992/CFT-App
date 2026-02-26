@@ -100,13 +100,15 @@ export const Generator: React.FC<GeneratorProps> = ({
   const sortedOfficialsForCc = useMemo(() => [...officials].sort((a, b) => a.name.localeCompare(b.name)), [officials]);
 
   // Set initial campaign if available
+  // Bug #8: activeCampaignId added to deps so the effect doesn't re-trigger when
+  // campaigns updates after the user has already selected a campaign manually
   useEffect(() => {
     if (!activeCampaignId && campaigns.length > 0) {
       // Default to most recent campaign
       const recent = [...campaigns].sort((a, b) => b.createdAt - a.createdAt)[0];
       setActiveCampaignId(recent.id);
     }
-  }, [campaigns]);
+  }, [campaigns, activeCampaignId]);
 
   // Generate Email List
   useEffect(() => {
@@ -354,25 +356,25 @@ export const Generator: React.FC<GeneratorProps> = ({
 
   if (officials.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 bg-white rounded-xl border border-slate-200">
-        <AlertCircle className="w-8 h-8 text-amber-500 mb-2" />
-        <p className="text-slate-600">No hay funcionarios seleccionados para generar correos.</p>
-      </div>
-    );
+    <div className="flex flex-col items-center justify-center h-64 bg-white dark:bg-dark-800 rounded-xl border border-slate-200 dark:border-slate-700">
+      <AlertCircle className="w-8 h-8 text-amber-500 mb-2" />
+      <p className="text-slate-600 dark:text-slate-400">No hay funcionarios seleccionados para generar correos.</p>
+    </div>
+  );
   }
 
   return (
     <div className="space-y-6">
 
       {/* Campaign Selector */}
-      <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
+      <div className="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 rounded-xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-            <History className="w-5 h-5 text-indigo-600" />
+          <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg flex items-center justify-center">
+            <History className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
           </div>
           <div>
-            <h3 className="font-bold text-indigo-900">Campaña de Envío</h3>
-            <p className="text-xs text-indigo-600">
+            <h3 className="font-bold text-indigo-900 dark:text-indigo-300">Campaña de Envío</h3>
+            <p className="text-xs text-indigo-600 dark:text-indigo-400">
               {activeCampaign ? `Gestionando: ${activeCampaign.name}` : 'Selecciona o crea una campaña'}
             </p>
           </div>
@@ -389,7 +391,7 @@ export const Generator: React.FC<GeneratorProps> = ({
                 placeholder="Nombre campaña (Ej. Navidad)"
                 className="px-3 py-2 text-sm border border-indigo-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full md:w-48"
               />
-              <button onClick={handleCreateCampaign} className="p-2 bg-indigo-600 text-slate-900 dark:text-white rounded-lg hover:bg-indigo-700">
+              <button onClick={handleCreateCampaign} className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
                 <Check className="w-4 h-4" />
               </button>
               <button onClick={() => setIsCreatingCampaign(false)} className="p-2 bg-white text-slate-500 dark:text-slate-500 rounded-lg border border-slate-300 hover:bg-slate-50">
@@ -401,7 +403,7 @@ export const Generator: React.FC<GeneratorProps> = ({
               <select
                 value={activeCampaignId}
                 onChange={(e) => setActiveCampaignId(e.target.value)}
-                className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full md:w-64"
+                className="px-3 py-2 bg-white dark:bg-dark-800 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full md:w-64"
               >
                 <option value="" disabled>Seleccionar Campaña</option>
                 {campaigns.map(c => (
@@ -410,7 +412,7 @@ export const Generator: React.FC<GeneratorProps> = ({
               </select>
               <button
                 onClick={() => setIsCreatingCampaign(true)}
-                className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-slate-900 dark:text-white rounded-lg text-sm font-medium hover:bg-indigo-700 whitespace-nowrap"
+                className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 whitespace-nowrap"
               >
                 <Plus className="w-4 h-4" /> Nueva
               </button>
@@ -420,31 +422,31 @@ export const Generator: React.FC<GeneratorProps> = ({
       </div>
 
       {!activeCampaignId ? (
-        <div className="text-center py-20 opacity-50">
+          <div className="text-center py-20 opacity-50 text-slate-700 dark:text-slate-300">
           <p>Por favor selecciona una campaña arriba para comenzar.</p>
         </div>
       ) : (
         <>
           {/* Main Controls */}
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
-            <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center border-b border-slate-100 pb-4">
+          <div className="bg-white dark:bg-dark-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-4">
+            <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center border-b border-slate-100 dark:border-slate-700 pb-4">
               <div className="flex items-center gap-3">
-                <h2 className="text-lg font-semibold text-slate-800">Correos ({sortedEmails.length})</h2>
+                <h2 className="text-lg font-semibold text-slate-800 dark:text-white">Correos ({sortedEmails.length})</h2>
                 <div className="bg-slate-100 p-1 rounded-lg flex border border-slate-200">
                   <button onClick={() => setViewMode('cards')} className={`p-1.5 rounded-md ${viewMode === 'cards' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 dark:text-slate-500'}`}><LayoutGrid className="w-4 h-4" /></button>
                   <button onClick={() => setViewMode('compact')} className={`p-1.5 rounded-md ${viewMode === 'compact' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 dark:text-slate-500'}`}><LayoutList className="w-4 h-4" /></button>
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row flex-wrap gap-3 w-full xl:w-auto">
-                <select value={selectedDept} onChange={(e) => setSelectedDept(e.target.value)} className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm"><option value="Todos">Todos Dept.</option>{departments.map(d => <option key={d} value={d}>{d}</option>)}</select>
-                <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm" placeholder="Buscar..." />
+                <select value={selectedDept} onChange={(e) => setSelectedDept(e.target.value)} className="px-3 py-2 bg-slate-50 dark:bg-dark-900 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-sm"><option value="Todos">Todos Dept.</option>{departments.map(d => <option key={d} value={d}>{d}</option>)}</select>
+                <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="px-3 py-2 bg-slate-50 dark:bg-dark-900 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-sm" placeholder="Buscar..." />
               </div>
             </div>
             {/* Subdirectora CC Config */}
-            <div className="flex flex-col sm:flex-row items-center gap-4 bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+            <div className="flex flex-col sm:flex-row items-center gap-4 bg-indigo-50 dark:bg-indigo-950/30 p-3 rounded-lg border border-indigo-100 dark:border-indigo-900/50">
               <div className="flex-1 w-full">
-                <label className="text-xs font-bold text-indigo-900 flex items-center gap-2"><UserCog className="w-3 h-3" /> Correo Subdirectora (CC Opcional)</label>
-                <input type="email" value={subdirectoraEmail} onChange={(e) => setSubdirectoraEmail(e.target.value)} className="w-full px-2 py-1 text-sm border rounded" />
+                <label className="text-xs font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-2"><UserCog className="w-3 h-3" /> Correo Subdirectora (CC Opcional)</label>
+                <input type="email" value={subdirectoraEmail} onChange={(e) => setSubdirectoraEmail(e.target.value)} className="w-full px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-dark-900 text-slate-800 dark:text-slate-200" />
               </div>
             </div>
           </div>
@@ -453,28 +455,28 @@ export const Generator: React.FC<GeneratorProps> = ({
           {viewMode === 'cards' ? (
             <div className="grid grid-cols-1 gap-6">
               {currentItems.map((item) => (
-                <div key={item.id} className={`bg-white rounded-xl shadow-sm border ${item.sent ? 'border-green-200' : 'border-slate-200'}`}>
-                  <div className={`px-6 py-4 border-b flex flex-col lg:flex-row justify-between gap-4 ${item.sent ? 'bg-green-50/50' : 'bg-slate-50'}`}>
+                <div key={item.id} className={`bg-white dark:bg-dark-800 rounded-xl shadow-sm border ${item.sent ? 'border-green-300 dark:border-green-800' : 'border-slate-200 dark:border-slate-700'}`}>
+                  <div className={`px-6 py-4 border-b dark:border-slate-700 flex flex-col lg:flex-row justify-between gap-4 ${item.sent ? 'bg-green-50/50 dark:bg-green-950/20' : 'bg-slate-50 dark:bg-dark-900/40'}`}>
                     <div className="flex flex-col gap-2">
-                      <h3 className="font-bold text-slate-800">{item.official.name}</h3>
+                      <h3 className="font-bold text-slate-800 dark:text-white">{item.official.name}</h3>
                       <div className="flex gap-2 text-xs">
-                        <button onClick={() => toggleRecipient(item.id, 'official')} className={`px-2 py-1 rounded ${item.recipientType === 'official' ? 'bg-indigo-100 text-indigo-700' : 'text-slate-500 dark:text-slate-500'}`}>Oficial</button>
-                        <button onClick={() => toggleRecipient(item.id, 'boss')} className={`px-2 py-1 rounded ${item.recipientType === 'boss' ? 'bg-purple-100 text-purple-700' : 'text-slate-500 dark:text-slate-500'}`}>Jefatura</button>
+                        <button onClick={() => toggleRecipient(item.id, 'official')} className={`px-2 py-1 rounded ${item.recipientType === 'official' ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400'}`}>Oficial</button>
+                        <button onClick={() => toggleRecipient(item.id, 'boss')} className={`px-2 py-1 rounded ${item.recipientType === 'boss' ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300' : 'text-slate-500 dark:text-slate-400'}`}>Jefatura</button>
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2 items-center">
-                      <button onClick={() => toggleCc(item.id)} className={`px-3 py-1.5 text-xs rounded border ${item.includeCc ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white'}`}>CC Jefe</button>
-                      <button onClick={() => toggleSubdirectoraCc(item.id)} className={`px-3 py-1.5 text-xs rounded border ${item.includeSubdirectora ? 'bg-pink-50 border-pink-200 text-pink-700' : 'bg-white'}`}>CC Sub</button>
-                      <div className="h-4 w-px bg-slate-300 mx-1"></div>
-                      <button onClick={() => handleDownloadEml(item)} className="p-2 border rounded hover:bg-slate-50" title="Descargar EML (HTML)"><Download className="w-4 h-4" /></button>
-                      <button onClick={() => handleMailTo(item)} className={`px-4 py-2 text-xs font-medium rounded flex items-center gap-2 ${item.sent ? 'bg-green-100 text-green-700' : 'bg-indigo-600 text-slate-900 dark:text-white'}`}>
+                      <button onClick={() => toggleCc(item.id)} className={`px-3 py-1.5 text-xs rounded border ${item.includeCc ? 'bg-indigo-50 dark:bg-indigo-900/40 border-indigo-200 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300' : 'bg-white dark:bg-dark-700 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300'}`}>CC Jefe</button>
+                      <button onClick={() => toggleSubdirectoraCc(item.id)} className={`px-3 py-1.5 text-xs rounded border ${item.includeSubdirectora ? 'bg-pink-50 dark:bg-pink-900/40 border-pink-200 dark:border-pink-700 text-pink-700 dark:text-pink-300' : 'bg-white dark:bg-dark-700 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300'}`}>CC Sub</button>
+                      <div className="h-4 w-px bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                      <button onClick={() => handleDownloadEml(item)} className="p-2 border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-dark-700 text-slate-600 dark:text-slate-300" title="Descargar EML (HTML)"><Download className="w-4 h-4" /></button>
+                      <button onClick={() => handleMailTo(item)} className={`px-4 py-2 text-xs font-medium rounded flex items-center gap-2 ${item.sent ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
                         {item.sent ? <Check className="w-3 h-3" /> : <ExternalLink className="w-3 h-3" />} {item.sent ? 'Enviado' : 'Enviar'}
                       </button>
                     </div>
                   </div>
                   <div className="p-4">
                     <div className="mb-2">
-                      <input type="text" value={item.subject} onChange={(e) => handleEmailChange(item.id, 'subject', e.target.value)} className="w-full text-sm font-bold border-b border-transparent hover:border-slate-300 focus:border-indigo-500 outline-none" />
+                      <input type="text" value={item.subject} onChange={(e) => handleEmailChange(item.id, 'subject', e.target.value)} className="w-full text-sm font-bold border-b border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-indigo-500 outline-none bg-transparent text-slate-800 dark:text-white" />
                     </div>
                     <EmailEditor
                       content={item.body}
@@ -485,19 +487,19 @@ export const Generator: React.FC<GeneratorProps> = ({
               ))}
             </div>
           ) : (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="bg-white dark:bg-dark-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
               <table className="w-full text-left">
-                <thead className="bg-slate-50 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase">
+                <thead className="bg-slate-50 dark:bg-dark-900/60 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
                   <tr><th className="px-4 py-3">Nombre</th><th className="px-4 py-3">Estado</th><th className="px-4 py-3 text-right">Acciones</th></tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                   {currentItems.map(item => (
-                    <tr key={item.id} className={item.sent ? 'bg-green-50/30' : ''}>
-                      <td className="px-4 py-3 text-sm">{item.official.name}</td>
-                      <td className="px-4 py-3 text-center">{item.sent ? <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-[10px]">Enviado</span> : <span className="bg-slate-100 text-slate-500 dark:text-slate-500 px-2 py-0.5 rounded text-[10px]">Pendiente</span>}</td>
+                    <tr key={item.id} className={item.sent ? 'bg-green-50/30 dark:bg-green-950/20' : ''}>
+                      <td className="px-4 py-3 text-sm text-slate-800 dark:text-slate-200">{item.official.name}</td>
+                      <td className="px-4 py-3 text-center">{item.sent ? <span className="bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 px-2 py-0.5 rounded text-[10px]">Enviado</span> : <span className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded text-[10px]">Pendiente</span>}</td>
                       <td className="px-4 py-3 text-right flex justify-end gap-2">
-                        <button onClick={() => handleDownloadEml(item)} className="p-1.5 text-slate-500 dark:text-slate-500 hover:bg-slate-100 rounded"><Download className="w-4 h-4" /></button>
-                        <button onClick={() => handleMailTo(item)} className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded"><ExternalLink className="w-4 h-4" /></button>
+                        <button onClick={() => handleDownloadEml(item)} className="p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-700 rounded"><Download className="w-4 h-4" /></button>
+                        <button onClick={() => handleMailTo(item)} className="p-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded"><ExternalLink className="w-4 h-4" /></button>
                       </td>
                     </tr>
                   ))}
@@ -508,9 +510,9 @@ export const Generator: React.FC<GeneratorProps> = ({
 
           {totalPages > 1 && (
             <div className="flex justify-center gap-4 pt-4">
-              <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1} className="p-2 border rounded disabled:opacity-50"><ChevronLeft className="w-4 h-4" /></button>
-              <span className="text-sm self-center">Página {currentPage} de {totalPages}</span>
-              <button onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages} className="p-2 border rounded disabled:opacity-50"><ChevronRight className="w-4 h-4" /></button>
+              <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1} className="p-2 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 bg-white dark:bg-dark-800 rounded hover:bg-slate-50 dark:hover:bg-dark-700 disabled:opacity-50"><ChevronLeft className="w-4 h-4" /></button>
+              <span className="text-sm self-center text-slate-700 dark:text-slate-300">Página {currentPage} de {totalPages}</span>
+              <button onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages} className="p-2 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 bg-white dark:bg-dark-800 rounded hover:bg-slate-50 dark:hover:bg-dark-700 disabled:opacity-50"><ChevronRight className="w-4 h-4" /></button>
             </div>
           )}
         </>

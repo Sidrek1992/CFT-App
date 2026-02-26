@@ -95,7 +95,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
         onKeyUp={onKeyUp}
-        placeholder={placeholder}
       />
       
       {/* Visual Placeholder if empty */}

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Official, Gender } from '../types';
 import { detectGenderAndTitle } from '../services/geminiService';
 import { Sparkles, User, Mail, Briefcase, Save, X, Building2, Crown, Eraser, BadgeCheck, UserCheck } from 'lucide-react';
+import { Combobox } from './Combobox';
 
 interface OfficialFormProps {
   initialData?: Official | null;
@@ -120,8 +121,7 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
     setIsAnalyzing(false);
   };
 
-  const handleBossNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
+  const handleBossNameChange = (val: string) => {
     setBossName(val);
     
     const registeredMatch = registeredBosses.find(b => b.name.toLowerCase() === val.toLowerCase());
@@ -177,15 +177,20 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
     }
   };
 
+  // Reusable input class
+  const inputCls = "w-full px-4 py-2 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all";
+  const inputWithIconCls = "pl-10 " + inputCls;
+  const labelCls = "block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1";
+
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+    <div className="bg-white dark:bg-dark-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold text-slate-800">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-white">
             {initialData ? 'Editar Funcionario' : 'Nuevo Funcionario'}
             </h3>
             {!initialData && (name || email) && (
-                <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+                <span className="text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full font-medium">
                     Borrador detectado
                 </span>
             )}
@@ -194,13 +199,13 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
              {!initialData && (name || email) && (
                 <button 
                     onClick={handleClearDraft}
-                    className="p-1.5 text-slate-600 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                    className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-colors"
                     title="Limpiar formulario"
                 >
                     <Eraser className="w-5 h-5" />
                 </button>
             )}
-            <button onClick={onCancel} className="text-slate-600 dark:text-slate-400 hover:text-slate-600">
+            <button onClick={onCancel} className="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors">
             <X className="w-5 h-5" />
             </button>
         </div>
@@ -210,18 +215,18 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
         {/* Personal Info Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-slate-700 mb-1">Nombre Completo</label>
+            <label className={labelCls}>Nombre Completo</label>
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                  <User className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                 </div>
                 <input
                   required
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="pl-10 w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-corporate-blue focus:border-transparent outline-none transition-all"
+                  className={inputWithIconCls}
                   placeholder="Ej. Juan Pérez"
                 />
               </div>
@@ -229,7 +234,7 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
                 type="button"
                 onClick={handleAnalyzeName}
                 disabled={!name || isAnalyzing}
-                className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 flex items-center gap-2 transition-colors font-medium text-sm"
+                className="px-4 py-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/40 flex items-center gap-2 transition-colors font-medium text-sm disabled:opacity-50"
                 title="Detectar género automáticamente con IA"
               >
                 {isAnalyzing ? (
@@ -243,11 +248,11 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Género</label>
+            <label className={labelCls}>Género</label>
             <select
               value={gender}
               onChange={(e) => setGender(e.target.value as Gender)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-corporate-blue outline-none"
+              className={inputCls}
             >
               <option value={Gender.Unspecified}>No especificado</option>
               <option value={Gender.Male}>Masculino</option>
@@ -256,93 +261,77 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Título</label>
+            <label className={labelCls}>Título</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-corporate-blue outline-none"
+              className={inputCls}
               placeholder="Ej. Sr."
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Correo Electrónico</label>
+            <label className={labelCls}>Correo Electrónico</label>
             <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                  <Mail className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                 </div>
                 <input
                   required
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-corporate-blue outline-none"
+                  className={inputWithIconCls}
                   placeholder="juan@empresa.com"
                 />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Departamento</label>
-            <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Building2 className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                </div>
-                <input
-                  type="text"
-                  list="departments-list"
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  className="pl-10 w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-corporate-blue outline-none"
-                  placeholder="Seleccionar o escribir..."
-                />
-                <datalist id="departments-list">
-                    {uniqueDepartments.map(d => <option key={d} value={d} />)}
-                </datalist>
-            </div>
+            <label className={labelCls}>Departamento</label>
+            <Combobox
+              id="dept-combo"
+              value={department}
+              onChange={setDepartment}
+              options={uniqueDepartments}
+              placeholder="Seleccionar o escribir..."
+              icon={<Building2 className="h-4 w-4 text-slate-400 dark:text-slate-500" />}
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Cargo</label>
+            <label className={labelCls}>Cargo</label>
             <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Briefcase className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                  <Briefcase className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                 </div>
                 <input
                   required
                   type="text"
                   value={position}
                   onChange={(e) => setPosition(e.target.value)}
-                  className="pl-10 w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-corporate-blue outline-none"
+                  className={inputWithIconCls}
                   placeholder="Ej. Analista"
                 />
             </div>
           </div>
 
            <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Estamento</label>
-             <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <BadgeCheck className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                </div>
-                <input
-                  type="text"
-                  list="staments-list"
-                  value={stament}
-                  onChange={(e) => setStament(e.target.value)}
-                  className="pl-10 w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-corporate-blue outline-none"
-                  placeholder="Ej. Profesional"
-                />
-                <datalist id="staments-list">
-                    {uniqueStaments.map(s => <option key={s} value={s} />)}
-                </datalist>
-            </div>
+            <label className={labelCls}>Estamento</label>
+            <Combobox
+              id="stament-combo"
+              value={stament}
+              onChange={setStament}
+              options={uniqueStaments}
+              placeholder="Ej. Profesional"
+              icon={<BadgeCheck className="h-4 w-4 text-slate-400 dark:text-slate-500" />}
+            />
           </div>
         </div>
 
         {/* Boss Toggle */}
-        <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+        <div className="bg-slate-50 dark:bg-dark-900/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
              <div className="flex items-center gap-3 mb-4">
                  <div className="flex items-center h-5">
                     <input
@@ -350,81 +339,73 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
                         type="checkbox"
                         checked={isBoss}
                         onChange={(e) => setIsBoss(e.target.checked)}
-                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                        className="w-4 h-4 text-indigo-600 border-slate-300 dark:border-slate-600 rounded focus:ring-indigo-500"
                     />
                  </div>
                  <div className="text-sm">
-                    <label htmlFor="is-boss" className="font-medium text-slate-700 flex items-center gap-2">
+                    <label htmlFor="is-boss" className="font-medium text-slate-700 dark:text-slate-200 flex items-center gap-2">
                         Es Jefatura
-                        <Crown className={`w-4 h-4 ${isBoss ? 'text-amber-500' : 'text-slate-700 dark:text-slate-300'}`} />
+                        <Crown className={`w-4 h-4 ${isBoss ? 'text-amber-500' : 'text-slate-400 dark:text-slate-500'}`} />
                     </label>
-                    <p className="text-xs text-slate-500 dark:text-slate-500">Habilita a esta persona para ser seleccionada como jefe de otros.</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Habilita a esta persona para ser seleccionada como jefe de otros.</p>
                  </div>
              </div>
 
-             <div className="border-t border-slate-200 pt-4 mt-4">
-                 <h4 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
-                    <UserCheck className="w-4 h-4 text-slate-500 dark:text-slate-500" />
+             <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-4">
+                 <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                     Jefatura Directa (A quien reporta)
                  </h4>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-500 mb-1">Nombre Jefatura</label>
-                        <input
-                            type="text"
-                            list="boss-names"
+                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Nombre Jefatura</label>
+                        <Combobox
+                            id="boss-name-combo"
                             value={bossName}
                             onChange={handleBossNameChange}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-corporate-blue outline-none"
+                            options={uniqueBossNames}
                             placeholder="Buscar jefe..."
+                            size="sm"
                         />
-                        <datalist id="boss-names">
-                            {uniqueBossNames.map(n => <option key={n} value={n} />)}
-                        </datalist>
                     </div>
                      <div>
-                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-500 mb-1">Cargo Jefatura</label>
-                        <input
-                            type="text"
-                            list="boss-positions"
+                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Cargo Jefatura</label>
+                        <Combobox
+                            id="boss-pos-combo"
                             value={bossPosition}
-                            onChange={(e) => setBossPosition(e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-corporate-blue outline-none"
+                            onChange={setBossPosition}
+                            options={uniqueBossPositions}
                             placeholder="Cargo del jefe"
+                            size="sm"
                         />
-                         <datalist id="boss-positions">
-                            {uniqueBossPositions.map(p => <option key={p} value={p} />)}
-                        </datalist>
                     </div>
                      <div className="md:col-span-2">
-                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-500 mb-1">Correo Jefatura</label>
-                        <input
-                            type="email"
-                            list="boss-emails"
+                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Correo Jefatura</label>
+                        <Combobox
+                            id="boss-email-combo"
                             value={bossEmail}
-                            onChange={(e) => setBossEmail(e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-corporate-blue outline-none"
+                            onChange={setBossEmail}
+                            options={uniqueBossEmails}
                             placeholder="correo.jefe@empresa.com"
+                            size="sm"
+                            type="email"
                         />
-                         <datalist id="boss-emails">
-                            {uniqueBossEmails.map(e => <option key={e} value={e} />)}
-                        </datalist>
                     </div>
                  </div>
              </div>
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+        <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 font-medium transition-colors"
+            className="px-4 py-2 text-slate-600 dark:text-slate-300 bg-white dark:bg-dark-800 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-dark-700 font-medium transition-colors"
           >
             Cancelar
           </button>
           <button
             type="submit"
-            className="px-4 py-2 bg-indigo-600 text-slate-900 dark:text-white rounded-lg hover:bg-indigo-700 font-medium shadow-sm transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium shadow-sm transition-colors flex items-center gap-2"
           >
             <Save className="w-4 h-4" />
             {initialData ? 'Actualizar Funcionario' : 'Guardar Funcionario'}
