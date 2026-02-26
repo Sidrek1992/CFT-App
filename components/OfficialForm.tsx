@@ -194,13 +194,13 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
              {!initialData && (name || email) && (
                 <button 
                     onClick={handleClearDraft}
-                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                    className="p-1.5 text-slate-600 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
                     title="Limpiar formulario"
                 >
                     <Eraser className="w-5 h-5" />
                 </button>
             )}
-            <button onClick={onCancel} className="text-slate-400 hover:text-slate-600">
+            <button onClick={onCancel} className="text-slate-600 dark:text-slate-400 hover:text-slate-600">
             <X className="w-5 h-5" />
             </button>
         </div>
@@ -214,7 +214,7 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-4 w-4 text-slate-400" />
+                  <User className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                 </div>
                 <input
                   required
@@ -270,7 +270,7 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
             <label className="block text-sm font-medium text-slate-700 mb-1">Correo Electrónico</label>
             <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-4 w-4 text-slate-400" />
+                  <Mail className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                 </div>
                 <input
                   required
@@ -287,7 +287,7 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
             <label className="block text-sm font-medium text-slate-700 mb-1">Departamento</label>
             <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Building2 className="h-4 w-4 text-slate-400" />
+                  <Building2 className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                 </div>
                 <input
                   type="text"
@@ -307,7 +307,7 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
             <label className="block text-sm font-medium text-slate-700 mb-1">Cargo</label>
             <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Briefcase className="h-4 w-4 text-slate-400" />
+                  <Briefcase className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                 </div>
                 <input
                   required
@@ -324,7 +324,7 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
             <label className="block text-sm font-medium text-slate-700 mb-1">Estamento</label>
              <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <BadgeCheck className="h-4 w-4 text-slate-400" />
+                  <BadgeCheck className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                 </div>
                 <input
                   type="text"
@@ -356,20 +356,20 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
                  <div className="text-sm">
                     <label htmlFor="is-boss" className="font-medium text-slate-700 flex items-center gap-2">
                         Es Jefatura
-                        <Crown className={`w-4 h-4 ${isBoss ? 'text-amber-500' : 'text-slate-300'}`} />
+                        <Crown className={`w-4 h-4 ${isBoss ? 'text-amber-500' : 'text-slate-700 dark:text-slate-300'}`} />
                     </label>
-                    <p className="text-xs text-slate-500">Habilita a esta persona para ser seleccionada como jefe de otros.</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-500">Habilita a esta persona para ser seleccionada como jefe de otros.</p>
                  </div>
              </div>
 
              <div className="border-t border-slate-200 pt-4 mt-4">
                  <h4 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
-                    <UserCheck className="w-4 h-4 text-slate-500" />
+                    <UserCheck className="w-4 h-4 text-slate-500 dark:text-slate-500" />
                     Jefatura Directa (A quien reporta)
                  </h4>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">Nombre Jefatura</label>
+                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-500 mb-1">Nombre Jefatura</label>
                         <input
                             type="text"
                             list="boss-names"
@@ -383,7 +383,7 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
                         </datalist>
                     </div>
                      <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">Cargo Jefatura</label>
+                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-500 mb-1">Cargo Jefatura</label>
                         <input
                             type="text"
                             list="boss-positions"
@@ -397,7 +397,7 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
                         </datalist>
                     </div>
                      <div className="md:col-span-2">
-                        <label className="block text-xs font-medium text-slate-500 mb-1">Correo Jefatura</label>
+                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-500 mb-1">Correo Jefatura</label>
                         <input
                             type="email"
                             list="boss-emails"
@@ -424,7 +424,7 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
           </button>
           <button
             type="submit"
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium shadow-sm transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-indigo-600 text-slate-900 dark:text-white rounded-lg hover:bg-indigo-700 font-medium shadow-sm transition-colors flex items-center gap-2"
           >
             <Save className="w-4 h-4" />
             {initialData ? 'Actualizar Funcionario' : 'Guardar Funcionario'}

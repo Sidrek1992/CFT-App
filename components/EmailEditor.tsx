@@ -14,10 +14,10 @@ const MenuBar = ({ editor }: { editor: any }) => {
     if (!editor) return null;
 
     const btnClass = (isActive: boolean) =>
-        `p-2 rounded-lg transition-colors ${isActive ? 'bg-primary-500/20 text-primary-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'} disabled:opacity-50`;
+        `p-2 rounded-lg transition-colors ${isActive ? 'bg-primary-500/20 text-primary-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-900/5 dark:bg-white/5 hover:text-slate-800 dark:text-slate-200'} disabled:opacity-50`;
 
     return (
-        <div className="flex flex-wrap gap-1 p-2 border-b border-white/10 bg-dark-900/50 rounded-t-xl z-20 sticky top-0 backdrop-blur-sm">
+        <div className="flex flex-wrap gap-1 p-2 border-b border-slate-200 dark:border-white/10 bg-white dark:bg-dark-900/50 rounded-t-xl z-20 sticky top-0 backdrop-blur-sm">
             <button
                 type="button"
                 onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
@@ -37,7 +37,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
                 <Heading2 className="w-4 h-4" />
             </button>
 
-            <div className="w-px h-6 bg-white/10 mx-1 self-center"></div>
+            <div className="w-px h-6 bg-slate-900/10 dark:bg-white/10 mx-1 self-center"></div>
 
             <button
                 type="button"
@@ -58,7 +58,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
                 <Italic className="w-4 h-4" />
             </button>
 
-            <div className="w-px h-6 bg-white/10 mx-1 self-center"></div>
+            <div className="w-px h-6 bg-slate-900/10 dark:bg-white/10 mx-1 self-center"></div>
 
             <button
                 type="button"
@@ -112,7 +112,7 @@ export const EmailEditor: React.FC<EmailEditorProps> = ({ content, onChange, dis
     }, [content, editor]);
 
     return (
-        <div className={`relative flex flex-col border border-white/10 rounded-xl bg-dark-900/40 shadow-inner ${disabled ? 'opacity-80' : ''}`}>
+        <div className={`relative flex flex-col border border-slate-200 dark:border-white/10 rounded-xl bg-white dark:bg-dark-900/40 shadow-inner ${disabled ? 'opacity-80' : ''}`}>
             <MenuBar editor={editor} />
             <EditorContent editor={editor} />
         </div>

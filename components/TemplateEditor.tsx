@@ -226,7 +226,7 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
       <div className="lg:col-span-2 space-y-4">
 
         {/* AI Generator Section */}
-        <div className="bg-indigo-900 rounded-xl p-6 text-white shadow-lg relative overflow-hidden">
+        <div className="bg-indigo-900 rounded-xl p-6 text-slate-900 dark:text-white shadow-lg relative overflow-hidden">
           <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-indigo-700 rounded-full opacity-50 blur-xl"></div>
           <div className="relative z-10">
             <div className="flex justify-between items-start mb-4">
@@ -251,7 +251,7 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
                   placeholder="Ej: Escribe un correo formal invitando a la fiesta de fin de año el viernes a las 5pm. Menciona que es obligatoria."
-                  className="w-full bg-indigo-950/50 border border-indigo-700 rounded-lg p-3 text-sm text-white placeholder-indigo-400 focus:ring-2 focus:ring-indigo-500 outline-none resize-none h-20"
+                  className="w-full bg-indigo-950/50 border border-indigo-700 rounded-lg p-3 text-sm text-slate-900 dark:text-white placeholder-indigo-400 focus:ring-2 focus:ring-indigo-500 outline-none resize-none h-20"
                 />
                 <div className="flex justify-end">
                   <button
@@ -295,7 +295,7 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
               />
               <button
                 onClick={() => templateFileInputRef.current?.click()}
-                className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors border border-slate-200"
+                className="text-slate-500 dark:text-slate-500 hover:text-slate-700 hover:bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors border border-slate-200"
                 title="Importar archivo JSON"
               >
                 <Upload className="w-3.5 h-3.5" />
@@ -303,7 +303,7 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
               </button>
               <button
                 onClick={handleExportJSON}
-                className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors border border-slate-200"
+                className="text-slate-500 dark:text-slate-500 hover:text-slate-700 hover:bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors border border-slate-200"
                 title="Exportar archivo JSON"
               >
                 <FileJson className="w-3.5 h-3.5" />
@@ -324,7 +324,7 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
           {showSaveDialog && (
             <div className="mb-4 p-4 bg-slate-50 border border-slate-200 rounded-lg flex items-end gap-3 animate-in fade-in duration-200">
               <div className="flex-1">
-                <label className="block text-xs font-medium text-slate-500 mb-1">Nombre de la plantilla</label>
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-500 mb-1">Nombre de la plantilla</label>
                 <input
                   autoFocus
                   type="text"
@@ -334,10 +334,10 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
                   placeholder="Ej. Recordatorio Mensual"
                 />
               </div>
-              <button onClick={confirmSave} className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700">
+              <button onClick={confirmSave} className="px-4 py-2 bg-indigo-600 text-slate-900 dark:text-white text-sm rounded-md hover:bg-indigo-700">
                 Guardar
               </button>
-              <button onClick={() => setShowSaveDialog(false)} className="px-4 py-2 text-slate-500 text-sm hover:text-slate-700">
+              <button onClick={() => setShowSaveDialog(false)} className="px-4 py-2 text-slate-500 dark:text-slate-500 text-sm hover:text-slate-700">
                 Cancelar
               </button>
             </div>
@@ -358,7 +358,7 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
             <div className="flex justify-between items-center mb-2">
               <label className="block text-sm font-medium text-slate-700">Cuerpo del Correo (HTML)</label>
             </div>
-            <div className="text-xs text-slate-500 mb-2 bg-slate-50 p-2 rounded border border-slate-100 flex gap-2">
+            <div className="text-xs text-slate-500 dark:text-slate-500 mb-2 bg-slate-50 p-2 rounded border border-slate-100 flex gap-2">
               <Info className="w-4 h-4 mt-0.5" />
               <p>Usa el editor para dar formato. <strong>Nota:</strong> Al usar "Enviar" (mailto), el formato enriquecido se perderá. Usa la descarga <strong>.EML</strong> para conservar negritas, colores y listas.</p>
             </div>
@@ -374,8 +374,8 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
             <div className="mt-4 pt-4 border-t border-slate-100">
               <div className="flex items-center gap-2 mb-3">
                 <FileText className="w-4 h-4 text-indigo-600" />
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Variables Disponibles</h3>
-                <span className="text-[10px] text-slate-400">(Click para insertar)</span>
+                <h3 className="text-xs font-bold text-slate-500 dark:text-slate-500 uppercase tracking-wider">Variables Disponibles</h3>
+                <span className="text-[10px] text-slate-600 dark:text-slate-400">(Click para insertar)</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {VARIABLES.map((v) => (
@@ -412,30 +412,30 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
             onDrop={handleDrop}
             className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-8 transition-colors ${isDragging ? 'border-indigo-500 bg-indigo-50' : 'border-slate-300 hover:border-slate-400 bg-slate-50'}`}
           >
-            <CloudUpload className={`w-10 h-10 mb-2 ${isDragging ? 'text-indigo-500' : 'text-slate-400'}`} />
+            <CloudUpload className={`w-10 h-10 mb-2 ${isDragging ? 'text-indigo-500' : 'text-slate-600 dark:text-slate-400'}`} />
             <div className="flex flex-col items-center">
               <label className="cursor-pointer px-4 py-2 bg-white text-slate-700 rounded-lg text-sm font-medium transition-colors border border-slate-300 hover:border-indigo-400 hover:text-indigo-600 shadow-sm mb-2">
                 Seleccionar Archivos
                 <input type="file" multiple className="hidden" onChange={handleFileChange} />
               </label>
-              <p className="text-xs text-slate-400">o arrastra y suelta aquí</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">o arrastra y suelta aquí</p>
             </div>
           </div>
 
           {files.length > 0 && (
             <div className="mt-4">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 block">
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2 block">
                 {files.length} archivo(s) seleccionado(s)
               </span>
               <ul className="space-y-2">
                 {files.map((file, index) => (
                   <li key={index} className="flex justify-between items-center text-sm p-2 bg-slate-50 rounded border border-slate-100 group hover:border-slate-300 transition-colors">
                     <div className="flex items-center gap-2 overflow-hidden">
-                      <Paperclip className="w-3 h-3 text-slate-400" />
+                      <Paperclip className="w-3 h-3 text-slate-600 dark:text-slate-400" />
                       <span className="truncate max-w-xs text-slate-600 font-medium">{file.name}</span>
-                      <span className="text-[10px] text-slate-400">({Math.round(file.size / 1024)} KB)</span>
+                      <span className="text-[10px] text-slate-600 dark:text-slate-400">({Math.round(file.size / 1024)} KB)</span>
                     </div>
-                    <button onClick={() => removeFile(index)} className="text-slate-400 hover:text-red-500 px-2 transition-colors">
+                    <button onClick={() => removeFile(index)} className="text-slate-600 dark:text-slate-400 hover:text-red-500 px-2 transition-colors">
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </li>
@@ -455,14 +455,14 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
             Mis Plantillas
           </h3>
           {savedTemplates.length === 0 ? (
-            <p className="text-xs text-slate-400 italic">No hay plantillas guardadas</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400 italic">No hay plantillas guardadas</p>
           ) : (
             <ul className="space-y-2">
               {savedTemplates.map(t => (
                 <li key={t.id} className="flex items-center justify-between group p-2 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-100">
                   <div className="flex-1 cursor-pointer" onClick={() => loadTemplate(t)}>
                     <p className="text-sm font-medium text-slate-700">{t.name}</p>
-                    <p className="text-[10px] text-slate-400 truncate max-w-[150px]">{t.subject}</p>
+                    <p className="text-[10px] text-slate-600 dark:text-slate-400 truncate max-w-[150px]">{t.subject}</p>
                   </div>
                   <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
@@ -501,17 +501,17 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
           </div>
           <div className="p-4">
             {!previewOfficial ? (
-              <div className="text-center py-8 text-slate-400 text-xs">
+              <div className="text-center py-8 text-slate-600 dark:text-slate-400 text-xs">
                 Agrega funcionarios para ver cómo queda el correo.
               </div>
             ) : (
               <div className="space-y-3">
                 <div>
-                  <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Asunto</span>
+                  <span className="text-[10px] uppercase tracking-wider text-slate-600 dark:text-slate-400 font-bold">Asunto</span>
                   <p className="text-sm font-medium text-slate-800 leading-tight">{previewContent.subject || '(Sin asunto)'}</p>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Cuerpo</span>
+                  <span className="text-[10px] uppercase tracking-wider text-slate-600 dark:text-slate-400 font-bold">Cuerpo</span>
                   <div
                     className="mt-1 text-xs text-slate-600 bg-slate-50 p-2 rounded border border-slate-100 prose prose-sm max-w-none"
                     dangerouslySetInnerHTML={{ __html: previewContent.body }}

@@ -389,10 +389,10 @@ export const Generator: React.FC<GeneratorProps> = ({
                 placeholder="Nombre campaña (Ej. Navidad)"
                 className="px-3 py-2 text-sm border border-indigo-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full md:w-48"
               />
-              <button onClick={handleCreateCampaign} className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+              <button onClick={handleCreateCampaign} className="p-2 bg-indigo-600 text-slate-900 dark:text-white rounded-lg hover:bg-indigo-700">
                 <Check className="w-4 h-4" />
               </button>
-              <button onClick={() => setIsCreatingCampaign(false)} className="p-2 bg-white text-slate-500 rounded-lg border border-slate-300 hover:bg-slate-50">
+              <button onClick={() => setIsCreatingCampaign(false)} className="p-2 bg-white text-slate-500 dark:text-slate-500 rounded-lg border border-slate-300 hover:bg-slate-50">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -410,7 +410,7 @@ export const Generator: React.FC<GeneratorProps> = ({
               </select>
               <button
                 onClick={() => setIsCreatingCampaign(true)}
-                className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 whitespace-nowrap"
+                className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-slate-900 dark:text-white rounded-lg text-sm font-medium hover:bg-indigo-700 whitespace-nowrap"
               >
                 <Plus className="w-4 h-4" /> Nueva
               </button>
@@ -431,8 +431,8 @@ export const Generator: React.FC<GeneratorProps> = ({
               <div className="flex items-center gap-3">
                 <h2 className="text-lg font-semibold text-slate-800">Correos ({sortedEmails.length})</h2>
                 <div className="bg-slate-100 p-1 rounded-lg flex border border-slate-200">
-                  <button onClick={() => setViewMode('cards')} className={`p-1.5 rounded-md ${viewMode === 'cards' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}><LayoutGrid className="w-4 h-4" /></button>
-                  <button onClick={() => setViewMode('compact')} className={`p-1.5 rounded-md ${viewMode === 'compact' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}><LayoutList className="w-4 h-4" /></button>
+                  <button onClick={() => setViewMode('cards')} className={`p-1.5 rounded-md ${viewMode === 'cards' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 dark:text-slate-500'}`}><LayoutGrid className="w-4 h-4" /></button>
+                  <button onClick={() => setViewMode('compact')} className={`p-1.5 rounded-md ${viewMode === 'compact' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 dark:text-slate-500'}`}><LayoutList className="w-4 h-4" /></button>
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row flex-wrap gap-3 w-full xl:w-auto">
@@ -458,8 +458,8 @@ export const Generator: React.FC<GeneratorProps> = ({
                     <div className="flex flex-col gap-2">
                       <h3 className="font-bold text-slate-800">{item.official.name}</h3>
                       <div className="flex gap-2 text-xs">
-                        <button onClick={() => toggleRecipient(item.id, 'official')} className={`px-2 py-1 rounded ${item.recipientType === 'official' ? 'bg-indigo-100 text-indigo-700' : 'text-slate-500'}`}>Oficial</button>
-                        <button onClick={() => toggleRecipient(item.id, 'boss')} className={`px-2 py-1 rounded ${item.recipientType === 'boss' ? 'bg-purple-100 text-purple-700' : 'text-slate-500'}`}>Jefatura</button>
+                        <button onClick={() => toggleRecipient(item.id, 'official')} className={`px-2 py-1 rounded ${item.recipientType === 'official' ? 'bg-indigo-100 text-indigo-700' : 'text-slate-500 dark:text-slate-500'}`}>Oficial</button>
+                        <button onClick={() => toggleRecipient(item.id, 'boss')} className={`px-2 py-1 rounded ${item.recipientType === 'boss' ? 'bg-purple-100 text-purple-700' : 'text-slate-500 dark:text-slate-500'}`}>Jefatura</button>
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2 items-center">
@@ -467,7 +467,7 @@ export const Generator: React.FC<GeneratorProps> = ({
                       <button onClick={() => toggleSubdirectoraCc(item.id)} className={`px-3 py-1.5 text-xs rounded border ${item.includeSubdirectora ? 'bg-pink-50 border-pink-200 text-pink-700' : 'bg-white'}`}>CC Sub</button>
                       <div className="h-4 w-px bg-slate-300 mx-1"></div>
                       <button onClick={() => handleDownloadEml(item)} className="p-2 border rounded hover:bg-slate-50" title="Descargar EML (HTML)"><Download className="w-4 h-4" /></button>
-                      <button onClick={() => handleMailTo(item)} className={`px-4 py-2 text-xs font-medium rounded flex items-center gap-2 ${item.sent ? 'bg-green-100 text-green-700' : 'bg-indigo-600 text-white'}`}>
+                      <button onClick={() => handleMailTo(item)} className={`px-4 py-2 text-xs font-medium rounded flex items-center gap-2 ${item.sent ? 'bg-green-100 text-green-700' : 'bg-indigo-600 text-slate-900 dark:text-white'}`}>
                         {item.sent ? <Check className="w-3 h-3" /> : <ExternalLink className="w-3 h-3" />} {item.sent ? 'Enviado' : 'Enviar'}
                       </button>
                     </div>
@@ -487,16 +487,16 @@ export const Generator: React.FC<GeneratorProps> = ({
           ) : (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
               <table className="w-full text-left">
-                <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase">
+                <thead className="bg-slate-50 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase">
                   <tr><th className="px-4 py-3">Nombre</th><th className="px-4 py-3">Estado</th><th className="px-4 py-3 text-right">Acciones</th></tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {currentItems.map(item => (
                     <tr key={item.id} className={item.sent ? 'bg-green-50/30' : ''}>
                       <td className="px-4 py-3 text-sm">{item.official.name}</td>
-                      <td className="px-4 py-3 text-center">{item.sent ? <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-[10px]">Enviado</span> : <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[10px]">Pendiente</span>}</td>
+                      <td className="px-4 py-3 text-center">{item.sent ? <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-[10px]">Enviado</span> : <span className="bg-slate-100 text-slate-500 dark:text-slate-500 px-2 py-0.5 rounded text-[10px]">Pendiente</span>}</td>
                       <td className="px-4 py-3 text-right flex justify-end gap-2">
-                        <button onClick={() => handleDownloadEml(item)} className="p-1.5 text-slate-500 hover:bg-slate-100 rounded"><Download className="w-4 h-4" /></button>
+                        <button onClick={() => handleDownloadEml(item)} className="p-1.5 text-slate-500 dark:text-slate-500 hover:bg-slate-100 rounded"><Download className="w-4 h-4" /></button>
                         <button onClick={() => handleMailTo(item)} className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded"><ExternalLink className="w-4 h-4" /></button>
                       </td>
                     </tr>

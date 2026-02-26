@@ -109,7 +109,7 @@ export const OrgChart: React.FC<OrgChartProps> = ({ officials }) => {
                 onChange={(e) => setSearchName(e.target.value)}
                 className="w-32 px-2 py-1 text-xs border border-slate-200 rounded outline-none focus:border-indigo-500"
              />
-             <Search className="w-3 h-3 text-slate-400 absolute right-2 top-4" />
+             <Search className="w-3 h-3 text-slate-600 dark:text-slate-400 absolute right-2 top-4" />
         </div>
       </div>
 
@@ -150,7 +150,7 @@ export const OrgChart: React.FC<OrgChartProps> = ({ officials }) => {
         >
             <div className="flex gap-12">
                 {treeRoots.length === 0 ? (
-                    <div className="text-center text-slate-400 mt-20">
+                    <div className="text-center text-slate-600 dark:text-slate-400 mt-20">
                         <p className="text-lg font-medium">No hay datos para mostrar</p>
                         <p className="text-sm">Agrega funcionarios en la Base de Datos.</p>
                     </div>
@@ -194,13 +194,13 @@ const TreeNodeComponent: React.FC<{ node: TreeNode, highlight: string }> = ({ no
                              <p className="text-sm font-bold text-slate-800 leading-tight truncate" title={node.data.name}>
                                  {node.data.name}
                              </p>
-                             <p className="text-xs text-slate-500 font-medium truncate mt-0.5" title={node.data.position}>
+                             <p className="text-xs text-slate-500 dark:text-slate-500 font-medium truncate mt-0.5" title={node.data.position}>
                                  {node.data.position}
                              </p>
                          </div>
                     </div>
                     {node.data.department && (
-                        <div className="mt-2 pt-2 border-t border-slate-100 text-[10px] text-slate-400 font-medium uppercase tracking-wide truncate">
+                        <div className="mt-2 pt-2 border-t border-slate-100 text-[10px] text-slate-600 dark:text-slate-400 font-medium uppercase tracking-wide truncate">
                             {node.data.department}
                         </div>
                     )}
@@ -210,7 +210,7 @@ const TreeNodeComponent: React.FC<{ node: TreeNode, highlight: string }> = ({ no
                 {hasChildren && (
                     <button 
                         onClick={(e) => { e.stopPropagation(); setCollapsed(!collapsed); }}
-                        className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:border-indigo-300 shadow-sm z-20"
+                        className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-500 hover:text-indigo-600 hover:border-indigo-300 shadow-sm z-20"
                     >
                         {collapsed ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
                     </button>
