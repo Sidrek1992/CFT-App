@@ -148,16 +148,20 @@ export default function App() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const dbImportInputRef = useRef<HTMLInputElement>(null);
 
+    // Keep refs to Firestore unsubscribe functions so handleLogout can cancel them
+    // before calling signOut (avoids permission-denied errors mid-flight)
+    const unsubscribeDbRef     = useRef<(() => void) | null>(null);
+    const unsubscribeConfigRef = useRef<(() => void) | null>(null);
+
     // --- PERSISTENCE ---
 
-    // Real-time synchronization — only when authenticated (Bug #7)
+    // Real-time synchronization — only when authenticated
     useEffect(() => {
         if (!user) return;
 
-        const unsubscribe = dbService.subscribeToDatabases((dbs) => {
+        unsubscribeDbRef.current = dbService.subscribeToDatabases((dbs) => {
             if (dbs.length > 0) {
                 setDatabases(dbs);
-                // Bug #5: If the stored activeDbId doesn't exist in the loaded DBs, fall back to the first one
                 setActiveDbId(prev => {
                     const exists = dbs.some(db => db.id === prev);
                     return exists ? prev : dbs[0].id;
@@ -165,7 +169,7 @@ export default function App() {
             }
         });
 
-        const unsubscribeConfig = dbService.subscribeToSharedConfig((config) => {
+        unsubscribeConfigRef.current = dbService.subscribeToSharedConfig((config) => {
             if (config) {
                 if (config.template) setTemplate(config.template);
                 if (config.savedTemplates) setSavedTemplates(config.savedTemplates);
@@ -174,8 +178,10 @@ export default function App() {
         });
 
         return () => {
-            unsubscribe();
-            unsubscribeConfig();
+            unsubscribeDbRef.current?.();
+            unsubscribeConfigRef.current?.();
+            unsubscribeDbRef.current     = null;
+            unsubscribeConfigRef.current = null;
         };
     }, [user]);
 
@@ -673,19 +679,30 @@ export default function App() {
     };
 
     const handleLogout = async () => {
+        // 1. Cancel Firestore listeners BEFORE signOut so Firestore doesn't
+        //    fire permission-denied errors while we are mid-logout
+        unsubscribeDbRef.current?.();
+        unsubscribeConfigRef.current?.();
+        unsubscribeDbRef.current     = null;
+        unsubscribeConfigRef.current = null;
+
+        // 2. Clear session-scoped storage (theme kept — device preference)
+        localStorage.removeItem('active_db_id');
+        localStorage.removeItem('current_template');
+        localStorage.removeItem('saved_templates');
+        localStorage.removeItem('officialFormDraft');
+        sessionStorage.removeItem('gmail_access_token');
+
+        // 3. Sign out from Firebase
         try {
             await logout();
-            // Clear session-scoped keys (theme kept — it's a device preference)
-            localStorage.removeItem('active_db_id');
-            localStorage.removeItem('current_template');
-            localStorage.removeItem('saved_templates');
-            localStorage.removeItem('officialFormDraft');
-            sessionStorage.removeItem('gmail_access_token');
-            // onAuthStateChanged fires → setUser(null) → <Login /> renders automatically
         } catch (error) {
-            console.error("Error al cerrar sesión", error);
-            addToast("Error al cerrar sesión", "error");
+            console.error("Firebase signOut error (non-fatal):", error);
         }
+
+        // 4. Force local state update immediately — don't wait for onAuthStateChanged
+        //    (in case it's delayed or blocked by a stale Firestore connection)
+        setUser(null);
     };
 
     if (loadingAuth) {

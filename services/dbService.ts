@@ -32,16 +32,24 @@ export const dbService = {
 
     // Real-time synchronization for databases (excludes shared_config)
     subscribeToDatabases(callback: (databases: OfficialDatabase[]) => void) {
-        return onSnapshot(collection(db, DB_COLLECTION), (snapshot) => {
-            const databases: OfficialDatabase[] = [];
-            snapshot.forEach((docSnap) => {
-                // Exclude the shared config document from the databases list
-                if (docSnap.id !== SHARED_DOC_ID) {
-                    databases.push(docSnap.data() as OfficialDatabase);
+        return onSnapshot(
+            collection(db, DB_COLLECTION),
+            (snapshot) => {
+                const databases: OfficialDatabase[] = [];
+                snapshot.forEach((docSnap) => {
+                    if (docSnap.id !== SHARED_DOC_ID) {
+                        databases.push(docSnap.data() as OfficialDatabase);
+                    }
+                });
+                callback(databases);
+            },
+            // Silently ignore permission errors that fire when the user signs out
+            (err) => {
+                if (err.code !== 'permission-denied' && err.code !== 'unauthenticated') {
+                    console.error('subscribeToDatabases error:', err);
                 }
-            });
-            callback(databases);
-        });
+            }
+        );
     },
 
     // Save Shared Config (Templates)
@@ -52,10 +60,19 @@ export const dbService = {
 
     // Subscribe to Shared Config
     subscribeToSharedConfig(callback: (data: any) => void) {
-        return onSnapshot(doc(db, DB_COLLECTION, SHARED_DOC_ID), (docSnap) => {
-            if (docSnap.exists()) {
-                callback(docSnap.data());
+        return onSnapshot(
+            doc(db, DB_COLLECTION, SHARED_DOC_ID),
+            (docSnap) => {
+                if (docSnap.exists()) {
+                    callback(docSnap.data());
+                }
+            },
+            // Silently ignore permission errors that fire when the user signs out
+            (err) => {
+                if (err.code !== 'permission-denied' && err.code !== 'unauthenticated') {
+                    console.error('subscribeToSharedConfig error:', err);
+                }
             }
-        });
+        );
     }
 };
