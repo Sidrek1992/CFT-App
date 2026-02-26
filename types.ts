@@ -27,7 +27,7 @@ export interface EmailLog {
   recipientEmail: string;
   sentAt: number;
   status: 'sent' | 'failed';
-  method: 'mailto' | 'eml';
+  method: 'mailto' | 'eml' | 'gmail_api';
 }
 
 export interface Campaign {
