@@ -150,7 +150,7 @@ export default function App() {
 
     // Keep refs to Firestore unsubscribe functions so handleLogout can cancel them
     // before calling signOut (avoids permission-denied errors mid-flight)
-    const unsubscribeDbRef     = useRef<(() => void) | null>(null);
+    const unsubscribeDbRef = useRef<(() => void) | null>(null);
     const unsubscribeConfigRef = useRef<(() => void) | null>(null);
 
     // --- PERSISTENCE ---
@@ -180,7 +180,7 @@ export default function App() {
         return () => {
             unsubscribeDbRef.current?.();
             unsubscribeConfigRef.current?.();
-            unsubscribeDbRef.current     = null;
+            unsubscribeDbRef.current = null;
             unsubscribeConfigRef.current = null;
         };
     }, [user]);
@@ -679,30 +679,30 @@ export default function App() {
     };
 
     const handleLogout = async () => {
-        // 1. Cancel Firestore listeners BEFORE signOut so Firestore doesn't
-        //    fire permission-denied errors while we are mid-logout
+        console.log("Cerrando sesión...");
+
+        // 1. Force local state update IMMEDIATELY to show Login screen
+        setUser(null);
+
+        // 2. Cancel Firestore listeners
         unsubscribeDbRef.current?.();
         unsubscribeConfigRef.current?.();
-        unsubscribeDbRef.current     = null;
+        unsubscribeDbRef.current = null;
         unsubscribeConfigRef.current = null;
 
-        // 2. Clear session-scoped storage (theme kept — device preference)
+        // 3. Clear storage
         localStorage.removeItem('active_db_id');
         localStorage.removeItem('current_template');
         localStorage.removeItem('saved_templates');
         localStorage.removeItem('officialFormDraft');
         sessionStorage.removeItem('gmail_access_token');
 
-        // 3. Sign out from Firebase
+        // 4. Attempt Firebase sign out in background
         try {
             await logout();
         } catch (error) {
-            console.error("Firebase signOut error (non-fatal):", error);
+            console.warn("Firebase signOut error (ignoring for UI):", error);
         }
-
-        // 4. Force local state update immediately — don't wait for onAuthStateChanged
-        //    (in case it's delayed or blocked by a stale Firestore connection)
-        setUser(null);
     };
 
     if (loadingAuth) {
@@ -866,7 +866,7 @@ export default function App() {
                             </div>
                             <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">v2.0 Campaigns</span>
                         </div>
-                        <div className="flex items-center justify-between gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-white/10">
+                        <div className="flex items-center justify-between gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-white/10 relative z-20">
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => setIsDarkMode(!isDarkMode)}
@@ -881,11 +881,7 @@ export default function App() {
                                 </div>
                             </div>
                             <button
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleLogout();
-                                }}
+                                onClick={handleLogout}
                                 className="p-2.5 text-slate-600 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-all border border-transparent hover:border-red-200 dark:hover:border-red-800"
                                 title="Cerrar Sesión"
                             >
@@ -915,11 +911,7 @@ export default function App() {
                             {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                         </button>
                         <button
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                handleLogout();
-                            }}
+                            onClick={handleLogout}
                             className="p-2 text-slate-600 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-all"
                             title="Cerrar Sesión"
                         >
