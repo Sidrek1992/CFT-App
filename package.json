@@ -9,10 +9,19 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/genai": "^1.30.0",
+    "@tiptap/extension-bold": "^3.20.0",
+    "@tiptap/extension-bullet-list": "^3.20.0",
+    "@tiptap/extension-heading": "^3.20.0",
+    "@tiptap/extension-italic": "^3.20.0",
+    "@tiptap/extension-ordered-list": "^3.20.0",
+    "@tiptap/react": "^3.20.0",
+    "@tiptap/starter-kit": "^3.20.0",
+    "firebase": "^12.9.0",
+    "lucide-react": "^0.554.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "@google/genai": "^1.30.0",
-    "lucide-react": "^0.554.0",
+    "recharts": "^3.7.0",
     "xlsx": "latest"
   },
   "devDependencies": {
