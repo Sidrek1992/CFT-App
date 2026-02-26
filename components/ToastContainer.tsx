@@ -28,11 +28,11 @@ const ToastItem: React.FC<{ toast: ToastNotification; onRemove: () => void }> = 
   const getStyles = () => {
     switch (toast.type) {
       case 'success':
-        return 'bg-white border-green-500 text-slate-800 shadow-lg shadow-green-900/5';
+        return 'bg-white dark:bg-dark-800 border-green-500 text-slate-800 dark:text-slate-100 shadow-lg shadow-green-900/10';
       case 'error':
-        return 'bg-white border-red-500 text-slate-800 shadow-lg shadow-red-900/5';
+        return 'bg-white dark:bg-dark-800 border-red-500 text-slate-800 dark:text-slate-100 shadow-lg shadow-red-900/10';
       default:
-        return 'bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white shadow-lg shadow-slate-900/20';
+        return 'bg-slate-100 dark:bg-dark-800 border-slate-400 dark:border-slate-600 text-slate-800 dark:text-white shadow-lg shadow-slate-900/20';
     }
   };
 

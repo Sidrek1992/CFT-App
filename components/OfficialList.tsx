@@ -185,12 +185,12 @@ export const OfficialList: React.FC<OfficialListProps> = ({
 
   if (officials.length === 0) {
     return (
-      <div className="text-center py-20 bg-white rounded-xl border border-slate-200 border-dashed">
-        <div className="mx-auto w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+      <div className="text-center py-20 bg-white dark:bg-dark-800 rounded-xl border border-slate-200 dark:border-slate-700 border-dashed">
+        <div className="mx-auto w-12 h-12 bg-slate-100 dark:bg-dark-700 rounded-full flex items-center justify-center mb-4">
           <User className="w-6 h-6 text-slate-600 dark:text-slate-400" />
         </div>
-        <h3 className="text-lg font-medium text-slate-900">No hay funcionarios</h3>
-        <p className="text-slate-500 dark:text-slate-500 mt-1">Agrega nuevos funcionarios para comenzar a gestionar correos.</p>
+        <h3 className="text-lg font-medium text-slate-900 dark:text-white">No hay funcionarios</h3>
+        <p className="text-slate-500 dark:text-slate-400 mt-1">Agrega nuevos funcionarios para comenzar a gestionar correos.</p>
       </div>
     );
   }
@@ -200,7 +200,7 @@ export const OfficialList: React.FC<OfficialListProps> = ({
       
       {/* Statistics Section */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-indigo-600 rounded-xl p-4 text-slate-900 dark:text-white shadow-sm flex flex-col justify-between">
+        <div className="bg-indigo-600 rounded-xl p-4 text-white shadow-sm flex flex-col justify-between">
             <div>
                 <p className="text-indigo-200 text-xs font-bold uppercase tracking-wider mb-1">Total Registros</p>
                 <div className="flex items-center gap-2">
@@ -213,36 +213,36 @@ export const OfficialList: React.FC<OfficialListProps> = ({
             </div>
         </div>
 
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col justify-center gap-2">
+        <div className="bg-white dark:bg-dark-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-center gap-2">
              <h4 className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">Por Género</h4>
              <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-sm text-slate-600">
+                    <span className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                         <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                         Hombres
                     </span>
-                    <span className="font-bold text-slate-900">{maleCount}</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{maleCount}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                     <span className="flex items-center gap-2 text-sm text-slate-600">
+                     <span className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                         <span className="w-2 h-2 rounded-full bg-pink-500"></span>
                         Mujeres
                     </span>
-                    <span className="font-bold text-slate-900">{femaleCount}</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{femaleCount}</span>
                 </div>
              </div>
         </div>
 
-        <div className="md:col-span-2 bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+        <div className="md:col-span-2 bg-white dark:bg-dark-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
              <div className="flex items-center gap-2 mb-3">
                 <PieChart className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-                <h4 className="text-xs font-bold text-slate-500 dark:text-slate-500 uppercase tracking-wider">Desglose por Departamento</h4>
+                <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Desglose por Departamento</h4>
              </div>
              <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto pr-1 custom-scrollbar">
                 {deptStats.map(([dept, count]) => (
-                    <div key={dept} className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700">
+                    <div key={dept} className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-dark-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300">
                         <span className="truncate max-w-[150px]">{dept}</span>
-                        <span className="bg-white px-1.5 py-0.5 rounded-md border border-slate-200 text-slate-900 font-bold text-[10px] shadow-sm">
+                        <span className="bg-white dark:bg-dark-800 px-1.5 py-0.5 rounded-md border border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white font-bold text-[10px] shadow-sm">
                             {count}
                         </span>
                     </div>
@@ -285,16 +285,16 @@ export const OfficialList: React.FC<OfficialListProps> = ({
 
       {/* Active Filter Banner */}
       {initialFilter && initialFilter.type !== 'none' && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
-            <div className="flex items-center gap-2 text-amber-900">
-                <Filter className="w-4 h-4 text-amber-600" />
+        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-2 text-amber-900 dark:text-amber-300">
+                <Filter className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                 <span className="text-sm font-medium">
                     {getFilterLabel(initialFilter.type, initialFilter.value)}: <span className="font-bold">{filteredOfficials.length}</span> resultados
                 </span>
             </div>
             <button
                 onClick={onClearFilter}
-                className="text-xs bg-white border border-amber-200 text-amber-700 px-3 py-1.5 rounded-lg hover:bg-amber-100 font-medium transition-colors flex items-center gap-1 shadow-sm"
+                className="text-xs bg-white dark:bg-dark-800 border border-amber-200 dark:border-amber-700 text-amber-700 dark:text-amber-300 px-3 py-1.5 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/30 font-medium transition-colors flex items-center gap-1 shadow-sm"
             >
                 <X className="w-3 h-3" />
                 Limpiar Filtro
@@ -303,10 +303,10 @@ export const OfficialList: React.FC<OfficialListProps> = ({
       )}
 
       {/* Filters Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center">
+      <div className="bg-white dark:bg-dark-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center">
         <div className="relative w-full xl:w-64">
            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+              <Search className="h-4 w-4 text-slate-500 dark:text-slate-400" />
            </div>
            <input
               ref={searchInputRef}
@@ -314,7 +314,7 @@ export const OfficialList: React.FC<OfficialListProps> = ({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Buscar (Ctrl + K)..."
-              className="pl-10 w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-corporate-blue outline-none"
+              className="pl-10 w-full px-4 py-2 bg-slate-50 dark:bg-dark-900 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
            />
         </div>
 
@@ -322,12 +322,12 @@ export const OfficialList: React.FC<OfficialListProps> = ({
            {/* Sort Dropdown */}
            <div className="relative min-w-[160px]">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <ArrowUpDown className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                  <ArrowUpDown className="h-4 w-4 text-slate-500 dark:text-slate-400" />
               </div>
               <select
                   value={sortOption}
                   onChange={(e) => onSortChange(e.target.value as SortOption)}
-                  className="pl-10 w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-corporate-blue outline-none appearance-none cursor-pointer font-medium text-slate-700"
+                  className="pl-10 w-full px-4 py-2 bg-slate-50 dark:bg-dark-900 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer font-medium"
               >
                   <option value="name">Nombre (A-Z)</option>
                   <option value="surname">Apellido (A-Z)</option>
@@ -335,17 +335,17 @@ export const OfficialList: React.FC<OfficialListProps> = ({
               </select>
            </div>
 
-           <div className="h-full w-px bg-slate-200 hidden sm:block mx-1"></div>
+           <div className="h-full w-px bg-slate-200 dark:bg-slate-700 hidden sm:block mx-1"></div>
 
            {/* Department Filter */}
            <div className="relative min-w-[160px]">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Building2 className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                  <Building2 className="h-4 w-4 text-slate-500 dark:text-slate-400" />
               </div>
               <select
                   value={selectedDept}
                   onChange={(e) => setSelectedDept(e.target.value)}
-                  className="pl-10 w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-corporate-blue outline-none appearance-none cursor-pointer"
+                  className="pl-10 w-full px-4 py-2 bg-slate-50 dark:bg-dark-900 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer"
               >
                   {departments.map(d => <option key={d} value={d}>{d === 'Todos' ? 'Todos Depts.' : d}</option>)}
               </select>
@@ -354,12 +354,12 @@ export const OfficialList: React.FC<OfficialListProps> = ({
            {/* Boss Filter */}
            <div className="relative min-w-[160px]">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <UserCheck className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                  <UserCheck className="h-4 w-4 text-slate-500 dark:text-slate-400" />
               </div>
               <select
                   value={selectedBoss}
                   onChange={(e) => setSelectedBoss(e.target.value)}
-                  className="pl-10 w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-corporate-blue outline-none appearance-none cursor-pointer"
+                  className="pl-10 w-full px-4 py-2 bg-slate-50 dark:bg-dark-900 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer"
               >
                    {bosses.map(b => <option key={b} value={b}>{b === 'Todos' ? 'Todas Jefaturas' : b}</option>)}
               </select>
@@ -368,11 +368,11 @@ export const OfficialList: React.FC<OfficialListProps> = ({
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-visible">
+      <div className="bg-white dark:bg-dark-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-visible">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
+              <tr className="bg-slate-50 dark:bg-dark-900/50 border-b border-slate-200 dark:border-slate-700">
                 <th className="px-6 py-4 w-10">
                     <button onClick={toggleSelectAll} className="flex items-center text-slate-600 dark:text-slate-400 hover:text-indigo-600">
                         {selectedIds.length > 0 && selectedIds.length === sortedOfficials.length ? (
@@ -382,24 +382,24 @@ export const OfficialList: React.FC<OfficialListProps> = ({
                         )}
                     </button>
                 </th>
-                <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider">Nombre</th>
-                <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider">Departamento</th>
-                <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider">Cargo</th>
-                <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider">Correo</th>
-                <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider">Jefatura</th>
-                <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider text-right">Acciones</th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Nombre</th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Departamento</th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Cargo</th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Correo</th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Jefatura</th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
               {sortedOfficials.length === 0 ? (
                 <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-slate-500 dark:text-slate-500">
+                    <td colSpan={7} className="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
                         No se encontraron resultados con los filtros seleccionados.
                     </td>
                 </tr>
               ) : (
                 sortedOfficials.map((official) => (
-                  <tr key={official.id} className={`hover:bg-slate-50 transition-colors ${selectedIds.includes(official.id) ? 'bg-indigo-50/50' : ''}`}>
+                  <tr key={official.id} className={`transition-colors ${selectedIds.includes(official.id) ? 'bg-indigo-50/50 dark:bg-indigo-950/20' : 'hover:bg-slate-50 dark:hover:bg-dark-700/50'}`}>
                     <td className="px-6 py-4">
                         <button onClick={() => toggleSelectOne(official.id)} className="flex items-center text-slate-600 dark:text-slate-400 hover:text-indigo-600">
                              {selectedIds.includes(official.id) ? (
@@ -412,34 +412,38 @@ export const OfficialList: React.FC<OfficialListProps> = ({
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                          {/* Icono de Jefatura a la Izquierda del nombre */}
-                         {official.isBoss && <Crown className="w-4 h-4 text-amber-500 fill-amber-500 flex-shrink-0" title="Jefatura" />}
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${official.gender === Gender.Female ? 'bg-pink-100 text-pink-600' : official.gender === Gender.Male ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-600'}`}>
+                         {official.isBoss && (
+                             <span title="Jefatura">
+                                 <Crown className="w-4 h-4 text-amber-500 fill-amber-500 flex-shrink-0" />
+                             </span>
+                         )}
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${official.gender === Gender.Female ? 'bg-pink-100 dark:bg-pink-900/40 text-pink-600 dark:text-pink-400' : official.gender === Gender.Male ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400'}`}>
                           <UserCircle2 className="w-5 h-5" />
                         </div>
                         <div>
-                          <p className="font-medium text-slate-900 flex items-center gap-1">
+                          <p className="font-medium text-slate-900 dark:text-white flex items-center gap-1">
                             {official.name}
                           </p>
-                          <p className="text-xs text-slate-500 dark:text-slate-500">{official.title}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{official.title}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-600">
+                    <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">
                         {official.department ? (
                             <div className="flex items-center gap-2">
-                                <Building2 className="w-3 h-3 text-slate-600 dark:text-slate-400" />
+                                <Building2 className="w-3 h-3 text-slate-400 dark:text-slate-500" />
                                 {official.department}
                             </div>
                         ) : '-'}
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-600">{official.position}</td>
+                    <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{official.position}</td>
                     
                     {/* Clickable Email Column */}
                     <td className="px-6 py-4 text-sm">
                         {official.email ? (
                             <a 
                                 href={`mailto:${official.email}`} 
-                                className="text-indigo-600 hover:underline hover:text-indigo-800 flex items-center gap-1.5 transition-colors font-medium"
+                                className="text-indigo-600 dark:text-indigo-400 hover:underline hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center gap-1.5 transition-colors font-medium"
                                 onClick={(e) => e.stopPropagation()}
                                 title="Enviar correo"
                             >
@@ -447,7 +451,7 @@ export const OfficialList: React.FC<OfficialListProps> = ({
                                 {official.email}
                             </a>
                         ) : (
-                            <span className="text-slate-600 dark:text-slate-400 italic">Sin correo</span>
+                            <span className="text-slate-400 dark:text-slate-500 italic">Sin correo</span>
                         )}
                     </td>
                     
@@ -457,10 +461,10 @@ export const OfficialList: React.FC<OfficialListProps> = ({
                         onMouseEnter={(e) => handleMouseEnterTooltip(e, official)}
                         onMouseLeave={handleMouseLeaveTooltip}
                     >
-                      <div className="text-sm text-slate-900 font-medium decoration-slate-300 decoration-dotted underline-offset-2 hover:underline">
+                      <div className="text-sm text-slate-900 dark:text-white font-medium decoration-slate-300 dark:decoration-slate-600 decoration-dotted underline-offset-2 hover:underline">
                           {official.bossName || '-'}
                       </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-500">{official.bossPosition}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{official.bossPosition}</div>
                     </td>
 
                     <td className="px-6 py-4 text-right">
@@ -468,14 +472,14 @@ export const OfficialList: React.FC<OfficialListProps> = ({
                         <button
                           type="button"
                           onClick={(e) => { e.stopPropagation(); onEdit(official); }}
-                          className="p-1.5 text-slate-500 dark:text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+                          className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-md transition-colors"
                         >
                           <Edit2 className="w-4 h-4 pointer-events-none" />
                         </button>
                         <button
                           type="button"
                           onClick={(e) => { e.stopPropagation(); onDelete(official.id); }}
-                          className="p-1.5 text-slate-500 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                          className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition-colors"
                         >
                           <Trash2 className="w-4 h-4 pointer-events-none" />
                         </button>
@@ -492,7 +496,7 @@ export const OfficialList: React.FC<OfficialListProps> = ({
       {/* Floating Tooltip (Rendered outside table to prevent overflow clipping) */}
       {activeTooltip && (
           <div 
-            className="fixed z-[9999] bg-slate-800 text-slate-900 dark:text-white p-3 rounded-lg shadow-xl animate-in fade-in zoom-in-95 pointer-events-none"
+            className="fixed z-[9999] bg-slate-800 dark:bg-dark-900 text-white p-3 rounded-lg shadow-xl border border-slate-700 dark:border-slate-600 animate-in fade-in zoom-in-95 pointer-events-none"
             style={{ 
                 left: activeTooltip.x, 
                 top: activeTooltip.position === 'bottom' ? activeTooltip.y : undefined,
@@ -500,24 +504,24 @@ export const OfficialList: React.FC<OfficialListProps> = ({
                 width: '260px'
             }}
           >
-              <div className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Detalles Jefatura</div>
+              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Detalles Jefatura</div>
               <div className="space-y-1">
                   <div className="flex items-start gap-2">
                       <User className="w-3 h-3 text-indigo-400 mt-0.5" />
-                      <span className="text-sm font-medium">{activeTooltip.official.bossName}</span>
+                      <span className="text-sm font-medium text-white">{activeTooltip.official.bossName}</span>
                   </div>
                   <div className="flex items-start gap-2">
                       <Briefcase className="w-3 h-3 text-indigo-400 mt-0.5" />
-                      <span className="text-xs text-slate-700 dark:text-slate-300">{activeTooltip.official.bossPosition || 'Sin Cargo'}</span>
+                      <span className="text-xs text-slate-300">{activeTooltip.official.bossPosition || 'Sin Cargo'}</span>
                   </div>
                   <div className="flex items-start gap-2">
                       <Mail className="w-3 h-3 text-indigo-400 mt-0.5" />
-                      <span className="text-xs text-slate-700 dark:text-slate-300 break-all">{activeTooltip.official.bossEmail || 'Sin Correo'}</span>
+                      <span className="text-xs text-slate-300 break-all">{activeTooltip.official.bossEmail || 'Sin Correo'}</span>
                   </div>
               </div>
               {/* Arrow */}
               <div 
-                className="absolute left-6 w-2 h-2 bg-slate-800 rotate-45"
+                className="absolute left-6 w-2 h-2 bg-slate-800 dark:bg-dark-900 rotate-45"
                 style={{
                     top: activeTooltip.position === 'bottom' ? '-4px' : undefined,
                     bottom: activeTooltip.position === 'top' ? '-4px' : undefined,

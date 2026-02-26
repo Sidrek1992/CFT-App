@@ -89,42 +89,44 @@ export const OrgChart: React.FC<OrgChartProps> = ({ officials }) => {
   };
 
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col bg-slate-50 rounded-xl border border-slate-200 overflow-hidden relative">
+    <div className="h-[calc(100vh-140px)] flex flex-col bg-slate-50 dark:bg-dark-900/50 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden relative">
       
       {/* Toolbar */}
-      <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 bg-white/90 backdrop-blur shadow-lg rounded-lg p-2 border border-slate-200">
-        <div className="flex items-center gap-1 border-b border-slate-100 pb-2 mb-2">
-            <button onClick={() => setScale(s => Math.min(2, s + 0.1))} className="p-2 hover:bg-slate-100 rounded text-slate-600"><Plus className="w-4 h-4" /></button>
-            <span className="text-xs font-mono w-12 text-center">{Math.round(scale * 100)}%</span>
-            <button onClick={() => setScale(s => Math.max(0.2, s - 0.1))} className="p-2 hover:bg-slate-100 rounded text-slate-600"><Minus className="w-4 h-4" /></button>
+      <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 bg-white/90 dark:bg-dark-800/90 backdrop-blur shadow-lg rounded-lg p-2 border border-slate-200 dark:border-slate-700">
+        <div className="flex items-center gap-1 border-b border-slate-100 dark:border-slate-700 pb-2 mb-2">
+            <button onClick={() => setScale(s => Math.min(2, s + 0.1))} className="p-2 hover:bg-slate-100 dark:hover:bg-dark-700 rounded text-slate-600 dark:text-slate-300 transition-colors"><Plus className="w-4 h-4" /></button>
+            <span className="text-xs font-mono w-12 text-center text-slate-600 dark:text-slate-300">{Math.round(scale * 100)}%</span>
+            <button onClick={() => setScale(s => Math.max(0.2, s - 0.1))} className="p-2 hover:bg-slate-100 dark:hover:bg-dark-700 rounded text-slate-600 dark:text-slate-300 transition-colors"><Minus className="w-4 h-4" /></button>
         </div>
-        <button onClick={centerChart} className="p-2 hover:bg-slate-100 rounded text-slate-600 flex items-center gap-2 text-xs font-medium" title="Centrar">
+        <button onClick={centerChart} className="p-2 hover:bg-slate-100 dark:hover:bg-dark-700 rounded text-slate-600 dark:text-slate-300 flex items-center gap-2 text-xs font-medium transition-colors" title="Centrar">
             <Maximize className="w-4 h-4" /> Centrar
         </button>
-        <div className="relative pt-2 border-t border-slate-100">
+        <div className="relative pt-2 border-t border-slate-100 dark:border-slate-700">
              <input 
                 type="text" 
                 placeholder="Buscar..." 
                 value={searchName}
                 onChange={(e) => setSearchName(e.target.value)}
-                className="w-32 px-2 py-1 text-xs border border-slate-200 rounded outline-none focus:border-indigo-500"
+                className="w-32 px-2 py-1 text-xs bg-white dark:bg-dark-900 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 rounded outline-none focus:border-indigo-500"
              />
-             <Search className="w-3 h-3 text-slate-600 dark:text-slate-400 absolute right-2 top-4" />
+             <Search className="w-3 h-3 text-slate-400 dark:text-slate-500 absolute right-2 top-4 pointer-events-none" />
         </div>
       </div>
 
       {/* Stats Legend */}
-      <div className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur shadow-sm rounded-lg p-3 border border-slate-200 text-xs">
+      <div className="absolute top-4 right-4 z-10 bg-white/90 dark:bg-dark-800/90 backdrop-blur shadow-sm rounded-lg p-3 border border-slate-200 dark:border-slate-700 text-xs">
           <div className="flex items-center gap-2 mb-1">
               <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-              <span className="font-bold text-slate-700">{officials.length}</span> Funcionarios
+              <span className="font-bold text-slate-700 dark:text-slate-200">{officials.length}</span>
+              <span className="text-slate-500 dark:text-slate-400"> Funcionarios</span>
           </div>
           <div className="flex items-center gap-2 mb-1">
               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-              <span className="font-bold text-slate-700">{treeRoots.length}</span> Líderes (Raíz)
+              <span className="font-bold text-slate-700 dark:text-slate-200">{treeRoots.length}</span>
+              <span className="text-slate-500 dark:text-slate-400"> Líderes (Raíz)</span>
           </div>
           {orphanCount > 0 && (
-             <div className="flex items-center gap-2 text-amber-600 mt-2 pt-2 border-t border-slate-100">
+             <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mt-2 pt-2 border-t border-slate-100 dark:border-slate-700">
                  <span className="font-bold">{orphanCount}</span> sin jefatura encontrada
              </div>
           )}
@@ -133,7 +135,7 @@ export const OrgChart: React.FC<OrgChartProps> = ({ officials }) => {
       {/* Chart Canvas */}
       <div 
         ref={containerRef}
-        className={`flex-1 overflow-hidden cursor-move ${isDragging ? 'cursor-grabbing' : ''} bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]`}
+        className={`flex-1 overflow-hidden cursor-move ${isDragging ? 'cursor-grabbing' : ''} bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] dark:bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:16px_16px]`}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -150,7 +152,7 @@ export const OrgChart: React.FC<OrgChartProps> = ({ officials }) => {
         >
             <div className="flex gap-12">
                 {treeRoots.length === 0 ? (
-                    <div className="text-center text-slate-600 dark:text-slate-400 mt-20">
+                    <div className="text-center text-slate-500 dark:text-slate-400 mt-20">
                         <p className="text-lg font-medium">No hay datos para mostrar</p>
                         <p className="text-sm">Agrega funcionarios en la Base de Datos.</p>
                     </div>
@@ -180,27 +182,27 @@ const TreeNodeComponent: React.FC<{ node: TreeNode, highlight: string }> = ({ no
             <div 
                 className={`
                     relative z-10 w-64 rounded-xl border transition-all duration-300 shadow-sm
-                    ${isHighlighted ? 'ring-4 ring-amber-300 border-amber-500 bg-amber-50 scale-105' : 'bg-white border-slate-200 hover:shadow-md hover:border-indigo-300'}
+                    ${isHighlighted ? 'ring-4 ring-amber-300 border-amber-500 bg-amber-50 dark:bg-amber-950/30 scale-105' : 'bg-white dark:bg-dark-800 border-slate-200 dark:border-slate-700 hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-600'}
                     ${highlight && !isHighlighted && !isParentOfHighlight ? 'opacity-30 blur-[1px]' : 'opacity-100'}
                 `}
             >
                 <div className={`h-1.5 w-full rounded-t-xl ${node.data.gender === Gender.Female ? 'bg-pink-500' : node.data.gender === Gender.Male ? 'bg-indigo-500' : 'bg-slate-400'}`}></div>
                 <div className="p-3">
                     <div className="flex items-start gap-3">
-                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${node.data.gender === Gender.Female ? 'bg-pink-100 text-pink-600' : 'bg-indigo-100 text-indigo-600'}`}>
+                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${node.data.gender === Gender.Female ? 'bg-pink-100 dark:bg-pink-900/40 text-pink-600 dark:text-pink-300' : 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300'}`}>
                             {node.data.name.charAt(0)}
                          </div>
                          <div className="min-w-0">
-                             <p className="text-sm font-bold text-slate-800 leading-tight truncate" title={node.data.name}>
+                             <p className="text-sm font-bold text-slate-800 dark:text-white leading-tight truncate" title={node.data.name}>
                                  {node.data.name}
                              </p>
-                             <p className="text-xs text-slate-500 dark:text-slate-500 font-medium truncate mt-0.5" title={node.data.position}>
+                             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5" title={node.data.position}>
                                  {node.data.position}
                              </p>
                          </div>
                     </div>
                     {node.data.department && (
-                        <div className="mt-2 pt-2 border-t border-slate-100 text-[10px] text-slate-600 dark:text-slate-400 font-medium uppercase tracking-wide truncate">
+                        <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700 text-[10px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide truncate">
                             {node.data.department}
                         </div>
                     )}
@@ -210,7 +212,7 @@ const TreeNodeComponent: React.FC<{ node: TreeNode, highlight: string }> = ({ no
                 {hasChildren && (
                     <button 
                         onClick={(e) => { e.stopPropagation(); setCollapsed(!collapsed); }}
-                        className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-500 hover:text-indigo-600 hover:border-indigo-300 shadow-sm z-20"
+                        className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-white dark:bg-dark-800 border border-slate-200 dark:border-slate-600 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-300 dark:hover:border-indigo-500 shadow-sm z-20 transition-colors"
                     >
                         {collapsed ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
                     </button>
@@ -221,7 +223,7 @@ const TreeNodeComponent: React.FC<{ node: TreeNode, highlight: string }> = ({ no
             {hasChildren && !collapsed && (
                 <div className="flex flex-col items-center animate-in fade-in slide-in-from-top-2 duration-300">
                     {/* Line down from parent */}
-                    <div className="w-px h-8 bg-slate-300"></div>
+                    <div className="w-px h-8 bg-slate-300 dark:bg-slate-600"></div>
                     
                     {/* Horizontal connector line container */}
                     <div className="flex relative pt-4">
@@ -229,14 +231,14 @@ const TreeNodeComponent: React.FC<{ node: TreeNode, highlight: string }> = ({ no
                             <div key={child.data.id} className="flex flex-col items-center px-4 relative">
                                 {/* Horizontal Lines */}
                                 {index > 0 && (
-                                    <div className="absolute top-0 left-0 w-[50%] h-px bg-slate-300 -translate-y-[1px]"></div>
+                                    <div className="absolute top-0 left-0 w-[50%] h-px bg-slate-300 dark:bg-slate-600 -translate-y-[1px]"></div>
                                 )}
                                 {index < node.children.length - 1 && (
-                                    <div className="absolute top-0 right-0 w-[50%] h-px bg-slate-300 -translate-y-[1px]"></div>
+                                    <div className="absolute top-0 right-0 w-[50%] h-px bg-slate-300 dark:bg-slate-600 -translate-y-[1px]"></div>
                                 )}
                                 
                                 {/* Vertical line to child */}
-                                <div className="absolute top-0 left-1/2 w-px h-8 bg-slate-300 -translate-x-1/2 -translate-y-[1px]"></div>
+                                <div className="absolute top-0 left-1/2 w-px h-8 bg-slate-300 dark:bg-slate-600 -translate-x-1/2 -translate-y-[1px]"></div>
 
                                 {/* Child Node */}
                                 <div className="mt-8">

@@ -2,8 +2,16 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Gender } from "../types";
 
 // Helper to get AI instance safely
+// Note: process.env.API_KEY is replaced at build time by Vite (see vite.config.ts define block)
 const getAiClient = () => {
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "La clave de API de Gemini no está configurada. " +
+      "Agrega GEMINI_API_KEY en el archivo .env y reinicia el servidor."
+    );
+  }
+  return new GoogleGenAI({ apiKey });
 };
 
 interface GenderPrediction {

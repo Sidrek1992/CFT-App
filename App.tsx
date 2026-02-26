@@ -95,11 +95,16 @@ export default function App() {
 
     const [files, setFiles] = useState<File[]>([]);
 
-    // Legacy support for global history, though we now use per-campaign logs
-    const [sentHistory, setSentHistory] = useState<string[]>(() => {
-        const saved = localStorage.getItem('sent_history');
-        return saved ? JSON.parse(saved) : [];
-    });
+    // Bug #9: sentHistory is now derived from all campaign logs of the active DB
+    // This ensures it stays in sync across users and sessions without a separate local copy
+    const [sentHistory, setSentHistory] = useState<string[]>([]);
+
+    // Derive sentHistory from campaign logs whenever campaigns change
+    const derivedSentHistory = useMemo(() => {
+        const ids = new Set<string>();
+        campaigns.forEach(c => c.logs.forEach(l => ids.add(l.officialId)));
+        return Array.from(ids);
+    }, [campaigns]);
 
     const [toasts, setToasts] = useState<ToastNotification[]>([]);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -145,11 +150,18 @@ export default function App() {
 
     // --- PERSISTENCE ---
 
-    // Real-time synchronization
+    // Real-time synchronization — only when authenticated (Bug #7)
     useEffect(() => {
+        if (!user) return;
+
         const unsubscribe = dbService.subscribeToDatabases((dbs) => {
             if (dbs.length > 0) {
                 setDatabases(dbs);
+                // Bug #5: If the stored activeDbId doesn't exist in the loaded DBs, fall back to the first one
+                setActiveDbId(prev => {
+                    const exists = dbs.some(db => db.id === prev);
+                    return exists ? prev : dbs[0].id;
+                });
             }
         });
 
@@ -165,17 +177,19 @@ export default function App() {
             unsubscribe();
             unsubscribeConfig();
         };
-    }, []);
+    }, [user]);
 
     useEffect(() => { localStorage.setItem('active_db_id', activeDbId); }, [activeDbId]);
 
     // Persist shared configurations to Firestore with a debounce to prevent excessive writes
+    // Bug #9: sentHistory removed — it is now derived from campaign logs (derivedSentHistory)
     useEffect(() => {
+        if (!user) return;
         const timer = setTimeout(() => {
-            dbService.saveSharedConfig({ template, savedTemplates, sentHistory });
+            dbService.saveSharedConfig({ template, savedTemplates });
         }, 1000);
         return () => clearTimeout(timer);
-    }, [template, savedTemplates, sentHistory]);
+    }, [template, savedTemplates, user]);
 
     // --- HELPERS ---
     const addToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -187,16 +201,23 @@ export default function App() {
     };
 
     // Helper to update the officials list of the CURRENT active database
+    // Bug #6: Returns the promise so callers can handle errors if needed
     const updateActiveDb = async (updater: (db: OfficialDatabase) => OfficialDatabase) => {
         const activeDb = databases.find(db => db.id === activeDbId);
         if (activeDb) {
             const updatedDb = updater(activeDb);
-            await dbService.saveDatabase(updatedDb);
+            try {
+                await dbService.saveDatabase(updatedDb);
+            } catch (err) {
+                console.error("Error al guardar cambios en Firestore:", err);
+                addToast("Error al guardar los cambios. Verifica tu conexión.", 'error');
+                throw err;
+            }
         }
     };
 
-    const updateActiveDbOfficials = (newOfficials: Official[] | ((prev: Official[]) => Official[])) => {
-        updateActiveDb(db => ({
+    const updateActiveDbOfficials = async (newOfficials: Official[] | ((prev: Official[]) => Official[])) => {
+        await updateActiveDb(db => ({
             ...db,
             officials: typeof newOfficials === 'function' ? newOfficials(db.officials) : newOfficials
         }));
@@ -231,6 +252,8 @@ export default function App() {
             status: 'sent'
         };
 
+        // Bug #9: sentHistory is now derived from campaign logs (derivedSentHistory),
+        // so we only need to persist the log in the campaign — no separate sentHistory update needed.
         updateActiveDb(db => ({
             ...db,
             campaigns: (db.campaigns || []).map(c =>
@@ -239,11 +262,6 @@ export default function App() {
                     : c
             )
         }));
-
-        // Update global sent history for legacy tracking dashboard
-        if (!sentHistory.includes(logData.officialId)) {
-            setSentHistory(prev => [...prev, logData.officialId]);
-        }
     };
 
     // View Handlers
@@ -325,7 +343,7 @@ export default function App() {
         setDbModal({ isOpen: true, mode: 'rename', value: activeDatabase.name });
     };
 
-    const submitDbModal = (e: React.FormEvent) => {
+    const submitDbModal = async (e: React.FormEvent) => {
         e.preventDefault();
         const name = dbModal.value.trim();
         if (!name) return;
@@ -338,26 +356,49 @@ export default function App() {
                 campaigns: [],
                 createdAt: Date.now()
             };
-            setDatabases(prev => [...prev, newDb]);
-            setActiveDbId(newDb.id);
-            addToast(`Base de datos "${name}" creada`, 'success');
+            try {
+                await dbService.saveDatabase(newDb);
+                setActiveDbId(newDb.id);
+                addToast(`Base de datos "${name}" creada`, 'success');
+            } catch (err) {
+                console.error("Error al crear base de datos:", err);
+                addToast("Error al crear la base de datos", 'error');
+            }
         } else {
-            setDatabases(prev => prev.map(db => db.id === activeDbId ? { ...db, name } : db));
-            addToast("Nombre actualizado", 'success');
+            const activeDb = databases.find(db => db.id === activeDbId);
+            if (activeDb) {
+                const updatedDb = { ...activeDb, name };
+                try {
+                    await dbService.saveDatabase(updatedDb);
+                    addToast("Nombre actualizado", 'success');
+                } catch (err) {
+                    console.error("Error al renombrar base de datos:", err);
+                    addToast("Error al renombrar la base de datos", 'error');
+                }
+            }
         }
         setDbModal({ ...dbModal, isOpen: false });
     };
 
-    const handleDeleteDatabase = () => {
+    const handleDeleteDatabase = async () => {
         if (databases.length <= 1) {
             addToast("No puedes eliminar la única base de datos.", "error");
             return;
         }
         if (confirm(`¿Estás seguro de que deseas ELIMINAR COMPLETAMENTE la base de datos "${activeDatabase.name}"? Esta acción no se puede deshacer.`)) {
-            const newDbs = databases.filter(db => db.id !== activeDbId);
-            setDatabases(newDbs);
+            const idToDelete = activeDbId;
+            const newDbs = databases.filter(db => db.id !== idToDelete);
+            // Optimistic UI: switch to another DB immediately
             setActiveDbId(newDbs[0].id);
-            addToast("Base de datos eliminada", 'success');
+            try {
+                await dbService.deleteDatabase(idToDelete);
+                addToast("Base de datos eliminada", 'success');
+            } catch (err) {
+                console.error("Error al eliminar base de datos:", err);
+                addToast("Error al eliminar la base de datos", 'error');
+                // Revert optimistic update on failure
+                setActiveDbId(idToDelete);
+            }
         }
     };
 
@@ -435,7 +476,8 @@ export default function App() {
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (evt) => {
+        // async callback so we can properly await updateActiveDbOfficials → Firestore persistence
+        reader.onload = async (evt) => {
             try {
                 const buffer = evt.target?.result;
                 const wb = XLSX.read(buffer, { type: 'array' });
@@ -453,7 +495,7 @@ export default function App() {
                     const rawGender = row['Género'] || row['Genero'] || row['gender'] || row['Gender'] || row['sex'] || row['sexo'];
 
                     return {
-                        id: generateId(), // Temporary ID, might be discarded if duplicate
+                        id: generateId(),
                         name: row.Nombre || row.name || 'Sin Nombre',
                         email: row.Correo || row.email || '',
                         gender: parseGender(rawGender),
@@ -496,9 +538,11 @@ export default function App() {
                 });
 
                 if (duplicates.length > 0) {
+                    // Store conflict for user to resolve — resolution will await Firestore in resolveImportConflict
                     setImportConflict({ newOfficials: newUnique, duplicates });
                 } else {
-                    updateActiveDbOfficials(prev => [...prev, ...newUnique]);
+                    // Directly persist to Firestore (await ensures the save completes)
+                    await updateActiveDbOfficials(prev => [...prev, ...newUnique]);
                     addToast(`${newUnique.length} funcionarios importados a "${activeDatabase.name}"`, 'success');
                 }
 
@@ -511,13 +555,13 @@ export default function App() {
         e.target.value = ''; // Reset input
     };
 
-    const resolveImportConflict = (action: 'skip' | 'overwrite') => {
+    const resolveImportConflict = async (action: 'skip' | 'overwrite') => {
         if (!importConflict) return;
 
         if (action === 'skip') {
             // Only add the new unique ones
             if (importConflict.newOfficials.length > 0) {
-                updateActiveDbOfficials(prev => [...prev, ...importConflict.newOfficials]);
+                await updateActiveDbOfficials(prev => [...prev, ...importConflict.newOfficials]);
                 addToast(`${importConflict.newOfficials.length} funcionarios nuevos importados`, 'success');
             } else {
                 addToast("No se importaron registros (todos eran duplicados)", 'info');
@@ -529,7 +573,7 @@ export default function App() {
                 updatesMap.set(d.existing.id, d.incoming);
             });
 
-            updateActiveDbOfficials(prev => {
+            await updateActiveDbOfficials(prev => {
                 // Update existing officials if they are in the map
                 const updatedExisting = prev.map(o => {
                     if (updatesMap.has(o.id)) {
@@ -571,13 +615,13 @@ export default function App() {
     };
 
     const handleExportBackup = () => {
+        // Bug #9: sentHistory removed from backup — it is derived from campaign logs in each DB
         const backup = {
             timestamp: Date.now(),
-            databases, // Export ALL databases
+            databases, // Export ALL databases (campaigns with logs included)
             activeDbId,
             template,
-            savedTemplates,
-            sentHistory
+            savedTemplates
         };
         const blob = new Blob([JSON.stringify(backup)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
@@ -587,12 +631,13 @@ export default function App() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        URL.revokeObjectURL(url);
         addToast("Copia de seguridad completa descargada", "success");
     };
 
-    const handleImportBackup = (file: File) => {
+    const handleImportBackup = async (file: File) => {
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             try {
                 const json = JSON.parse(e.target?.result as string);
                 // Handle legacy backups
@@ -604,21 +649,24 @@ export default function App() {
                         campaigns: [],
                         createdAt: Date.now()
                     };
-                    setDatabases(prev => [...prev, legacyDb]);
+                    await dbService.saveDatabase(legacyDb);
                     setActiveDbId(legacyDb.id);
                 }
                 // Handle new backups
-                else if (json.databases) {
-                    setDatabases(json.databases);
+                else if (json.databases && Array.isArray(json.databases)) {
+                    // Persist all restored databases to Firestore
+                    await Promise.all(
+                        (json.databases as OfficialDatabase[]).map(db => dbService.saveDatabase(db))
+                    );
                     if (json.activeDbId) setActiveDbId(json.activeDbId);
                 }
 
                 if (json.template) setTemplate(json.template);
                 if (json.savedTemplates) setSavedTemplates(json.savedTemplates);
-                if (json.sentHistory) setSentHistory(json.sentHistory);
                 addToast("Sistema restaurado exitosamente", "success");
             } catch (err) {
-                addToast("Archivo de respaldo inválido", "error");
+                console.error("Error al importar backup:", err);
+                addToast("Archivo de respaldo inválido o error al restaurar", "error");
             }
         };
         reader.readAsText(file);
@@ -647,10 +695,10 @@ export default function App() {
     }
 
     return (
-        <div className="flex h-screen bg-slate-50 dark:bg-dark-950 text-slate-800 dark:text-slate-200 overflow-hidden font-sans bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-dark-800 via-dark-950 to-dark-950 relative">
-            {/* Decorative background blurs */}
-            <div className="absolute top-0 left-0 w-96 h-96 bg-primary-900/40 rounded-full mix-blend-screen filter blur-[100px] opacity-50 z-0"></div>
-            <div className="absolute bottom-0 right-0 w-96 h-96 bg-indigo-900/30 rounded-full mix-blend-screen filter blur-[100px] opacity-50 z-0"></div>
+        <div className="flex h-screen bg-slate-100 dark:bg-dark-950 text-slate-800 dark:text-slate-200 overflow-hidden font-sans relative">
+            {/* Decorative background blurs — subtle in light, vivid in dark */}
+            <div className="absolute top-0 left-0 w-96 h-96 bg-primary-300/20 dark:bg-primary-900/40 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[100px] opacity-60 z-0"></div>
+            <div className="absolute bottom-0 right-0 w-96 h-96 bg-indigo-300/20 dark:bg-indigo-900/30 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[100px] opacity-60 z-0"></div>
 
             <ToastContainer toasts={toasts} removeToast={removeToast} />
 
@@ -683,7 +731,7 @@ export default function App() {
                 <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-800/50 bg-slate-900/5 dark:bg-black/10">
                     <div className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center justify-between">
                         <span>Base de Datos</span>
-                        <button onClick={() => setIsDbMenuOpen(!isDbMenuOpen)} className="hover:text-primary-400 transition-colors p-1 rounded-md hover:bg-slate-900/5 dark:bg-white/5">
+                        <button onClick={() => setIsDbMenuOpen(!isDbMenuOpen)} className="hover:text-primary-400 transition-colors p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10">
                             <Settings className="w-4 h-4" />
                         </button>
                     </div>
@@ -691,7 +739,7 @@ export default function App() {
                     <div className="relative">
                         <button
                             onClick={() => setIsDbMenuOpen(!isDbMenuOpen)}
-                            className="w-full bg-white dark:bg-dark-900/50 hover:bg-slate-100 dark:bg-dark-800 text-slate-900 dark:text-white p-3 rounded-xl flex items-center justify-between text-sm transition-all border border-slate-300 dark:border-slate-700 hover:border-slate-600 shadow-inner group"
+                            className="w-full bg-white dark:bg-dark-900/70 hover:bg-slate-100 dark:hover:bg-dark-800 text-slate-900 dark:text-white p-3 rounded-xl flex items-center justify-between text-sm transition-all border border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 shadow-inner group"
                         >
                             <span className="truncate flex-1 text-left font-medium group-hover:text-primary-300 transition-colors">{activeDatabase.name}</span>
                             <ChevronDown className="w-4 h-4 text-slate-600 dark:text-slate-400" />
@@ -705,7 +753,7 @@ export default function App() {
                                         <button
                                             key={db.id}
                                             onClick={() => { setActiveDbId(db.id); setIsDbMenuOpen(false); }}
-                                            className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between ${activeDbId === db.id ? 'bg-primary-600 text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:bg-dark-700'}`}
+                                            className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between ${activeDbId === db.id ? 'bg-primary-600 text-white' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-dark-700'}`}
                                         >
                                             <span className="truncate">{db.name}</span>
                                             {activeDbId === db.id && <CheckCircle2 className="w-3 h-3" />}
@@ -713,21 +761,21 @@ export default function App() {
                                     ))}
                                 </div>
                                 <div className="border-t border-slate-300 dark:border-slate-700 p-2 space-y-1">
-                                    <button onClick={() => { handleCreateDatabase(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-primary-400 hover:bg-slate-200 dark:bg-dark-700 rounded-lg flex items-center gap-2">
+                                    <button onClick={() => { handleCreateDatabase(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-primary-600 dark:text-primary-400 hover:bg-slate-200 dark:hover:bg-dark-700 rounded-lg flex items-center gap-2">
                                         <Plus className="w-3 h-3" /> Crear Nueva BD
                                     </button>
-                                    <button onClick={() => { dbImportInputRef.current?.click(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:bg-dark-700 rounded-lg flex items-center gap-2">
+                                    <button onClick={() => { dbImportInputRef.current?.click(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 rounded-lg flex items-center gap-2">
                                         <FolderInput className="w-3 h-3" /> Importar BD (JSON)
                                     </button>
                                     <div className="border-t border-slate-300 dark:border-slate-700 my-1"></div>
-                                    <button onClick={() => { handleRenameDatabase(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:bg-dark-700 rounded-lg flex items-center gap-2">
+                                    <button onClick={() => { handleRenameDatabase(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 rounded-lg flex items-center gap-2">
                                         <PenLine className="w-3 h-3" /> Renombrar Actual
                                     </button>
-                                    <button onClick={() => { handleExportDatabase(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:bg-dark-700 rounded-lg flex items-center gap-2">
+                                    <button onClick={() => { handleExportDatabase(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 rounded-lg flex items-center gap-2">
                                         <FolderOutput className="w-3 h-3" /> Exportar Actual (JSON)
                                     </button>
                                     {databases.length > 1 && (
-                                        <button onClick={() => { handleDeleteDatabase(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-red-400 hover:bg-slate-200 dark:bg-dark-700 rounded-lg flex items-center gap-2">
+                                        <button onClick={() => { handleDeleteDatabase(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-red-500 dark:text-red-400 hover:bg-slate-200 dark:hover:bg-dark-700 rounded-lg flex items-center gap-2">
                                             <Trash2 className="w-3 h-3" /> Eliminar Actual
                                         </button>
                                     )}
@@ -743,35 +791,35 @@ export default function App() {
                 <nav className="flex-1 p-4 space-y-2.5 overflow-y-auto custom-scrollbar">
                     <button
                         onClick={() => handleNavigate('dashboard')}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'dashboard' ? 'bg-primary-600 text-slate-900 dark:text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-900/5 dark:bg-white/5 hover:text-slate-900 dark:text-white border border-transparent hover:border-slate-200 dark:border-white/10'}`}
+                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'dashboard' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
                     >
                         <LayoutDashboard className={`w-5 h-5 ${view === 'dashboard' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
                         Dashboard
                     </button>
                     <button
                         onClick={() => handleNavigate('database')}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'database' ? 'bg-primary-600 text-slate-900 dark:text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-900/5 dark:bg-white/5 hover:text-slate-900 dark:text-white border border-transparent hover:border-slate-200 dark:border-white/10'}`}
+                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'database' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
                     >
                         <Database className={`w-5 h-5 ${view === 'database' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
                         Base de Datos
                     </button>
                     <button
                         onClick={() => handleNavigate('orgChart')}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'orgChart' ? 'bg-primary-600 text-slate-900 dark:text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-900/5 dark:bg-white/5 hover:text-slate-900 dark:text-white border border-transparent hover:border-slate-200 dark:border-white/10'}`}
+                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'orgChart' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
                     >
                         <Network className={`w-5 h-5 ${view === 'orgChart' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
                         Organigrama
                     </button>
                     <button
                         onClick={() => handleNavigate('template')}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'template' ? 'bg-primary-600 text-slate-900 dark:text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-900/5 dark:bg-white/5 hover:text-slate-900 dark:text-white border border-transparent hover:border-slate-200 dark:border-white/10'}`}
+                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'template' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
                     >
                         <FileEdit className={`w-5 h-5 ${view === 'template' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
                         Editor Plantilla
                     </button>
                     <button
                         onClick={() => handleNavigate('generate')}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'generate' ? 'bg-primary-600 text-slate-900 dark:text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-900/5 dark:bg-white/5 hover:text-slate-900 dark:text-white border border-transparent hover:border-slate-200 dark:border-white/10'}`}
+                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'generate' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
                     >
                         <Send className={`w-5 h-5 ${view === 'generate' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
                         Generar y Enviar
@@ -800,7 +848,7 @@ export default function App() {
                                 <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">{user.email}</span>
                                 <span className="text-[10px] text-slate-500 dark:text-slate-500 uppercase">Admin</span>
                             </div>
-                            <button onClick={handleLogout} className="p-2 text-slate-600 dark:text-slate-400 hover:text-red-400 hover:bg-slate-900/5 dark:bg-white/5 rounded-lg transition-colors" title="Cerrar Sesión">
+                            <button onClick={handleLogout} className="p-2 text-slate-600 dark:text-slate-400 hover:text-red-400 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors" title="Cerrar Sesión">
                                 <LogOut className="w-4 h-4" />
                             </button>
                         </div>
@@ -829,7 +877,7 @@ export default function App() {
                         <button onClick={handleLogout} className="p-2 text-slate-600 dark:text-slate-400 hover:text-red-400 hover:bg-slate-900/10 dark:hover:bg-white/10 rounded-lg transition-colors" title="Cerrar Sesión">
                             <LogOut className="w-5 h-5" />
                         </button>
-                        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-slate-700 dark:text-slate-300 hover:bg-slate-900/10 dark:bg-white/10 rounded-lg transition-colors">
+                        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-slate-700 dark:text-slate-300 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg transition-colors">
                             <Menu className="w-6 h-6" />
                         </button>
                     </div>
@@ -848,7 +896,7 @@ export default function App() {
                         {view === 'dashboard' && (
                             <Dashboard
                                 officials={officials}
-                                sentHistory={sentHistory}
+                                sentHistory={derivedSentHistory}
                                 onNavigate={handleNavigate}
                                 onImport={() => fileInputRef.current?.click()}
                                 onExportExcel={handleExportExcel}
@@ -863,16 +911,16 @@ export default function App() {
                             <div className="space-y-6 animate-in fade-in duration-300">
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                     <div>
-                                        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                                            Base de Datos: <span className="text-indigo-600">{activeDatabase.name}</span>
+                                        <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                            Base de Datos: <span className="text-indigo-600 dark:text-indigo-400">{activeDatabase.name}</span>
                                         </h2>
-                                        <p className="text-slate-500 dark:text-slate-500">Administrando registros para {activeDatabase.name}.</p>
+                                        <p className="text-slate-500 dark:text-slate-400">Administrando registros para {activeDatabase.name}.</p>
                                     </div>
                                     {!showForm && (
                                         <div className="flex gap-2">
                                             <button
                                                 onClick={() => fileInputRef.current?.click()}
-                                                className="px-3 py-2 bg-white text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 flex items-center gap-2 text-sm font-medium transition-colors"
+                                                className="px-3 py-2 bg-white dark:bg-dark-800 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-dark-700 flex items-center gap-2 text-sm font-medium transition-colors"
                                                 title="Importar Excel a esta BD"
                                             >
                                                 <Upload className="w-4 h-4" />
@@ -880,7 +928,7 @@ export default function App() {
                                             </button>
                                             <button
                                                 onClick={handleExportExcel}
-                                                className="px-3 py-2 bg-white text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 flex items-center gap-2 text-sm font-medium transition-colors"
+                                                className="px-3 py-2 bg-white dark:bg-dark-800 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-dark-700 flex items-center gap-2 text-sm font-medium transition-colors"
                                                 title="Exportar Excel de esta BD"
                                             >
                                                 <FileSpreadsheet className="w-4 h-4" />
@@ -888,7 +936,7 @@ export default function App() {
                                             </button>
                                             <button
                                                 onClick={() => { setEditingOfficial(null); setShowForm(true); }}
-                                                className="px-4 py-2 bg-indigo-600 text-slate-900 dark:text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 font-medium shadow-sm transition-all hover:shadow-md"
+                                                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 font-medium shadow-sm transition-all hover:shadow-md"
                                             >
                                                 <Plus className="w-4 h-4" />
                                                 Nuevo
@@ -924,8 +972,8 @@ export default function App() {
                             <div className="space-y-6">
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                     <div>
-                                        <h2 className="text-2xl font-bold text-slate-800">Organigrama</h2>
-                                        <p className="text-slate-500 dark:text-slate-500">Visualización jerárquica basada en las jefaturas de la base de datos.</p>
+                                        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Organigrama</h2>
+                                        <p className="text-slate-500 dark:text-slate-400">Visualización jerárquica basada en las jefaturas de la base de datos.</p>
                                     </div>
                                 </div>
                                 <OrgChart officials={officials} />
@@ -935,8 +983,8 @@ export default function App() {
                         {view === 'template' && (
                             <div className="h-[calc(100vh-8rem)]">
                                 <div className="mb-4">
-                                    <h2 className="text-2xl font-bold text-slate-800">Editor de Plantilla</h2>
-                                    <p className="text-slate-500 dark:text-slate-500">Diseña el correo base. Ahora soporta Texto Enriquecido.</p>
+                                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Editor de Plantilla</h2>
+                                    <p className="text-slate-500 dark:text-slate-400">Diseña el correo base. Ahora soporta Texto Enriquecido.</p>
                                 </div>
                                 <TemplateEditor
                                     template={template}
@@ -956,8 +1004,8 @@ export default function App() {
                             <div className="space-y-6">
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                     <div>
-                                        <h2 className="text-2xl font-bold text-slate-800">Generador de Correos</h2>
-                                        <p className="text-slate-500 dark:text-slate-500">Enviando a base de datos: <strong className="text-indigo-600">{activeDatabase.name}</strong></p>
+                                        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Generador de Correos</h2>
+                                        <p className="text-slate-500 dark:text-slate-400">Enviando a base de datos: <strong className="text-indigo-600 dark:text-indigo-400">{activeDatabase.name}</strong></p>
                                     </div>
                                 </div>
                                 <Generator
@@ -978,21 +1026,21 @@ export default function App() {
             {/* Database Create/Rename Modal */}
             {dbModal.isOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
-                        <div className="bg-slate-50 p-4 border-b border-slate-200">
-                            <h3 className="text-lg font-bold text-slate-800">
+                    <div className="bg-white dark:bg-dark-800 rounded-xl shadow-2xl max-w-sm w-full overflow-hidden border border-slate-200 dark:border-slate-700 animate-in zoom-in-95 duration-200">
+                        <div className="bg-slate-50 dark:bg-dark-900/60 p-4 border-b border-slate-200 dark:border-slate-700">
+                            <h3 className="text-lg font-bold text-slate-800 dark:text-white">
                                 {dbModal.mode === 'create' ? 'Nueva Base de Datos' : 'Renombrar Base de Datos'}
                             </h3>
                         </div>
                         <form onSubmit={submitDbModal} className="p-6">
                             <div className="mb-4">
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nombre</label>
                                 <input
                                     autoFocus
                                     type="text"
                                     value={dbModal.value}
                                     onChange={(e) => setDbModal({ ...dbModal, value: e.target.value })}
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    className="w-full px-3 py-2 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                                     placeholder="Ej. Honorarios 2024"
                                 />
                             </div>
@@ -1000,14 +1048,14 @@ export default function App() {
                                 <button
                                     type="button"
                                     onClick={() => setDbModal({ ...dbModal, isOpen: false })}
-                                    className="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium text-sm transition-colors"
+                                    className="px-4 py-2 bg-white dark:bg-dark-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-dark-700 font-medium text-sm transition-colors"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={!dbModal.value.trim()}
-                                    className="px-4 py-2 bg-indigo-600 text-slate-900 dark:text-white rounded-lg hover:bg-indigo-700 font-medium text-sm shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium text-sm shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {dbModal.mode === 'create' ? 'Crear' : 'Guardar'}
                                 </button>
@@ -1020,30 +1068,30 @@ export default function App() {
             {/* Confirmation Modal for Clearing Database */}
             {showClearConfirm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden border border-red-100 animate-in zoom-in-95 duration-200">
-                        <div className="bg-red-50 p-6 flex flex-col items-center text-center border-b border-red-100">
-                            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                                <AlertTriangle className="w-8 h-8 text-red-600" />
+                    <div className="bg-white dark:bg-dark-800 rounded-xl shadow-2xl max-w-md w-full overflow-hidden border border-red-100 dark:border-red-900/40 animate-in zoom-in-95 duration-200">
+                        <div className="bg-red-50 dark:bg-red-950/30 p-6 flex flex-col items-center text-center border-b border-red-100 dark:border-red-900/40">
+                            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center mb-4">
+                                <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" />
                             </div>
-                            <h3 className="text-xl font-bold text-red-900">¿Vaciar Base de Datos?</h3>
-                            <p className="text-red-700 mt-2 text-sm">
+                            <h3 className="text-xl font-bold text-red-900 dark:text-red-300">¿Vaciar Base de Datos?</h3>
+                            <p className="text-red-700 dark:text-red-400 mt-2 text-sm">
                                 Estás a punto de eliminar todos los registros de <strong>"{activeDatabase.name}"</strong>.
                             </p>
                         </div>
                         <div className="p-6">
-                            <p className="text-slate-600 text-sm mb-6 leading-relaxed text-center">
+                            <p className="text-slate-600 dark:text-slate-300 text-sm mb-6 leading-relaxed text-center">
                                 Se eliminarán <strong>{officials.length} registros</strong>. Esta acción es irreversible para esta lista específica.
                             </p>
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => setShowClearConfirm(false)}
-                                    className="flex-1 px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium transition-colors"
+                                    className="flex-1 px-4 py-2 bg-white dark:bg-dark-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-dark-700 font-medium transition-colors"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     onClick={executeClearDatabase}
-                                    className="flex-1 px-4 py-2 bg-red-600 text-slate-900 dark:text-white rounded-lg hover:bg-red-700 font-medium shadow-md transition-colors flex items-center justify-center gap-2"
+                                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-md transition-colors flex items-center justify-center gap-2"
                                 >
                                     <Trash2 className="w-4 h-4" />
                                     Vaciar Lista
@@ -1057,52 +1105,52 @@ export default function App() {
             {/* Import Conflict Modal */}
             {importConflict && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden border border-amber-100 animate-in zoom-in-95 duration-200">
-                        <div className="bg-amber-50 p-6 flex items-start gap-4 border-b border-amber-100">
-                            <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <AlertTriangle className="w-6 h-6 text-amber-600" />
+                    <div className="bg-white dark:bg-dark-800 rounded-xl shadow-2xl max-w-lg w-full overflow-hidden border border-amber-100 dark:border-amber-900/40 animate-in zoom-in-95 duration-200">
+                        <div className="bg-amber-50 dark:bg-amber-950/30 p-6 flex items-start gap-4 border-b border-amber-100 dark:border-amber-900/40">
+                            <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/40 rounded-full flex items-center justify-center flex-shrink-0">
+                                <AlertTriangle className="w-6 h-6 text-amber-600 dark:text-amber-400" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-bold text-amber-900">Conflicto de Importación</h3>
-                                <p className="text-amber-700 mt-1 text-sm">
+                                <h3 className="text-lg font-bold text-amber-900 dark:text-amber-300">Conflicto de Importación</h3>
+                                <p className="text-amber-700 dark:text-amber-400 mt-1 text-sm">
                                     El archivo contiene registros que ya existen en <strong>{activeDatabase.name}</strong>.
                                 </p>
                             </div>
                         </div>
                         <div className="p-6">
                             <div className="flex gap-4 mb-6">
-                                <div className="flex-1 bg-slate-50 p-3 rounded-lg border border-slate-200 text-center">
-                                    <span className="block text-2xl font-bold text-slate-700">{importConflict.newOfficials.length}</span>
-                                    <span className="text-xs text-slate-500 dark:text-slate-500 font-medium uppercase tracking-wide">Nuevos</span>
+                                <div className="flex-1 bg-slate-50 dark:bg-dark-900/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700 text-center">
+                                    <span className="block text-2xl font-bold text-slate-700 dark:text-white">{importConflict.newOfficials.length}</span>
+                                    <span className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide">Nuevos</span>
                                 </div>
-                                <div className="flex-1 bg-amber-50 p-3 rounded-lg border border-amber-200 text-center">
-                                    <span className="block text-2xl font-bold text-amber-700">{importConflict.duplicates.length}</span>
-                                    <span className="text-xs text-amber-600 font-medium uppercase tracking-wide">Duplicados</span>
+                                <div className="flex-1 bg-amber-50 dark:bg-amber-950/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800/50 text-center">
+                                    <span className="block text-2xl font-bold text-amber-700 dark:text-amber-300">{importConflict.duplicates.length}</span>
+                                    <span className="text-xs text-amber-600 dark:text-amber-400 font-medium uppercase tracking-wide">Duplicados</span>
                                 </div>
                             </div>
 
-                            <p className="text-slate-600 text-sm mb-6 leading-relaxed">
+                            <p className="text-slate-600 dark:text-slate-300 text-sm mb-6 leading-relaxed">
                                 ¿Qué deseas hacer con los <strong>{importConflict.duplicates.length} registros duplicados</strong>?
                             </p>
 
                             <div className="flex flex-col gap-3 sm:flex-row">
                                 <button
                                     onClick={() => setImportConflict(null)}
-                                    className="px-4 py-2 bg-white border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 font-medium text-sm transition-colors"
+                                    className="px-4 py-2 bg-white dark:bg-dark-800 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-dark-700 font-medium text-sm transition-colors"
                                 >
                                     Cancelar
                                 </button>
                                 <div className="flex-1 flex gap-2">
                                     <button
                                         onClick={() => resolveImportConflict('skip')}
-                                        className="flex-1 px-4 py-2 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg hover:bg-indigo-100 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+                                        className="flex-1 px-4 py-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/40 font-medium text-sm transition-colors flex items-center justify-center gap-2"
                                     >
                                         <SkipForward className="w-4 h-4" />
                                         Omitir
                                     </button>
                                     <button
                                         onClick={() => resolveImportConflict('overwrite')}
-                                        className="flex-1 px-4 py-2 bg-indigo-600 text-slate-900 dark:text-white rounded-lg hover:bg-indigo-700 font-medium text-sm shadow-sm transition-colors flex items-center justify-center gap-2"
+                                        className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium text-sm shadow-sm transition-colors flex items-center justify-center gap-2"
                                     >
                                         <RefreshCw className="w-4 h-4" />
                                         Actualizar
@@ -1117,26 +1165,26 @@ export default function App() {
             {/* Confirmation Modal for Deleting Single Official */}
             {deleteId && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden border border-red-100 animate-in zoom-in-95 duration-200">
-                        <div className="bg-red-50 p-6 flex flex-col items-center text-center border-b border-red-100">
-                            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-3">
-                                <Trash2 className="w-6 h-6 text-red-600" />
+                    <div className="bg-white dark:bg-dark-800 rounded-xl shadow-2xl max-w-sm w-full overflow-hidden border border-red-100 dark:border-red-900/40 animate-in zoom-in-95 duration-200">
+                        <div className="bg-red-50 dark:bg-red-950/30 p-6 flex flex-col items-center text-center border-b border-red-100 dark:border-red-900/40">
+                            <div className="w-12 h-12 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center mb-3">
+                                <Trash2 className="w-6 h-6 text-red-600 dark:text-red-400" />
                             </div>
-                            <h3 className="text-lg font-bold text-red-900">¿Eliminar Funcionario?</h3>
-                            <p className="text-red-700 mt-1 text-sm">
+                            <h3 className="text-lg font-bold text-red-900 dark:text-red-300">¿Eliminar Funcionario?</h3>
+                            <p className="text-red-700 dark:text-red-400 mt-1 text-sm">
                                 Esta acción solo afecta a la base <strong>{activeDatabase.name}</strong>.
                             </p>
                         </div>
                         <div className="p-4 flex gap-3">
                             <button
                                 onClick={() => setDeleteId(null)}
-                                className="flex-1 px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium transition-colors text-sm"
+                                className="flex-1 px-4 py-2 bg-white dark:bg-dark-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-dark-700 font-medium transition-colors text-sm"
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={confirmDeleteOfficial}
-                                className="flex-1 px-4 py-2 bg-red-600 text-slate-900 dark:text-white rounded-lg hover:bg-red-700 font-medium shadow-md transition-colors text-sm"
+                                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-md transition-colors text-sm"
                             >
                                 Eliminar
                             </button>

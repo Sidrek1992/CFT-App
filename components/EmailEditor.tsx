@@ -14,7 +14,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
     if (!editor) return null;
 
     const btnClass = (isActive: boolean) =>
-        `p-2 rounded-lg transition-colors ${isActive ? 'bg-primary-500/20 text-primary-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-900/5 dark:bg-white/5 hover:text-slate-800 dark:text-slate-200'} disabled:opacity-50`;
+        `p-2 rounded-lg transition-colors ${isActive ? 'bg-primary-500/20 text-primary-600 dark:text-primary-400' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/10 hover:text-slate-800 dark:hover:text-slate-200'} disabled:opacity-50`;
 
     return (
         <div className="flex flex-wrap gap-1 p-2 border-b border-slate-200 dark:border-white/10 bg-white dark:bg-dark-900/50 rounded-t-xl z-20 sticky top-0 backdrop-blur-sm">
@@ -95,7 +95,8 @@ export const EmailEditor: React.FC<EmailEditorProps> = ({ content, onChange, dis
         content,
         editorProps: {
             attributes: {
-                class: 'p-4 outline-none min-h-[250px] max-h-[500px] overflow-y-auto prose prose-invert prose-sm sm:prose-base max-w-none custom-scrollbar ' + (disabled ? 'opacity-70 cursor-not-allowed' : '')
+                // prose-slate for light mode, prose-invert applied only in dark via CSS trick below
+                class: 'p-4 outline-none min-h-[250px] max-h-[500px] overflow-y-auto prose prose-slate dark:prose-invert prose-sm sm:prose-base max-w-none custom-scrollbar ' + (disabled ? 'opacity-70 cursor-not-allowed' : '')
             }
         },
         onUpdate: ({ editor }) => {
