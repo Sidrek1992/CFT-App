@@ -20,16 +20,36 @@ export interface Official {
   bossEmail: string;
 }
 
+export interface EmailLog {
+  id: string;
+  campaignId: string;
+  officialId: string;
+  recipientEmail: string;
+  sentAt: number;
+  status: 'sent' | 'failed';
+  method: 'mailto' | 'eml';
+}
+
+export interface Campaign {
+  id: string;
+  name: string;
+  subject: string;
+  createdAt: number;
+  status: 'draft' | 'active' | 'completed';
+  logs: EmailLog[];
+}
+
 export interface OfficialDatabase {
   id: string;
   name: string;
   officials: Official[];
+  campaigns?: Campaign[]; // New field for campaigns
   createdAt: number;
 }
 
 export interface EmailTemplate {
   subject: string;
-  body: string; // Contains variables like {nombre}, {cargo}
+  body: string; // Contains HTML string
 }
 
 export interface SavedTemplate extends EmailTemplate {
@@ -47,7 +67,7 @@ export interface GeneratedEmail {
   attachments: File[];
 }
 
-export type ViewState = 'dashboard' | 'database' | 'template' | 'generate';
+export type ViewState = 'dashboard' | 'database' | 'orgChart' | 'template' | 'generate';
 
 export interface ToastNotification {
   id: string;

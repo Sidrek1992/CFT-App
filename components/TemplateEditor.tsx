@@ -1,7 +1,9 @@
+
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { EmailTemplate, Official, SavedTemplate, Gender } from '../types';
 import { generateTemplateWithAI } from '../services/geminiService';
-import { FileText, Paperclip, Info, Sparkles, Layout, Eye, Save, Bookmark, Trash2, Download, CloudUpload, Upload, FileJson } from 'lucide-react';
+import { RichTextEditor } from './RichTextEditor';
+import { FileText, Paperclip, Info, Sparkles, Eye, Save, Bookmark, Trash2, Download, CloudUpload, Upload, FileJson } from 'lucide-react';
 
 interface TemplateEditorProps {
   template: EmailTemplate;
@@ -41,9 +43,6 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   
-  // Autocomplete State
-  const [menuPosition, setMenuPosition] = useState<{ top: number, left: number } | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const templateFileInputRef = useRef<HTMLInputElement>(null);
   
   // Preview Logic
@@ -98,22 +97,18 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
       };
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [template]); // Dependency needed to access current template state
+  }, [template]);
 
   const insertVariable = (variable: string) => {
-    const textarea = document.getElementById('body-textarea') as HTMLTextAreaElement;
-    if (textarea) {
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const text = template.body;
-      const newBody = text.substring(0, start) + variable + text.substring(end);
-      onChange({ ...template, body: newBody });
-      
-      // Restore focus
-      setTimeout(() => {
-        textarea.focus();
-        textarea.setSelectionRange(start + variable.length, start + variable.length);
-      }, 0);
+    // Basic insertion for RichText - appends to end if not focused or inserts at cursor
+    // Since we use contentEditable, explicit cursor tracking is complex. 
+    // We'll append it to the body for simplicity in this implementation, 
+    // or rely on the user copying it.
+    // Better approach: execCommand insertHTML
+    const editor = document.getElementById('body-editor');
+    if (editor) {
+        editor.focus();
+        document.execCommand('insertText', false, variable);
     }
   };
 
@@ -154,9 +149,11 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
     setIsGenerating(true);
     try {
       const result = await generateTemplateWithAI(aiPrompt);
+      // AI returns plain text mostly, convert newlines to <br> for HTML editor
+      const htmlBody = result.body.replace(/\n/g, '<br>');
       onChange({
         subject: result.subject,
-        body: result.body
+        body: htmlBody
       });
       onToast("Plantilla generada exitosamente", "success");
       setShowAiInput(false);
@@ -222,90 +219,6 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
       };
       reader.readAsText(file);
       e.target.value = ''; // Reset
-  };
-
-  // --- Autocomplete Logic ---
-  const getCaretCoordinates = () => {
-    const textarea = textareaRef.current;
-    if (!textarea) return { top: 0, left: 0 };
-
-    const div = document.createElement('div');
-    const style = window.getComputedStyle(textarea);
-    
-    Array.from(style).forEach(prop => {
-        div.style.setProperty(prop, style.getPropertyValue(prop));
-    });
-
-    div.style.position = 'absolute';
-    div.style.top = '0px';
-    div.style.left = '0px';
-    div.style.visibility = 'hidden';
-    div.style.height = 'auto';
-    div.style.width = style.width;
-    div.style.whiteSpace = 'pre-wrap';
-    div.style.overflow = 'hidden';
-
-    const text = textarea.value.substring(0, textarea.selectionStart);
-    div.textContent = text;
-    
-    const span = document.createElement('span');
-    span.textContent = '.';
-    div.appendChild(span);
-    
-    document.body.appendChild(div);
-    
-    const rect = textarea.getBoundingClientRect();
-    const lh = parseInt(style.lineHeight);
-    const lineHeight = isNaN(lh) ? 20 : lh;
-    
-    const top = rect.top + window.scrollY + span.offsetTop - textarea.scrollTop + lineHeight;
-    const left = rect.left + window.scrollX + span.offsetLeft;
-    
-    document.body.removeChild(div);
-
-    return { top, left };
-  };
-
-  const handleKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === '{') {
-      const { top, left } = getCaretCoordinates();
-      setMenuPosition({ top, left });
-    } else if (menuPosition && (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter' || e.key === '}')) {
-      setMenuPosition(null);
-    }
-  };
-
-  // Close menu if clicked outside
-  useEffect(() => {
-    const handleClick = () => setMenuPosition(null);
-    if (menuPosition) {
-        window.addEventListener('click', handleClick);
-    }
-    return () => window.removeEventListener('click', handleClick);
-  }, [menuPosition]);
-
-  const insertFromAutocomplete = (value: string) => {
-    if (!textareaRef.current) return;
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    
-    // Assuming the user just typed '{', so we replace the '{' (at start - 1) with the full variable
-    const text = template.body;
-    // Check if the previous char is indeed '{'
-    let replaceStart = start;
-    if (text[start - 1] === '{') {
-        replaceStart = start - 1;
-    }
-
-    const newBody = text.substring(0, replaceStart) + value + text.substring(end);
-    onChange({ ...template, body: newBody });
-    setMenuPosition(null);
-
-    setTimeout(() => {
-        textarea.focus();
-        textarea.setSelectionRange(replaceStart + value.length, replaceStart + value.length);
-    }, 0);
   };
 
   return (
@@ -443,47 +356,20 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
 
           <div>
             <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-medium text-slate-700">Cuerpo del Correo</label>
+              <label className="block text-sm font-medium text-slate-700">Cuerpo del Correo (HTML)</label>
             </div>
             <div className="text-xs text-slate-500 mb-2 bg-slate-50 p-2 rounded border border-slate-100 flex gap-2">
                 <Info className="w-4 h-4 mt-0.5" />
-                <p>El formato (negritas/cursivas) se conserva al usar el botón <strong>Copiar</strong>. Para envíos directos (botón Enviar), se usará texto plano.</p>
+                <p>Usa el editor para dar formato. <strong>Nota:</strong> Al usar "Enviar" (mailto), el formato enriquecido se perderá. Usa la descarga <strong>.EML</strong> para conservar negritas, colores y listas.</p>
             </div>
             
             <div className="relative">
-                <textarea
-                    ref={textareaRef}
-                    id="body-textarea"
+                <RichTextEditor 
+                    id="body-editor"
                     value={template.body}
-                    onChange={(e) => onChange({ ...template, body: e.target.value })}
-                    onKeyUp={handleKeyUp}
-                    className="w-full h-96 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-corporate-blue outline-none font-mono text-sm leading-relaxed resize-none"
+                    onChange={(newHtml) => onChange({ ...template, body: newHtml })}
                     placeholder="Escribe el contenido del correo aquí..."
                 />
-                
-                {/* Autocomplete Menu */}
-                {menuPosition && (
-                   <div 
-                     className="fixed z-50 bg-white rounded-lg shadow-xl border border-slate-200 w-48 overflow-hidden animate-in fade-in zoom-in-95 duration-100"
-                     style={{ top: menuPosition.top, left: menuPosition.left }}
-                   >
-                       <div className="bg-indigo-50 px-3 py-1.5 text-[10px] font-bold text-indigo-800 uppercase tracking-wider border-b border-indigo-100">
-                           Insertar Variable
-                       </div>
-                       <div className="max-h-48 overflow-y-auto">
-                           {VARIABLES.map(v => (
-                               <button
-                                   key={v.value}
-                                   onClick={(e) => { e.stopPropagation(); insertFromAutocomplete(v.value); }}
-                                   className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 text-slate-700 flex flex-col"
-                               >
-                                   <span className="font-medium text-indigo-600">{v.value}</span>
-                                   <span className="text-[10px] text-slate-400">{v.label}</span>
-                               </button>
-                           ))}
-                       </div>
-                   </div>
-                )}
             </div>
             
             {/* Variables Disponibles (Picker) */}
@@ -518,7 +404,7 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
           <div className="p-4 bg-blue-50 rounded-lg border border-blue-100 mb-4 flex items-start gap-3">
             <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-blue-800">
-              Nota: Debido a restricciones de seguridad de los navegadores, los archivos <strong>no pueden adjuntarse automáticamente</strong> al abrir su cliente de correo. Esta sección le ayuda a verificar qué archivos deben ir en cada envío y los incluye en la descarga .EML.
+              Estos archivos se adjuntarán automáticamente en el archivo <strong>.EML</strong> generado.
             </p>
           </div>
 
@@ -628,9 +514,10 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
                         </div>
                         <div>
                             <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Cuerpo</span>
-                            <div className="mt-1 text-xs text-slate-600 whitespace-pre-wrap font-mono bg-slate-50 p-2 rounded border border-slate-100">
-                                {previewContent.body}
-                            </div>
+                            <div 
+                                className="mt-1 text-xs text-slate-600 bg-slate-50 p-2 rounded border border-slate-100 prose prose-sm max-w-none"
+                                dangerouslySetInnerHTML={{ __html: previewContent.body }}
+                            />
                         </div>
                     </div>
                 )}
