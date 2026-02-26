@@ -1,22 +1,15 @@
 
-import React, { Suspense, lazy, useState, useEffect, useRef, useMemo } from 'react';
-import { FileEdit, Send, Plus, Database, LayoutDashboard, Upload, Download, AlertTriangle, X, RefreshCw, SkipForward, Trash2, FileSpreadsheet, Menu, Briefcase, CheckCircle2, Settings, ChevronDown, FolderPlus, PenLine, FolderInput, FolderOutput } from 'lucide-react';
-import { Official, EmailTemplate, ViewState, ToastNotification, SavedTemplate, Gender, SortOption, FilterCriteria, OfficialDatabase } from './types';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { FileEdit, Send, Plus, Database, LayoutDashboard, Upload, Download, AlertTriangle, X, RefreshCw, SkipForward, Trash2, FileSpreadsheet, Menu, Briefcase, CheckCircle2, Settings, ChevronDown, FolderPlus, PenLine, FolderInput, FolderOutput, Network } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { Official, EmailTemplate, ViewState, ToastNotification, SavedTemplate, Gender, SortOption, FilterCriteria, OfficialDatabase, Campaign, EmailLog } from './types';
 import { OfficialForm } from './components/OfficialForm';
+import { OfficialList } from './components/OfficialList';
+import { TemplateEditor } from './components/TemplateEditor';
+import { Generator } from './components/Generator';
+import { Dashboard } from './components/Dashboard';
+import { OrgChart } from './components/OrgChart';
 import { ToastContainer } from './components/ToastContainer';
-
-const OfficialList = lazy(() => import('./components/OfficialList').then((mod) => ({ default: mod.OfficialList })));
-const TemplateEditor = lazy(() => import('./components/TemplateEditor').then((mod) => ({ default: mod.TemplateEditor })));
-const Generator = lazy(() => import('./components/Generator').then((mod) => ({ default: mod.Generator })));
-const Dashboard = lazy(() => import('./components/Dashboard').then((mod) => ({ default: mod.Dashboard })));
-
-let xlsxModulePromise: Promise<any> | null = null;
-const getXlsxModule = async () => {
-  if (!xlsxModulePromise) {
-    xlsxModulePromise = import('https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs').then((mod) => mod.default || mod);
-  }
-  return xlsxModulePromise;
-};
 
 // Safe ID generator that works in non-secure contexts (http) and fast loops
 let idCounter = 0;
@@ -36,56 +29,10 @@ const parseGender = (val: any): Gender => {
     return Gender.Unspecified;
 };
 
-const safeParseJson = <T,>(raw: string | null, fallback: T): T => {
-  if (!raw) return fallback;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-};
-
-const createDefaultDatabase = (officials: Official[] = INITIAL_OFFICIALS_DATA): OfficialDatabase => ({
-  id: generateId(),
-  name: 'Funcionarios CFT',
-  officials: Array.isArray(officials) ? officials : [],
-  createdAt: Date.now(),
-});
-
-const sanitizeDatabases = (input: unknown): OfficialDatabase[] => {
-  if (!Array.isArray(input)) return [];
-  return input
-    .filter((db) => db && typeof db === 'object')
-    .map((db: any) => ({
-      id: String(db.id || generateId()),
-      name: String(db.name || 'Base sin nombre'),
-      officials: Array.isArray(db.officials) ? db.officials : [],
-      createdAt: Number(db.createdAt) || Date.now(),
-    }));
-};
-
 const INITIAL_OFFICIALS_DATA: Official[] = [
   { id: generateId(), name: "David Alejandro Alarcón Sandoval", gender: Gender.Male, title: "Sr.", position: "Coordinador", department: "Subdirección Académica", stament: "Técnico", email: "d.alarcon@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" },
   { id: generateId(), name: "Natalia Carolina Álvarez Rojas", gender: Gender.Female, title: "Sra.", position: "Coordinador", department: "Subdirección Académica", stament: "Técnico", email: "n.alvarez@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" },
-  { id: generateId(), name: "Yoselin Estefanía Aranda Valderrama", gender: Gender.Female, title: "Sra.", position: "Coordinador", department: "Subdirección Académica", stament: "Técnico", email: "y.aranda@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" },
-  { id: generateId(), name: "Carlos Alberto Araos Uribe", gender: Gender.Male, title: "Sr.", position: "Rector", department: "Rectoría", stament: "Directivo", email: "rector@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" },
-  { id: generateId(), name: "Gloria Noemí Bolaño Gavia", gender: Gender.Female, title: "Sra.", position: "Encargada de Finanzas", department: "Dirección Académica", stament: "Técnico", email: "g.bolano@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" },
-  { id: generateId(), name: "Rubén Boris Calderón Jaques", gender: Gender.Male, title: "Sr.", position: "Auxiliar de Operaciones", department: "Adquisiciones y Servicios", stament: "Auxiliar", email: "r.calderon@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" },
-  { id: generateId(), name: "David Alberto Campos Araya", gender: Gender.Male, title: "Sr.", position: "Subdirector", department: "Subdirección de Administración y Finanzas", stament: "Profesional", email: "contabilidad@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" },
-  { id: generateId(), name: "Jennifer Roxana Cancino Andrade", gender: Gender.Female, title: "Sra.", position: "Auxiliar", department: "Servicios Generales", stament: "Auxiliar", email: "jennifer.cancino@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" },
-  { id: generateId(), name: "Marcelo Alejandro Cárdenas Neira", gender: Gender.Male, title: "Sr.", position: "Jefe de Carrera", department: "Subdirección Académica", stament: "Profesional", email: "jc.informatica@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" },
-  { id: generateId(), name: "Aníbal Raúl Carrasco Mamani", gender: Gender.Male, title: "Sr.", position: "Asistente encargado", department: "Conectividad y Redes", stament: "Administrativo", email: "asis.conectividad@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" },
-  { id: generateId(), name: "Jacqueline Carmen Castillo Roblero", gender: Gender.Female, title: "Sra.", position: "Subdirector", department: "DIAC", stament: "Profesional", email: "vinculacion@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" },
-  { id: generateId(), name: "Juan Carlos Cejas Rivera", gender: Gender.Male, title: "Sr.", position: "Encargado de Adquisiciones", department: "Adquisiciones y Servicios", stament: "Técnico", email: "adquisiciones@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" },
-  { id: generateId(), name: "Guillermo Javier Cid Araneda", gender: Gender.Male, title: "Sr.", position: "Subdirector", department: "Subdirección Académica", stament: "Profesional", email: "areasformativas@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" },
-  { id: generateId(), name: "Ana Karen Cofré Segovia", gender: Gender.Female, title: "Sra.", position: "Asistente encargado", department: "Subdirección de Administración y Finanzas", stament: "Técnico", email: "asistente.gestiondepersonas@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" },
-  { id: generateId(), name: "Mercedes Del Carmen Corrales Salas", gender: Gender.Female, title: "Sra.", position: "Subdirector", department: "Dirección Académica", stament: "Directivo", email: "diac@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" },
-  { id: generateId(), name: "Sebastián Alejandro Díaz Campos", gender: Gender.Male, title: "Sr.", position: "Profesional", department: "Adquisiciones y Servicios", stament: "Profesional", email: "compraspublicas@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" },
-  { id: generateId(), name: "Karen Yanira Díaz Corona", gender: Gender.Female, title: "Sra.", position: "Profesional", department: "DIAC", stament: "Profesional", email: "serviciosocial@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" },
-  { id: generateId(), name: "Nicol Camila Díaz Tupa", gender: Gender.Female, title: "Sra.", position: "Asistente De", department: "DEA", stament: "Administrativo", email: "asistente.contable@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" },
-  { id: generateId(), name: "Silvia Yanet Esquivel Díaz", gender: Gender.Female, title: "Sra.", position: "Asistente De", department: "RECTORÍA", stament: "Administrativo", email: "asistente.rectoria@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" },
-  { id: generateId(), name: "Sebastián Ignacio Flores Briones", gender: Gender.Male, title: "Sr.", position: "Coordinador", department: "DIAC", stament: "Profesional", email: "s.flores@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" },
-  { id: generateId(), name: "Alfonso Eleazar Fuentes Díaz", gender: Gender.Male, title: "Sr.", position: "Asistente De", department: "DEA", stament: "Administrativo", email: "a.fuentes@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" }
+  { id: generateId(), name: "Carlos Alberto Araos Uribe", gender: Gender.Male, title: "Sr.", position: "Rector", department: "Rectoría", stament: "Directivo", email: "rector@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" }
 ];
 
 export default function App() {
@@ -93,26 +40,35 @@ export default function App() {
   
   // Databases State (Migration Logic Included)
   const [databases, setDatabases] = useState<OfficialDatabase[]>(() => {
-    const savedDbs = sanitizeDatabases(safeParseJson(localStorage.getItem('app_databases'), []));
-    if (savedDbs.length > 0) {
-      return savedDbs;
+    const savedDbs = localStorage.getItem('app_databases');
+    if (savedDbs) {
+        return JSON.parse(savedDbs);
     }
     
     // Migration: If no DBs exist but old officials_db exists, migrate it.
-    const initialData = safeParseJson(localStorage.getItem('officials_db'), INITIAL_OFFICIALS_DATA);
-    return [createDefaultDatabase(Array.isArray(initialData) ? initialData : INITIAL_OFFICIALS_DATA)];
+    const oldOfficials = localStorage.getItem('officials_db');
+    const initialData = oldOfficials ? JSON.parse(oldOfficials) : INITIAL_OFFICIALS_DATA;
+    
+    const defaultDb: OfficialDatabase = {
+        id: generateId(),
+        name: 'Funcionarios CFT',
+        officials: initialData,
+        campaigns: [], // Initialize empty campaigns
+        createdAt: Date.now()
+    };
+    return [defaultDb];
   });
 
   const [activeDbId, setActiveDbId] = useState<string>(() => {
       const savedActive = localStorage.getItem('active_db_id');
-      const exists = savedActive ? databases.some((db) => db.id === savedActive) : false;
-      return exists ? savedActive as string : (databases[0]?.id || '');
+      return savedActive || (databases.length > 0 ? databases[0].id : '');
   });
 
   // Derived State: The officials of the currently selected database
   const activeDbIndex = databases.findIndex(db => db.id === activeDbId);
   const activeDatabase = activeDbIndex >= 0 ? databases[activeDbIndex] : databases[0];
   const officials = activeDatabase?.officials || [];
+  const campaigns = activeDatabase?.campaigns || [];
 
   const [view, setView] = useState<ViewState>('dashboard');
   const [editingOfficial, setEditingOfficial] = useState<Official | null>(null);
@@ -120,16 +76,21 @@ export default function App() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   
   const [template, setTemplate] = useState<EmailTemplate>(() => {
-    return safeParseJson(localStorage.getItem('current_template'), { subject: '', body: 'Estimado/a {nombre},\n\nEscriba aquí el contenido del correo...\n\nAtentamente,\n[Su Nombre]' });
+    const saved = localStorage.getItem('current_template');
+    return saved ? JSON.parse(saved) : { subject: '', body: 'Estimado/a {nombre},<br><br>Escriba aquí el contenido del correo...<br><br>Atentamente,<br>[Su Nombre]' };
   });
 
   const [savedTemplates, setSavedTemplates] = useState<SavedTemplate[]>(() => {
-    return safeParseJson(localStorage.getItem('saved_templates'), []);
+    const saved = localStorage.getItem('saved_templates');
+    return saved ? JSON.parse(saved) : [];
   });
   
   const [files, setFiles] = useState<File[]>([]);
+  
+  // Legacy support for global history, though we now use per-campaign logs
   const [sentHistory, setSentHistory] = useState<string[]>(() => {
-     return safeParseJson(localStorage.getItem('sent_history'), []);
+     const saved = localStorage.getItem('sent_history');
+     return saved ? JSON.parse(saved) : [];
   });
   
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
@@ -160,25 +121,9 @@ export default function App() {
   // --- PERSISTENCE ---
   useEffect(() => { 
       localStorage.setItem('app_databases', JSON.stringify(databases)); 
-      // Legacy support/backup (optional, keeping it in sync with active DB for safety)
-      if (activeDatabase) {
-         localStorage.setItem('officials_db', JSON.stringify(activeDatabase.officials));
-      }
-  }, [databases, activeDatabase]);
+  }, [databases]);
 
   useEffect(() => { localStorage.setItem('active_db_id', activeDbId); }, [activeDbId]);
-  useEffect(() => {
-    if (databases.length === 0) {
-      const fallback = createDefaultDatabase();
-      setDatabases([fallback]);
-      setActiveDbId(fallback.id);
-      return;
-    }
-
-    if (!databases.some((db) => db.id === activeDbId)) {
-      setActiveDbId(databases[0].id);
-    }
-  }, [databases, activeDbId]);
   useEffect(() => { localStorage.setItem('current_template', JSON.stringify(template)); }, [template]);
   useEffect(() => { localStorage.setItem('saved_templates', JSON.stringify(savedTemplates)); }, [savedTemplates]);
   useEffect(() => { localStorage.setItem('sent_history', JSON.stringify(sentHistory)); }, [sentHistory]);
@@ -193,21 +138,69 @@ export default function App() {
   };
 
   // Helper to update the officials list of the CURRENT active database
-  const updateActiveDbOfficials = (newOfficials: Official[] | ((prev: Official[]) => Official[])) => {
+  const updateActiveDb = (updater: (db: OfficialDatabase) => OfficialDatabase) => {
       setDatabases(prevDbs => {
           return prevDbs.map(db => {
               if (db.id === activeDbId) {
-                  const updatedOfficials = typeof newOfficials === 'function' 
-                    ? newOfficials(db.officials) 
-                    : newOfficials;
-                  return { ...db, officials: updatedOfficials };
+                  return updater(db);
               }
               return db;
           });
       });
   };
 
+  const updateActiveDbOfficials = (newOfficials: Official[] | ((prev: Official[]) => Official[])) => {
+      updateActiveDb(db => ({
+          ...db,
+          officials: typeof newOfficials === 'function' ? newOfficials(db.officials) : newOfficials
+      }));
+  };
+
   // --- HANDLERS ---
+  
+  // Campaign Handlers
+  const handleCampaignCreate = (name: string): Campaign => {
+      const newCampaign: Campaign = {
+          id: generateId(),
+          name,
+          subject: template.subject,
+          createdAt: Date.now(),
+          status: 'draft',
+          logs: []
+      };
+      
+      updateActiveDb(db => ({
+          ...db,
+          campaigns: [...(db.campaigns || []), newCampaign]
+      }));
+
+      return newCampaign;
+  };
+
+  const handleLogEmail = (campaignId: string, logData: Omit<EmailLog, 'id' | 'campaignId' | 'status'>) => {
+      const newLog: EmailLog = {
+          ...logData,
+          id: generateId(),
+          campaignId,
+          status: 'sent'
+      };
+
+      updateActiveDb(db => ({
+          ...db,
+          campaigns: (db.campaigns || []).map(c => 
+            c.id === campaignId 
+            ? { ...c, logs: [...c.logs, newLog] }
+            : c
+          )
+      }));
+      
+      // Update global sent history for legacy tracking dashboard
+      if (!sentHistory.includes(logData.officialId)) {
+          setSentHistory(prev => [...prev, logData.officialId]);
+      }
+  };
+
+  // View Handlers
   const handleNavigate = (targetView: ViewState, filter?: FilterCriteria) => {
       setView(targetView);
       if (filter) setFilterCriteria(filter);
@@ -277,12 +270,6 @@ export default function App() {
       setView('database');
   };
 
-  const handleMarkAsSent = (id: string) => {
-      if (!sentHistory.includes(id)) {
-          setSentHistory(prev => [...prev, id]);
-      }
-  };
-
   // --- DATABASE MANAGEMENT HANDLERS ---
   const handleCreateDatabase = () => {
       setDbModal({ isOpen: true, mode: 'create', value: '' });
@@ -302,6 +289,7 @@ export default function App() {
               id: generateId(),
               name,
               officials: [],
+              campaigns: [],
               createdAt: Date.now()
           };
           setDatabases(prev => [...prev, newDb]);
@@ -396,9 +384,8 @@ export default function App() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = async (evt) => {
+    reader.onload = (evt) => {
       try {
-        const XLSX = await getXlsxModule();
         const buffer = evt.target?.result;
         const wb = XLSX.read(buffer, { type: 'array' });
         const wsname = wb.SheetNames[0];
@@ -511,7 +498,7 @@ export default function App() {
       setImportConflict(null);
   };
 
-  const handleExportExcel = async () => {
+  const handleExportExcel = () => {
       const dataToExport = officials.map(o => ({
           Nombre: o.name,
           Correo: o.email,
@@ -525,7 +512,6 @@ export default function App() {
           CorreoJefatura: o.bossEmail
       }));
 
-      const XLSX = await getXlsxModule();
       const ws = XLSX.utils.json_to_sheet(dataToExport);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, activeDatabase.name.substring(0, 30));
@@ -564,6 +550,7 @@ export default function App() {
                        id: generateId(),
                        name: 'Restaurado (Legacy)',
                        officials: json.officials,
+                       campaigns: [],
                        createdAt: Date.now()
                    };
                    setDatabases(prev => [...prev, legacyDb]);
@@ -571,16 +558,8 @@ export default function App() {
               } 
               // Handle new backups
               else if (json.databases) {
-                  const importedDatabases = sanitizeDatabases(json.databases);
-                  if (importedDatabases.length === 0) {
-                      addToast('El respaldo no contiene bases de datos válidas', 'error');
-                      return;
-                  }
-
-                  setDatabases(importedDatabases);
-                  const importedActive = typeof json.activeDbId === 'string' ? json.activeDbId : '';
-                  const hasImportedActive = importedDatabases.some((db) => db.id === importedActive);
-                  setActiveDbId(hasImportedActive ? importedActive : importedDatabases[0].id);
+                  setDatabases(json.databases);
+                  if (json.activeDbId) setActiveDbId(json.activeDbId);
               }
               
               if (json.template) setTemplate(json.template);
@@ -691,6 +670,13 @@ export default function App() {
                 Base de Datos
             </button>
             <button 
+                onClick={() => handleNavigate('orgChart')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${view === 'orgChart' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'hover:bg-slate-800 hover:text-white'}`}
+            >
+                <Network className="w-5 h-5" />
+                Organigrama
+            </button>
+            <button 
                 onClick={() => handleNavigate('template')}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${view === 'template' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'hover:bg-slate-800 hover:text-white'}`}
             >
@@ -715,7 +701,7 @@ export default function App() {
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                    <span className="text-xs font-medium text-slate-300">v1.3.1 Multi-DB</span>
+                    <span className="text-xs font-medium text-slate-300">v2.0 Campaigns</span>
                 </div>
             </div>
         </div>
@@ -745,7 +731,6 @@ export default function App() {
               {/* View Content */}
               <div className="max-w-7xl mx-auto">
                   
-                  <Suspense fallback={<div className="bg-white border border-slate-200 rounded-xl p-6 text-sm text-slate-500">Cargando vista...</div>}>
                   {view === 'dashboard' && (
                       <Dashboard 
                         officials={officials} 
@@ -821,11 +806,23 @@ export default function App() {
                       </div>
                   )}
 
+                   {view === 'orgChart' && (
+                       <div className="space-y-6">
+                           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                              <div>
+                                  <h2 className="text-2xl font-bold text-slate-800">Organigrama</h2>
+                                  <p className="text-slate-500">Visualización jerárquica basada en las jefaturas de la base de datos.</p>
+                              </div>
+                          </div>
+                          <OrgChart officials={officials} />
+                       </div>
+                  )}
+
                   {view === 'template' && (
                       <div className="h-[calc(100vh-8rem)]">
                            <div className="mb-4">
                               <h2 className="text-2xl font-bold text-slate-800">Editor de Plantilla</h2>
-                              <p className="text-slate-500">Diseña el correo base. (La plantilla se comparte entre bases de datos).</p>
+                              <p className="text-slate-500">Diseña el correo base. Ahora soporta Texto Enriquecido.</p>
                           </div>
                           <TemplateEditor 
                             template={template}
@@ -853,13 +850,13 @@ export default function App() {
                             officials={officials}
                             template={template}
                             files={files}
-                            sentHistory={sentHistory}
-                            onMarkAsSent={handleMarkAsSent}
+                            campaigns={campaigns}
+                            onCampaignCreate={handleCampaignCreate}
+                            onLogEmail={handleLogEmail}
                             onToast={(msg, type) => addToast(msg, type)}
                           />
                        </div>
                   )}
-                  </Suspense>
               </div>
           </div>
       </main>
