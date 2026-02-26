@@ -2,19 +2,19 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Official, EmailTemplate, Gender, Campaign, EmailLog } from '../types';
 import { refineEmailWithAI } from '../services/geminiService';
-import { RichTextEditor } from './RichTextEditor';
+import { EmailEditor } from './EmailEditor';
 import { Copy, ExternalLink, AlertCircle, CheckSquare, Square, User, UserCheck, Search, ChevronLeft, ChevronRight, Check, Filter, Download, Sparkles, Building2, UserPlus, X, LayoutList, LayoutGrid, ChevronDown, ChevronUp, CopyPlus, UserCog, ArrowUpDown, History, Plus } from 'lucide-react';
 
 interface GeneratorProps {
   officials: Official[];
   template: EmailTemplate;
   files: File[];
-  
+
   // Updated props for Campaign System
   campaigns: Campaign[];
   onCampaignCreate: (name: string) => Campaign;
   onLogEmail: (campaignId: string, log: Omit<EmailLog, 'id' | 'campaignId' | 'status'>) => void;
-  
+
   onToast: (msg: string, type: 'success' | 'error') => void;
 }
 
@@ -33,9 +33,9 @@ interface EditableEmail {
 
 // Helper to strip HTML tags for mailto: links (which only support plain text)
 const stripHtml = (html: string) => {
-   const tmp = document.createElement("DIV");
-   tmp.innerHTML = html;
-   return tmp.textContent || tmp.innerText || "";
+  const tmp = document.createElement("DIV");
+  tmp.innerHTML = html;
+  return tmp.textContent || tmp.innerText || "";
 };
 
 // Helper to convert File to Base64
@@ -63,10 +63,10 @@ const normalizeText = (text: string) => {
     .replace(/[\u0300-\u036f]/g, "");
 };
 
-export const Generator: React.FC<GeneratorProps> = ({ 
-  officials, template, files, campaigns, onCampaignCreate, onLogEmail, onToast 
+export const Generator: React.FC<GeneratorProps> = ({
+  officials, template, files, campaigns, onCampaignCreate, onLogEmail, onToast
 }) => {
-  
+
   // Campaign State
   const [activeCampaignId, setActiveCampaignId] = useState<string>('');
   const [newCampaignName, setNewCampaignName] = useState('');
@@ -77,7 +77,7 @@ export const Generator: React.FC<GeneratorProps> = ({
   // Email State
   const [editableEmails, setEditableEmails] = useState<EditableEmail[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // View & UI State
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'compact'>('cards');
@@ -85,7 +85,7 @@ export const Generator: React.FC<GeneratorProps> = ({
   const [subdirectoraEmail, setSubdirectoraEmail] = useState('gestion.personas@cftestatalaricayparinacota.cl');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = viewMode === 'compact' ? 10 : 5;
-  const [aiInstruction, setAiInstruction] = useState<{id: string, text: string} | null>(null);
+  const [aiInstruction, setAiInstruction] = useState<{ id: string, text: string } | null>(null);
 
   // Filters & Sort State
   const [selectedPosition, setSelectedPosition] = useState<string>('Todos');
@@ -102,9 +102,9 @@ export const Generator: React.FC<GeneratorProps> = ({
   // Set initial campaign if available
   useEffect(() => {
     if (!activeCampaignId && campaigns.length > 0) {
-        // Default to most recent campaign
-        const recent = [...campaigns].sort((a,b) => b.createdAt - a.createdAt)[0];
-        setActiveCampaignId(recent.id);
+      // Default to most recent campaign
+      const recent = [...campaigns].sort((a, b) => b.createdAt - a.createdAt)[0];
+      setActiveCampaignId(recent.id);
     }
   }, [campaigns]);
 
@@ -112,7 +112,7 @@ export const Generator: React.FC<GeneratorProps> = ({
   useEffect(() => {
     const generated = officials.map(official => {
       let body = template.body;
-      
+
       // Calculate dynamic gender adjective
       let estimadoVar = 'Estimado/a';
       if (official.gender === Gender.Male) estimadoVar = 'Estimado';
@@ -136,7 +136,7 @@ export const Generator: React.FC<GeneratorProps> = ({
       body = body.replace(/{jefatura_cargo}/g, official.bossPosition || 'N/A');
 
       // Check logs for sent status in THIS campaign
-      const isSent = activeCampaign 
+      const isSent = activeCampaign
         ? activeCampaign.logs.some(l => l.officialId === official.id)
         : false;
 
@@ -167,32 +167,32 @@ export const Generator: React.FC<GeneratorProps> = ({
   };
 
   const handleEmailChange = (id: string, field: 'subject' | 'body', value: string) => {
-    setEditableEmails(prev => prev.map(email => 
+    setEditableEmails(prev => prev.map(email =>
       email.id === id ? { ...email, [field]: value } : email
     ));
   };
 
   const toggleRecipient = (id: string, type: 'official' | 'boss') => {
-    setEditableEmails(prev => prev.map(email => 
+    setEditableEmails(prev => prev.map(email =>
       email.id === id ? { ...email, recipientType: type } : email
     ));
   };
 
   const toggleCc = (id: string) => {
-    setEditableEmails(prev => prev.map(email => 
+    setEditableEmails(prev => prev.map(email =>
       email.id === id ? { ...email, includeCc: !email.includeCc } : email
     ));
   };
-  
+
   const toggleSubdirectoraCc = (id: string) => {
-    setEditableEmails(prev => prev.map(email => 
+    setEditableEmails(prev => prev.map(email =>
       email.id === id ? { ...email, includeSubdirectora: !email.includeSubdirectora } : email
     ));
   };
 
   const replicateSettingToAll = (key: 'includeCc' | 'includeSubdirectora', value: boolean) => {
-      setEditableEmails(prev => prev.map(email => ({ ...email, [key]: value })));
-      onToast(`Configuración aplicada a ${editableEmails.length} correos.`, 'success');
+    setEditableEmails(prev => prev.map(email => ({ ...email, [key]: value })));
+    onToast(`Configuración aplicada a ${editableEmails.length} correos.`, 'success');
   };
 
   const handleAdditionalCcChange = (id: string, value: string) => {
@@ -202,9 +202,9 @@ export const Generator: React.FC<GeneratorProps> = ({
   const getEmailAddresses = (email: EditableEmail) => {
     const to = email.recipientType === 'official' ? email.official.email : email.official.bossEmail;
     const ccList: string[] = [];
-    
+
     if (email.includeCc && email.recipientType === 'official' && email.official.bossEmail) {
-         ccList.push(email.official.bossEmail);
+      ccList.push(email.official.bossEmail);
     }
     if (email.includeSubdirectora && subdirectoraEmail) ccList.push(subdirectoraEmail);
     if (email.additionalCc) ccList.push(email.additionalCc);
@@ -215,41 +215,41 @@ export const Generator: React.FC<GeneratorProps> = ({
 
   const handleMailTo = (email: EditableEmail) => {
     if (!activeCampaignId) {
-        onToast("Debes seleccionar o crear una campaña primero.", "error");
-        return;
+      onToast("Debes seleccionar o crear una campaña primero.", "error");
+      return;
     }
 
     const { to, cc } = getEmailAddresses(email);
     // Convert HTML to Plain Text for mailto
     const plainBody = stripHtml(email.body);
-    
+
     const params: string[] = [];
     if (cc) params.push(`cc=${encodeURIComponent(cc)}`);
     params.push(`subject=${encodeURIComponent(email.subject)}`);
     params.push(`body=${encodeURIComponent(plainBody)}`);
-    
+
     window.open(`mailto:${to}?${params.join('&')}`, '_blank');
 
     onLogEmail(activeCampaignId, {
-        officialId: email.id,
-        recipientEmail: to,
-        sentAt: Date.now(),
-        method: 'mailto'
+      officialId: email.id,
+      recipientEmail: to,
+      sentAt: Date.now(),
+      method: 'mailto'
     });
-    
+
     setEditableEmails(prev => prev.map(e => e.id === email.id ? { ...e, sent: true } : e));
   };
 
   const handleDownloadEml = async (email: EditableEmail) => {
     if (!activeCampaignId) {
-        onToast("Debes seleccionar o crear una campaña primero.", "error");
-        return;
+      onToast("Debes seleccionar o crear una campaña primero.", "error");
+      return;
     }
 
     try {
       const { to, cc } = getEmailAddresses(email);
       const boundary = `----=_NextPart_${Date.now()}`;
-      
+
       let emlContent = `To: ${to}\n`;
       if (cc) emlContent += `Cc: ${cc}\n`;
       emlContent += `Subject: ${email.subject}\n`;
@@ -283,12 +283,12 @@ export const Generator: React.FC<GeneratorProps> = ({
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       onLogEmail(activeCampaignId, {
-          officialId: email.id,
-          recipientEmail: to,
-          sentAt: Date.now(),
-          method: 'eml'
+        officialId: email.id,
+        recipientEmail: to,
+        sentAt: Date.now(),
+        method: 'eml'
       });
       setEditableEmails(prev => prev.map(e => e.id === email.id ? { ...e, sent: true } : e));
       onToast("Archivo .eml descargado", "success");
@@ -322,8 +322,8 @@ export const Generator: React.FC<GeneratorProps> = ({
     const term = normalizeText(searchTerm);
     return (
       (normalizeText(email.official.name).includes(term) ||
-      normalizeText(email.official.email).includes(term) ||
-      normalizeText(email.subject).includes(term)) &&
+        normalizeText(email.official.email).includes(term) ||
+        normalizeText(email.subject).includes(term)) &&
       (selectedPosition === 'Todos' || email.official.position === selectedPosition) &&
       (selectedDept === 'Todos' || email.official.department === selectedDept) &&
       (selectedBoss === 'Todos' || email.official.bossName === selectedBoss)
@@ -331,15 +331,15 @@ export const Generator: React.FC<GeneratorProps> = ({
   });
 
   const sortedEmails = [...filteredEmails].sort((a, b) => {
-      switch (sortOption) {
-          case 'department': return (a.official.department || '').localeCompare(b.official.department || '');
-          case 'surname':
-              const sA = a.official.name.trim().split(' ').slice(-1)[0] || '';
-              const sB = b.official.name.trim().split(' ').slice(-1)[0] || '';
-              return sA.localeCompare(sB);
-          case 'name':
-          default: return a.official.name.localeCompare(b.official.name);
-      }
+    switch (sortOption) {
+      case 'department': return (a.official.department || '').localeCompare(b.official.department || '');
+      case 'surname':
+        const sA = a.official.name.trim().split(' ').slice(-1)[0] || '';
+        const sB = b.official.name.trim().split(' ').slice(-1)[0] || '';
+        return sA.localeCompare(sB);
+      case 'name':
+      default: return a.official.name.localeCompare(b.official.name);
+    }
   });
 
   const totalPages = Math.ceil(sortedEmails.length / itemsPerPage);
@@ -363,158 +363,157 @@ export const Generator: React.FC<GeneratorProps> = ({
 
   return (
     <div className="space-y-6">
-      
+
       {/* Campaign Selector */}
       <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-                  <History className="w-5 h-5 text-indigo-600" />
-              </div>
-              <div>
-                  <h3 className="font-bold text-indigo-900">Campaña de Envío</h3>
-                  <p className="text-xs text-indigo-600">
-                      {activeCampaign ? `Gestionando: ${activeCampaign.name}` : 'Selecciona o crea una campaña'}
-                  </p>
-              </div>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+            <History className="w-5 h-5 text-indigo-600" />
           </div>
-          
-          <div className="flex items-center gap-2 w-full md:w-auto">
-              {isCreatingCampaign ? (
-                  <div className="flex items-center gap-2 w-full animate-in fade-in slide-in-from-right-2">
-                      <input 
-                        autoFocus
-                        type="text" 
-                        value={newCampaignName} 
-                        onChange={(e) => setNewCampaignName(e.target.value)}
-                        placeholder="Nombre campaña (Ej. Navidad)"
-                        className="px-3 py-2 text-sm border border-indigo-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full md:w-48"
-                      />
-                      <button onClick={handleCreateCampaign} className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-                          <Check className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => setIsCreatingCampaign(false)} className="p-2 bg-white text-slate-500 rounded-lg border border-slate-300 hover:bg-slate-50">
-                          <X className="w-4 h-4" />
-                      </button>
-                  </div>
-              ) : (
-                  <>
-                    <select 
-                        value={activeCampaignId}
-                        onChange={(e) => setActiveCampaignId(e.target.value)}
-                        className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full md:w-64"
-                    >
-                        <option value="" disabled>Seleccionar Campaña</option>
-                        {campaigns.map(c => (
-                            <option key={c.id} value={c.id}>{c.name} ({new Date(c.createdAt).toLocaleDateString()})</option>
-                        ))}
-                    </select>
-                    <button 
-                        onClick={() => setIsCreatingCampaign(true)}
-                        className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 whitespace-nowrap"
-                    >
-                        <Plus className="w-4 h-4" /> Nueva
-                    </button>
-                  </>
-              )}
+          <div>
+            <h3 className="font-bold text-indigo-900">Campaña de Envío</h3>
+            <p className="text-xs text-indigo-600">
+              {activeCampaign ? `Gestionando: ${activeCampaign.name}` : 'Selecciona o crea una campaña'}
+            </p>
           </div>
+        </div>
+
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          {isCreatingCampaign ? (
+            <div className="flex items-center gap-2 w-full animate-in fade-in slide-in-from-right-2">
+              <input
+                autoFocus
+                type="text"
+                value={newCampaignName}
+                onChange={(e) => setNewCampaignName(e.target.value)}
+                placeholder="Nombre campaña (Ej. Navidad)"
+                className="px-3 py-2 text-sm border border-indigo-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full md:w-48"
+              />
+              <button onClick={handleCreateCampaign} className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                <Check className="w-4 h-4" />
+              </button>
+              <button onClick={() => setIsCreatingCampaign(false)} className="p-2 bg-white text-slate-500 rounded-lg border border-slate-300 hover:bg-slate-50">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <>
+              <select
+                value={activeCampaignId}
+                onChange={(e) => setActiveCampaignId(e.target.value)}
+                className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full md:w-64"
+              >
+                <option value="" disabled>Seleccionar Campaña</option>
+                {campaigns.map(c => (
+                  <option key={c.id} value={c.id}>{c.name} ({new Date(c.createdAt).toLocaleDateString()})</option>
+                ))}
+              </select>
+              <button
+                onClick={() => setIsCreatingCampaign(true)}
+                className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 whitespace-nowrap"
+              >
+                <Plus className="w-4 h-4" /> Nueva
+              </button>
+            </>
+          )}
+        </div>
       </div>
-      
+
       {!activeCampaignId ? (
-          <div className="text-center py-20 opacity-50">
-              <p>Por favor selecciona una campaña arriba para comenzar.</p>
-          </div>
+        <div className="text-center py-20 opacity-50">
+          <p>Por favor selecciona una campaña arriba para comenzar.</p>
+        </div>
       ) : (
-      <>
-        {/* Main Controls */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
+        <>
+          {/* Main Controls */}
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
             <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center border-b border-slate-100 pb-4">
-                <div className="flex items-center gap-3">
-                    <h2 className="text-lg font-semibold text-slate-800">Correos ({sortedEmails.length})</h2>
-                    <div className="bg-slate-100 p-1 rounded-lg flex border border-slate-200">
-                            <button onClick={() => setViewMode('cards')} className={`p-1.5 rounded-md ${viewMode === 'cards' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}><LayoutGrid className="w-4 h-4" /></button>
-                            <button onClick={() => setViewMode('compact')} className={`p-1.5 rounded-md ${viewMode === 'compact' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}><LayoutList className="w-4 h-4" /></button>
-                    </div>
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-semibold text-slate-800">Correos ({sortedEmails.length})</h2>
+                <div className="bg-slate-100 p-1 rounded-lg flex border border-slate-200">
+                  <button onClick={() => setViewMode('cards')} className={`p-1.5 rounded-md ${viewMode === 'cards' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}><LayoutGrid className="w-4 h-4" /></button>
+                  <button onClick={() => setViewMode('compact')} className={`p-1.5 rounded-md ${viewMode === 'compact' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}><LayoutList className="w-4 h-4" /></button>
                 </div>
-                <div className="flex flex-col sm:flex-row flex-wrap gap-3 w-full xl:w-auto">
-                    <select value={selectedDept} onChange={(e) => setSelectedDept(e.target.value)} className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm"><option value="Todos">Todos Dept.</option>{departments.map(d=><option key={d} value={d}>{d}</option>)}</select>
-                    <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm" placeholder="Buscar..." />
-                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row flex-wrap gap-3 w-full xl:w-auto">
+                <select value={selectedDept} onChange={(e) => setSelectedDept(e.target.value)} className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm"><option value="Todos">Todos Dept.</option>{departments.map(d => <option key={d} value={d}>{d}</option>)}</select>
+                <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm" placeholder="Buscar..." />
+              </div>
             </div>
             {/* Subdirectora CC Config */}
             <div className="flex flex-col sm:flex-row items-center gap-4 bg-indigo-50 p-3 rounded-lg border border-indigo-100">
-                <div className="flex-1 w-full">
-                    <label className="text-xs font-bold text-indigo-900 flex items-center gap-2"><UserCog className="w-3 h-3"/> Correo Subdirectora (CC Opcional)</label>
-                    <input type="email" value={subdirectoraEmail} onChange={(e) => setSubdirectoraEmail(e.target.value)} className="w-full px-2 py-1 text-sm border rounded" />
-                </div>
+              <div className="flex-1 w-full">
+                <label className="text-xs font-bold text-indigo-900 flex items-center gap-2"><UserCog className="w-3 h-3" /> Correo Subdirectora (CC Opcional)</label>
+                <input type="email" value={subdirectoraEmail} onChange={(e) => setSubdirectoraEmail(e.target.value)} className="w-full px-2 py-1 text-sm border rounded" />
+              </div>
             </div>
-        </div>
+          </div>
 
-        {/* List */}
-        {viewMode === 'cards' ? (
+          {/* List */}
+          {viewMode === 'cards' ? (
             <div className="grid grid-cols-1 gap-6">
-                {currentItems.map((item) => (
-                    <div key={item.id} className={`bg-white rounded-xl shadow-sm border ${item.sent ? 'border-green-200' : 'border-slate-200'}`}>
-                        <div className={`px-6 py-4 border-b flex flex-col lg:flex-row justify-between gap-4 ${item.sent ? 'bg-green-50/50' : 'bg-slate-50'}`}>
-                            <div className="flex flex-col gap-2">
-                                <h3 className="font-bold text-slate-800">{item.official.name}</h3>
-                                <div className="flex gap-2 text-xs">
-                                     <button onClick={() => toggleRecipient(item.id, 'official')} className={`px-2 py-1 rounded ${item.recipientType === 'official' ? 'bg-indigo-100 text-indigo-700' : 'text-slate-500'}`}>Oficial</button>
-                                     <button onClick={() => toggleRecipient(item.id, 'boss')} className={`px-2 py-1 rounded ${item.recipientType === 'boss' ? 'bg-purple-100 text-purple-700' : 'text-slate-500'}`}>Jefatura</button>
-                                </div>
-                            </div>
-                            <div className="flex flex-wrap gap-2 items-center">
-                                <button onClick={() => toggleCc(item.id)} className={`px-3 py-1.5 text-xs rounded border ${item.includeCc ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white'}`}>CC Jefe</button>
-                                <button onClick={() => toggleSubdirectoraCc(item.id)} className={`px-3 py-1.5 text-xs rounded border ${item.includeSubdirectora ? 'bg-pink-50 border-pink-200 text-pink-700' : 'bg-white'}`}>CC Sub</button>
-                                <div className="h-4 w-px bg-slate-300 mx-1"></div>
-                                <button onClick={() => handleDownloadEml(item)} className="p-2 border rounded hover:bg-slate-50" title="Descargar EML (HTML)"><Download className="w-4 h-4"/></button>
-                                <button onClick={() => handleMailTo(item)} className={`px-4 py-2 text-xs font-medium rounded flex items-center gap-2 ${item.sent ? 'bg-green-100 text-green-700' : 'bg-indigo-600 text-white'}`}>
-                                    {item.sent ? <Check className="w-3 h-3"/> : <ExternalLink className="w-3 h-3"/>} {item.sent ? 'Enviado' : 'Enviar'}
-                                </button>
-                            </div>
-                        </div>
-                        <div className="p-4">
-                            <div className="mb-2">
-                                <input type="text" value={item.subject} onChange={(e) => handleEmailChange(item.id, 'subject', e.target.value)} className="w-full text-sm font-bold border-b border-transparent hover:border-slate-300 focus:border-indigo-500 outline-none" />
-                            </div>
-                            <RichTextEditor 
-                                value={item.body}
-                                onChange={(val) => handleEmailChange(item.id, 'body', val)}
-                                minHeight="150px"
-                            />
-                        </div>
+              {currentItems.map((item) => (
+                <div key={item.id} className={`bg-white rounded-xl shadow-sm border ${item.sent ? 'border-green-200' : 'border-slate-200'}`}>
+                  <div className={`px-6 py-4 border-b flex flex-col lg:flex-row justify-between gap-4 ${item.sent ? 'bg-green-50/50' : 'bg-slate-50'}`}>
+                    <div className="flex flex-col gap-2">
+                      <h3 className="font-bold text-slate-800">{item.official.name}</h3>
+                      <div className="flex gap-2 text-xs">
+                        <button onClick={() => toggleRecipient(item.id, 'official')} className={`px-2 py-1 rounded ${item.recipientType === 'official' ? 'bg-indigo-100 text-indigo-700' : 'text-slate-500'}`}>Oficial</button>
+                        <button onClick={() => toggleRecipient(item.id, 'boss')} className={`px-2 py-1 rounded ${item.recipientType === 'boss' ? 'bg-purple-100 text-purple-700' : 'text-slate-500'}`}>Jefatura</button>
+                      </div>
                     </div>
-                ))}
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <button onClick={() => toggleCc(item.id)} className={`px-3 py-1.5 text-xs rounded border ${item.includeCc ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white'}`}>CC Jefe</button>
+                      <button onClick={() => toggleSubdirectoraCc(item.id)} className={`px-3 py-1.5 text-xs rounded border ${item.includeSubdirectora ? 'bg-pink-50 border-pink-200 text-pink-700' : 'bg-white'}`}>CC Sub</button>
+                      <div className="h-4 w-px bg-slate-300 mx-1"></div>
+                      <button onClick={() => handleDownloadEml(item)} className="p-2 border rounded hover:bg-slate-50" title="Descargar EML (HTML)"><Download className="w-4 h-4" /></button>
+                      <button onClick={() => handleMailTo(item)} className={`px-4 py-2 text-xs font-medium rounded flex items-center gap-2 ${item.sent ? 'bg-green-100 text-green-700' : 'bg-indigo-600 text-white'}`}>
+                        {item.sent ? <Check className="w-3 h-3" /> : <ExternalLink className="w-3 h-3" />} {item.sent ? 'Enviado' : 'Enviar'}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <div className="mb-2">
+                      <input type="text" value={item.subject} onChange={(e) => handleEmailChange(item.id, 'subject', e.target.value)} className="w-full text-sm font-bold border-b border-transparent hover:border-slate-300 focus:border-indigo-500 outline-none" />
+                    </div>
+                    <EmailEditor
+                      content={item.body}
+                      onChange={(val) => handleEmailChange(item.id, 'body', val)}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
-        ) : (
+          ) : (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <table className="w-full text-left">
-                    <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase">
-                        <tr><th className="px-4 py-3">Nombre</th><th className="px-4 py-3">Estado</th><th className="px-4 py-3 text-right">Acciones</th></tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {currentItems.map(item => (
-                            <tr key={item.id} className={item.sent ? 'bg-green-50/30' : ''}>
-                                <td className="px-4 py-3 text-sm">{item.official.name}</td>
-                                <td className="px-4 py-3 text-center">{item.sent ? <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-[10px]">Enviado</span> : <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[10px]">Pendiente</span>}</td>
-                                <td className="px-4 py-3 text-right flex justify-end gap-2">
-                                    <button onClick={() => handleDownloadEml(item)} className="p-1.5 text-slate-500 hover:bg-slate-100 rounded"><Download className="w-4 h-4"/></button>
-                                    <button onClick={() => handleMailTo(item)} className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded"><ExternalLink className="w-4 h-4"/></button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+              <table className="w-full text-left">
+                <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase">
+                  <tr><th className="px-4 py-3">Nombre</th><th className="px-4 py-3">Estado</th><th className="px-4 py-3 text-right">Acciones</th></tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {currentItems.map(item => (
+                    <tr key={item.id} className={item.sent ? 'bg-green-50/30' : ''}>
+                      <td className="px-4 py-3 text-sm">{item.official.name}</td>
+                      <td className="px-4 py-3 text-center">{item.sent ? <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-[10px]">Enviado</span> : <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[10px]">Pendiente</span>}</td>
+                      <td className="px-4 py-3 text-right flex justify-end gap-2">
+                        <button onClick={() => handleDownloadEml(item)} className="p-1.5 text-slate-500 hover:bg-slate-100 rounded"><Download className="w-4 h-4" /></button>
+                        <button onClick={() => handleMailTo(item)} className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded"><ExternalLink className="w-4 h-4" /></button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-        )}
+          )}
 
-        {totalPages > 1 && (
-             <div className="flex justify-center gap-4 pt-4">
-                <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1} className="p-2 border rounded disabled:opacity-50"><ChevronLeft className="w-4 h-4"/></button>
-                <span className="text-sm self-center">Página {currentPage} de {totalPages}</span>
-                <button onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages} className="p-2 border rounded disabled:opacity-50"><ChevronRight className="w-4 h-4"/></button>
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-4 pt-4">
+              <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1} className="p-2 border rounded disabled:opacity-50"><ChevronLeft className="w-4 h-4" /></button>
+              <span className="text-sm self-center">Página {currentPage} de {totalPages}</span>
+              <button onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages} className="p-2 border rounded disabled:opacity-50"><ChevronRight className="w-4 h-4" /></button>
             </div>
-        )}
-      </>
+          )}
+        </>
       )}
     </div>
   );
