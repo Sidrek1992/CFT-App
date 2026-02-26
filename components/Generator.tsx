@@ -1,9 +1,9 @@
-
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Official, EmailTemplate, Gender, Campaign, EmailLog } from '../types';
 import { refineEmailWithAI } from '../services/geminiService';
 import { EmailEditor } from './EmailEditor';
-import { Copy, ExternalLink, AlertCircle, CheckSquare, Square, User, UserCheck, Search, ChevronLeft, ChevronRight, Check, Filter, Download, Sparkles, Building2, UserPlus, X, LayoutList, LayoutGrid, ChevronDown, ChevronUp, CopyPlus, UserCog, ArrowUpDown, History, Plus } from 'lucide-react';
+import { sendGmail, buildRawMessage, fileToBase64 } from '../services/gmailService';
+import { Copy, ExternalLink, Send, AlertCircle, CheckSquare, Square, User, UserCheck, Search, ChevronLeft, ChevronRight, Check, Filter, Download, Sparkles, Building2, UserPlus, X, LayoutList, LayoutGrid, ChevronDown, ChevronUp, CopyPlus, UserCog, ArrowUpDown, History, Plus, Loader2 } from 'lucide-react';
 
 interface GeneratorProps {
   officials: Official[];
@@ -31,28 +31,11 @@ interface EditableEmail {
   aiRefining: boolean;
 }
 
-// Helper to strip HTML tags for mailto: links (which only support plain text)
+// Helper to strip HTML tags for plain text fallbacks
 const stripHtml = (html: string) => {
   const tmp = document.createElement("DIV");
   tmp.innerHTML = html;
   return tmp.textContent || tmp.innerText || "";
-};
-
-// Helper to convert File to Base64
-const fileToBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        const base64 = reader.result.split(',')[1];
-        resolve(base64);
-      } else {
-        reject(new Error('Failed to convert file'));
-      }
-    };
-    reader.onerror = error => reject(error);
-  });
 };
 
 // Helper for accent-insensitive search
@@ -77,6 +60,7 @@ export const Generator: React.FC<GeneratorProps> = ({
   // Email State
   const [editableEmails, setEditableEmails] = useState<EditableEmail[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
 
   // View & UI State
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -100,11 +84,8 @@ export const Generator: React.FC<GeneratorProps> = ({
   const sortedOfficialsForCc = useMemo(() => [...officials].sort((a, b) => a.name.localeCompare(b.name)), [officials]);
 
   // Set initial campaign if available
-  // Bug #8: activeCampaignId added to deps so the effect doesn't re-trigger when
-  // campaigns updates after the user has already selected a campaign manually
   useEffect(() => {
     if (!activeCampaignId && campaigns.length > 0) {
-      // Default to most recent campaign
       const recent = [...campaigns].sort((a, b) => b.createdAt - a.createdAt)[0];
       setActiveCampaignId(recent.id);
     }
@@ -115,17 +96,14 @@ export const Generator: React.FC<GeneratorProps> = ({
     const generated = officials.map(official => {
       let body = template.body;
 
-      // Calculate dynamic gender adjective
       let estimadoVar = 'Estimado/a';
       if (official.gender === Gender.Male) estimadoVar = 'Estimado';
       if (official.gender === Gender.Female) estimadoVar = 'Estimada';
 
-      // Parse Name
       const nameParts = official.name.trim().split(/\s+/);
       const firstName = nameParts[0] || '';
       let lastName = nameParts.length > 2 ? nameParts.slice(-2).join(' ') : (nameParts[1] || '');
 
-      // Replace variables
       body = body.replace(/{nombre}/g, official.name);
       body = body.replace(/{nombres}/g, firstName);
       body = body.replace(/{apellidos}/g, lastName);
@@ -137,7 +115,6 @@ export const Generator: React.FC<GeneratorProps> = ({
       body = body.replace(/{jefatura_nombre}/g, official.bossName || 'N/A');
       body = body.replace(/{jefatura_cargo}/g, official.bossPosition || 'N/A');
 
-      // Check logs for sent status in THIS campaign
       const isSent = activeCampaign
         ? activeCampaign.logs.some(l => l.officialId === official.id)
         : false;
@@ -192,11 +169,6 @@ export const Generator: React.FC<GeneratorProps> = ({
     ));
   };
 
-  const replicateSettingToAll = (key: 'includeCc' | 'includeSubdirectora', value: boolean) => {
-    setEditableEmails(prev => prev.map(email => ({ ...email, [key]: value })));
-    onToast(`Configuración aplicada a ${editableEmails.length} correos.`, 'success');
-  };
-
   const handleAdditionalCcChange = (id: string, value: string) => {
     setEditableEmails(prev => prev.map(email => email.id === id ? { ...email, additionalCc: value } : email));
   };
@@ -215,31 +187,34 @@ export const Generator: React.FC<GeneratorProps> = ({
     return { to, cc };
   };
 
-  const handleMailTo = (email: EditableEmail) => {
+  const handleSendDirect = async (email: EditableEmail) => {
     if (!activeCampaignId) {
       onToast("Debes seleccionar o crear una campaña primero.", "error");
       return;
     }
 
-    const { to, cc } = getEmailAddresses(email);
-    // Convert HTML to Plain Text for mailto
-    const plainBody = stripHtml(email.body);
+    setSendingEmailId(email.id);
+    try {
+      const { to, cc } = getEmailAddresses(email);
+      const raw = await buildRawMessage(to, email.subject, email.body, cc, files);
 
-    const params: string[] = [];
-    if (cc) params.push(`cc=${encodeURIComponent(cc)}`);
-    params.push(`subject=${encodeURIComponent(email.subject)}`);
-    params.push(`body=${encodeURIComponent(plainBody)}`);
+      await sendGmail(raw);
 
-    window.open(`mailto:${to}?${params.join('&')}`, '_blank');
+      onLogEmail(activeCampaignId, {
+        officialId: email.id,
+        recipientEmail: to,
+        sentAt: Date.now(),
+        method: 'gmail_api'
+      });
 
-    onLogEmail(activeCampaignId, {
-      officialId: email.id,
-      recipientEmail: to,
-      sentAt: Date.now(),
-      method: 'mailto'
-    });
-
-    setEditableEmails(prev => prev.map(e => e.id === email.id ? { ...e, sent: true } : e));
+      setEditableEmails(prev => prev.map(e => e.id === email.id ? { ...e, sent: true } : e));
+      onToast(`Correo enviado a ${to}`, "success");
+    } catch (error: any) {
+      console.error(error);
+      onToast(error.message || "Error al enviar el correo", "error");
+    } finally {
+      setSendingEmailId(null);
+    }
   };
 
   const handleDownloadEml = async (email: EditableEmail) => {
@@ -356,11 +331,11 @@ export const Generator: React.FC<GeneratorProps> = ({
 
   if (officials.length === 0) {
     return (
-    <div className="flex flex-col items-center justify-center h-64 bg-white dark:bg-dark-800 rounded-xl border border-slate-200 dark:border-slate-700">
-      <AlertCircle className="w-8 h-8 text-amber-500 mb-2" />
-      <p className="text-slate-600 dark:text-slate-400">No hay funcionarios seleccionados para generar correos.</p>
-    </div>
-  );
+      <div className="flex flex-col items-center justify-center h-64 bg-white dark:bg-dark-800 rounded-xl border border-slate-200 dark:border-slate-700">
+        <AlertCircle className="w-8 h-8 text-amber-500 mb-2" />
+        <p className="text-slate-600 dark:text-slate-400">No hay funcionarios seleccionados para generar correos.</p>
+      </div>
+    );
   }
 
   return (
@@ -422,7 +397,7 @@ export const Generator: React.FC<GeneratorProps> = ({
       </div>
 
       {!activeCampaignId ? (
-          <div className="text-center py-20 opacity-50 text-slate-700 dark:text-slate-300">
+        <div className="text-center py-20 opacity-50 text-slate-700 dark:text-slate-300">
           <p>Por favor selecciona una campaña arriba para comenzar.</p>
         </div>
       ) : (
@@ -469,8 +444,19 @@ export const Generator: React.FC<GeneratorProps> = ({
                       <button onClick={() => toggleSubdirectoraCc(item.id)} className={`px-3 py-1.5 text-xs rounded border ${item.includeSubdirectora ? 'bg-pink-50 dark:bg-pink-900/40 border-pink-200 dark:border-pink-700 text-pink-700 dark:text-pink-300' : 'bg-white dark:bg-dark-700 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300'}`}>CC Sub</button>
                       <div className="h-4 w-px bg-slate-300 dark:bg-slate-600 mx-1"></div>
                       <button onClick={() => handleDownloadEml(item)} className="p-2 border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-dark-700 text-slate-600 dark:text-slate-300" title="Descargar EML (HTML)"><Download className="w-4 h-4" /></button>
-                      <button onClick={() => handleMailTo(item)} className={`px-4 py-2 text-xs font-medium rounded flex items-center gap-2 ${item.sent ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
-                        {item.sent ? <Check className="w-3 h-3" /> : <ExternalLink className="w-3 h-3" />} {item.sent ? 'Enviado' : 'Enviar'}
+                      <button
+                        onClick={() => handleSendDirect(item)}
+                        disabled={sendingEmailId === item.id}
+                        className={`px-4 py-2 text-xs font-medium rounded flex items-center gap-2 ${item.sent ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300' : 'bg-indigo-600 text-white hover:bg-indigo-700 disabled:bg-indigo-400'}`}
+                      >
+                        {sendingEmailId === item.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : item.sent ? (
+                          <Check className="w-3 h-3" />
+                        ) : (
+                          <Send className="w-3 h-3" />
+                        )}
+                        {sendingEmailId === item.id ? 'Enviando...' : item.sent ? 'Enviado' : 'Enviar Directo'}
                       </button>
                     </div>
                   </div>
@@ -498,8 +484,21 @@ export const Generator: React.FC<GeneratorProps> = ({
                       <td className="px-4 py-3 text-sm text-slate-800 dark:text-slate-200">{item.official.name}</td>
                       <td className="px-4 py-3 text-center">{item.sent ? <span className="bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 px-2 py-0.5 rounded text-[10px]">Enviado</span> : <span className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded text-[10px]">Pendiente</span>}</td>
                       <td className="px-4 py-3 text-right flex justify-end gap-2">
-                        <button onClick={() => handleDownloadEml(item)} className="p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-700 rounded"><Download className="w-4 h-4" /></button>
-                        <button onClick={() => handleMailTo(item)} className="p-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded"><ExternalLink className="w-4 h-4" /></button>
+                        <button onClick={() => handleDownloadEml(item)} className="p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-700 rounded" title="Descargar EML"><Download className="w-4 h-4" /></button>
+                        <button
+                          onClick={() => handleSendDirect(item)}
+                          disabled={sendingEmailId === item.id}
+                          className={`p-1.5 rounded transition-colors ${item.sent ? 'text-green-600 dark:text-green-400' : 'text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30'}`}
+                          title="Enviar Directo (Gmail)"
+                        >
+                          {sendingEmailId === item.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : item.sent ? (
+                            <Check className="w-4 h-4" />
+                          ) : (
+                            <Send className="w-4 h-4" />
+                          )}
+                        </button>
                       </td>
                     </tr>
                   ))}
