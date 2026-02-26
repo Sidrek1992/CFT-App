@@ -49,7 +49,7 @@ export const Login: React.FC<LoginProps> = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-dark-950">
+        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-slate-50 dark:bg-dark-950">
             {/* Background Orbs */}
             <div className="fixed top-0 left-0 w-[500px] h-[500px] bg-primary-600/10 rounded-full blur-[120px] pointer-events-none transform -translate-x-1/2 -translate-y-1/2"></div>
             <div className="fixed bottom-0 right-0 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[150px] pointer-events-none transform translate-x-1/3 translate-y-1/3"></div>
@@ -58,14 +58,14 @@ export const Login: React.FC<LoginProps> = () => {
                 {/* Logo/Header */}
                 <div className="text-center mb-8">
                     <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary-500/20">
-                        <Mail className="w-8 h-8 text-white" />
+                        <Mail className="w-8 h-8 text-slate-900 dark:text-white" />
                     </div>
-                    <h1 className="text-3xl font-extrabold text-white mb-2">CFT Estatal</h1>
-                    <p className="text-slate-400">Plataforma de Correos Corporativos AI</p>
+                    <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">CFT Estatal</h1>
+                    <p className="text-slate-600 dark:text-slate-400">Plataforma de Correos Corporativos AI</p>
                 </div>
 
                 {/* Login Card */}
-                <div className="glass-panel p-8 bento-card border border-white/5 relative z-10 shadow-2xl">
+                <div className="glass-panel p-8 bento-card border border-slate-100 dark:border-white/5 relative z-10 shadow-2xl">
 
                     {error && (
                         <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-3 text-red-400 text-sm animate-shake">
@@ -76,14 +76,14 @@ export const Login: React.FC<LoginProps> = () => {
 
                     <form onSubmit={handleEmailLogin} className="space-y-5">
                         <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-1.5 ml-1">Correo Electrónico</label>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">Correo Electrónico</label>
                             <div className="relative group">
-                                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-primary-400 transition-colors" />
+                                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500 group-focus-within:text-primary-400 transition-colors" />
                                 <input
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full pl-11 pr-4 py-3 bg-dark-900/50 border border-white/10 rounded-xl focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 text-white placeholder-slate-500 transition-all outline-none"
+                                    className="w-full pl-11 pr-4 py-3 bg-white dark:bg-dark-900/50 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 text-slate-900 dark:text-white placeholder-slate-500 transition-all outline-none"
                                     placeholder="admin@cftestatalaricayparinacota.cl"
                                     disabled={isLoading}
                                 />
@@ -91,14 +91,14 @@ export const Login: React.FC<LoginProps> = () => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-1.5 ml-1">Contraseña</label>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">Contraseña</label>
                             <div className="relative group">
-                                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-primary-400 transition-colors" />
+                                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500 group-focus-within:text-primary-400 transition-colors" />
                                 <input
                                     type="password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full pl-11 pr-4 py-3 bg-dark-900/50 border border-white/10 rounded-xl focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 text-white placeholder-slate-500 transition-all outline-none"
+                                    className="w-full pl-11 pr-4 py-3 bg-white dark:bg-dark-900/50 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 text-slate-900 dark:text-white placeholder-slate-500 transition-all outline-none"
                                     placeholder="••••••••"
                                     disabled={isLoading}
                                 />
@@ -108,7 +108,7 @@ export const Login: React.FC<LoginProps> = () => {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full relative group overflow-hidden flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white border border-primary-500/50 shadow-[0_0_15px_rgba(99,102,241,0.2)] hover:shadow-[0_0_25px_rgba(99,102,241,0.4)] disabled:opacity-50 disabled:cursor-not-allowed transition-all mt-4"
+                            className="w-full relative group overflow-hidden flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-slate-900 dark:text-white border border-primary-500/50 shadow-[0_0_15px_rgba(99,102,241,0.2)] hover:shadow-[0_0_25px_rgba(99,102,241,0.4)] disabled:opacity-50 disabled:cursor-not-allowed transition-all mt-4"
                         >
                             <div className="absolute inset-0 bg-gradient-to-r from-primary-600 to-indigo-600 opacity-90 group-hover:opacity-100 transition-opacity"></div>
                             <LogIn className="w-5 h-5 relative z-10" />
@@ -117,21 +117,21 @@ export const Login: React.FC<LoginProps> = () => {
                     </form>
 
                     <div className="my-6 flex items-center gap-4">
-                        <div className="flex-1 h-px bg-white/5"></div>
-                        <span className="text-xs font-semibold text-slate-500">O</span>
-                        <div className="flex-1 h-px bg-white/5"></div>
+                        <div className="flex-1 h-px bg-slate-900/5 dark:bg-white/5"></div>
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-500">O</span>
+                        <div className="flex-1 h-px bg-slate-900/5 dark:bg-white/5"></div>
                     </div>
 
                     <button
                         onClick={handleGoogleLogin}
                         disabled={isLoading}
-                        className="w-full flex items-center justify-center gap-2 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-semibold text-slate-300 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                        className="w-full flex items-center justify-center gap-2 py-3 bg-slate-900/5 dark:bg-white/5 hover:bg-slate-900/10 dark:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl font-semibold text-slate-700 dark:text-slate-300 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                     >
-                        <Chrome className="w-5 h-5 text-slate-400" />
+                        <Chrome className="w-5 h-5 text-slate-600 dark:text-slate-400" />
                         Continuar con Google
                     </button>
 
-                    <p className="text-center text-xs text-slate-500 mt-6">
+                    <p className="text-center text-xs text-slate-500 dark:text-slate-500 mt-6">
                         Solo el personal autorizado puede acceder a esta plataforma.
                     </p>
                 </div>

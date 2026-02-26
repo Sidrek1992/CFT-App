@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { FileEdit, Send, Plus, Database, LayoutDashboard, Upload, Download, AlertTriangle, X, RefreshCw, SkipForward, Trash2, FileSpreadsheet, Menu, Briefcase, CheckCircle2, Settings, ChevronDown, FolderPlus, PenLine, FolderInput, FolderOutput, Network, LogOut } from 'lucide-react';
+import { FileEdit, Send, Plus, Database, LayoutDashboard, Upload, Download, AlertTriangle, X, RefreshCw, SkipForward, Trash2, FileSpreadsheet, Menu, Briefcase, CheckCircle2, Settings, ChevronDown, FolderPlus, PenLine, FolderInput, FolderOutput, Network, LogOut, Moon, Sun } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Official, EmailTemplate, ViewState, ToastNotification, SavedTemplate, Gender, SortOption, FilterCriteria, OfficialDatabase, Campaign, EmailLog } from './types';
 import { OfficialForm } from './components/OfficialForm';
@@ -104,6 +104,23 @@ export default function App() {
     const [toasts, setToasts] = useState<ToastNotification[]>([]);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+    // Dark Mode State
+    const [isDarkMode, setIsDarkMode] = useState(() => {
+        const saved = localStorage.getItem('theme');
+        return saved ? saved === 'dark' : true;
+    });
+
+    useEffect(() => {
+        const root = window.document.documentElement;
+        if (isDarkMode) {
+            root.classList.add('dark');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            root.classList.remove('dark');
+            localStorage.setItem('theme', 'light');
+        }
+    }, [isDarkMode]);
 
     // Database UI States
     const [isDbMenuOpen, setIsDbMenuOpen] = useState(false);
@@ -357,12 +374,12 @@ export default function App() {
         addToast(`Base de datos "${activeDatabase.name}" exportada`, "success");
     };
 
-    const handleImportDatabase = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImportDatabase = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
             try {
                 const importedDb = JSON.parse(event.target?.result as string);
                 if (importedDb.officials && Array.isArray(importedDb.officials)) {
@@ -373,7 +390,12 @@ export default function App() {
                         name: importedDb.name + ' (Importada)',
                         createdAt: Date.now()
                     };
-                    setDatabases(prev => [...prev, newDb]);
+
+                    // Explicitly save the newly constructed database to Firestore
+                    await dbService.saveDatabase(newDb);
+
+                    // We don't necessarily need to setDatabases here as the real-time listener will pick it up,
+                    // but to have immediate UI response and set as active:
                     setActiveDbId(newDb.id);
                     addToast(`Base de datos "${importedDb.name}" importada exitosamente`, "success");
                 } else {
@@ -604,7 +626,7 @@ export default function App() {
 
     if (loadingAuth) {
         return (
-            <div className="flex items-center justify-center h-screen bg-dark-950 text-white">
+            <div className="flex items-center justify-center h-screen bg-slate-50 dark:bg-dark-950 text-slate-900 dark:text-white">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
             </div>
         );
@@ -615,7 +637,7 @@ export default function App() {
     }
 
     return (
-        <div className="flex h-screen bg-dark-950 text-slate-200 overflow-hidden font-sans bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-dark-800 via-dark-950 to-dark-950 relative">
+        <div className="flex h-screen bg-slate-50 dark:bg-dark-950 text-slate-800 dark:text-slate-200 overflow-hidden font-sans bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-dark-800 via-dark-950 to-dark-950 relative">
             {/* Decorative background blurs */}
             <div className="absolute top-0 left-0 w-96 h-96 bg-primary-900/40 rounded-full mix-blend-screen filter blur-[100px] opacity-50 z-0"></div>
             <div className="absolute bottom-0 right-0 w-96 h-96 bg-indigo-900/30 rounded-full mix-blend-screen filter blur-[100px] opacity-50 z-0"></div>
@@ -627,22 +649,31 @@ export default function App() {
             <input type="file" ref={dbImportInputRef} onChange={handleImportDatabase} className="hidden" accept=".json" />
 
             {/* --- SIDEBAR --- */}
-            <aside className={`fixed inset-y-0 left-0 z-30 w-72 glass-panel border-r border-slate-800 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} m-4 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-xl`}>
-                <div className="p-6 border-b border-slate-800/50 flex items-center gap-4 bg-gradient-to-b from-slate-900/50 to-transparent">
-                    <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-indigo-700 rounded-2xl flex items-center justify-center shadow-lg shadow-primary-500/20">
-                        <Briefcase className="text-white w-6 h-6" />
+            <aside className={`fixed inset-y-0 left-0 z-30 w-72 glass-panel border-r border-slate-200 dark:border-slate-800 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} m-4 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-xl`}>
+                <div className="p-6 border-b border-slate-200 dark:border-slate-800/50 flex items-center justify-between bg-gradient-to-b from-slate-50 to-transparent dark:from-slate-900/50">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-indigo-700 rounded-2xl flex items-center justify-center shadow-lg shadow-primary-500/20">
+                            <Briefcase className="text-white w-6 h-6" />
+                        </div>
+                        <div>
+                            <h1 className="text-slate-900 dark:text-white font-extrabold text-xl tracking-tight">Gestor AI</h1>
+                            <p className="text-xs font-medium text-primary-600 dark:text-primary-400 uppercase tracking-widest mt-0.5">Premium</p>
+                        </div>
                     </div>
-                    <div>
-                        <h1 className="text-white font-extrabold text-xl tracking-tight">Gestor AI</h1>
-                        <p className="text-xs font-medium text-primary-400 uppercase tracking-widest mt-0.5">Premium</p>
-                    </div>
+                    <button
+                        onClick={() => setIsDarkMode(!isDarkMode)}
+                        className="p-2 text-slate-500 hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400 hover:bg-slate-200 dark:hover:bg-white/5 rounded-xl transition-colors"
+                        title={isDarkMode ? "Cambiar a Modo Claro" : "Cambiar a Modo Oscuro"}
+                    >
+                        {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                    </button>
                 </div>
 
                 {/* Database Switcher */}
-                <div className="px-6 py-5 border-b border-slate-800/50 bg-black/10">
-                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center justify-between">
+                <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-800/50 bg-slate-900/5 dark:bg-black/10">
+                    <div className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center justify-between">
                         <span>Base de Datos</span>
-                        <button onClick={() => setIsDbMenuOpen(!isDbMenuOpen)} className="hover:text-primary-400 transition-colors p-1 rounded-md hover:bg-white/5">
+                        <button onClick={() => setIsDbMenuOpen(!isDbMenuOpen)} className="hover:text-primary-400 transition-colors p-1 rounded-md hover:bg-slate-900/5 dark:bg-white/5">
                             <Settings className="w-4 h-4" />
                         </button>
                     </div>
@@ -650,43 +681,43 @@ export default function App() {
                     <div className="relative">
                         <button
                             onClick={() => setIsDbMenuOpen(!isDbMenuOpen)}
-                            className="w-full bg-dark-900/50 hover:bg-dark-800 text-white p-3 rounded-xl flex items-center justify-between text-sm transition-all border border-slate-700 hover:border-slate-600 shadow-inner group"
+                            className="w-full bg-white dark:bg-dark-900/50 hover:bg-slate-100 dark:bg-dark-800 text-slate-900 dark:text-white p-3 rounded-xl flex items-center justify-between text-sm transition-all border border-slate-300 dark:border-slate-700 hover:border-slate-600 shadow-inner group"
                         >
                             <span className="truncate flex-1 text-left font-medium group-hover:text-primary-300 transition-colors">{activeDatabase.name}</span>
-                            <ChevronDown className="w-4 h-4 text-slate-400" />
+                            <ChevronDown className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                         </button>
 
                         {/* Dropdown Menu */}
                         {isDbMenuOpen && (
-                            <div className="absolute top-full left-0 w-full mt-2 bg-dark-800 rounded-xl shadow-xl border border-slate-700 overflow-hidden z-20 animate-in fade-in zoom-in-95 duration-100">
+                            <div className="absolute top-full left-0 w-full mt-2 bg-slate-100 dark:bg-dark-800 rounded-xl shadow-xl border border-slate-300 dark:border-slate-700 overflow-hidden z-20 animate-in fade-in zoom-in-95 duration-100">
                                 <div className="max-h-48 overflow-y-auto custom-scrollbar">
                                     {databases.map(db => (
                                         <button
                                             key={db.id}
                                             onClick={() => { setActiveDbId(db.id); setIsDbMenuOpen(false); }}
-                                            className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between ${activeDbId === db.id ? 'bg-primary-600 text-white' : 'text-slate-300 hover:bg-dark-700'}`}
+                                            className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between ${activeDbId === db.id ? 'bg-primary-600 text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:bg-dark-700'}`}
                                         >
                                             <span className="truncate">{db.name}</span>
                                             {activeDbId === db.id && <CheckCircle2 className="w-3 h-3" />}
                                         </button>
                                     ))}
                                 </div>
-                                <div className="border-t border-slate-700 p-2 space-y-1">
-                                    <button onClick={() => { handleCreateDatabase(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-primary-400 hover:bg-dark-700 rounded-lg flex items-center gap-2">
+                                <div className="border-t border-slate-300 dark:border-slate-700 p-2 space-y-1">
+                                    <button onClick={() => { handleCreateDatabase(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-primary-400 hover:bg-slate-200 dark:bg-dark-700 rounded-lg flex items-center gap-2">
                                         <Plus className="w-3 h-3" /> Crear Nueva BD
                                     </button>
-                                    <button onClick={() => { dbImportInputRef.current?.click(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-slate-400 hover:bg-dark-700 rounded-lg flex items-center gap-2">
+                                    <button onClick={() => { dbImportInputRef.current?.click(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:bg-dark-700 rounded-lg flex items-center gap-2">
                                         <FolderInput className="w-3 h-3" /> Importar BD (JSON)
                                     </button>
-                                    <div className="border-t border-slate-700 my-1"></div>
-                                    <button onClick={() => { handleRenameDatabase(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-slate-400 hover:bg-dark-700 rounded-lg flex items-center gap-2">
+                                    <div className="border-t border-slate-300 dark:border-slate-700 my-1"></div>
+                                    <button onClick={() => { handleRenameDatabase(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:bg-dark-700 rounded-lg flex items-center gap-2">
                                         <PenLine className="w-3 h-3" /> Renombrar Actual
                                     </button>
-                                    <button onClick={() => { handleExportDatabase(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-slate-400 hover:bg-dark-700 rounded-lg flex items-center gap-2">
+                                    <button onClick={() => { handleExportDatabase(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:bg-dark-700 rounded-lg flex items-center gap-2">
                                         <FolderOutput className="w-3 h-3" /> Exportar Actual (JSON)
                                     </button>
                                     {databases.length > 1 && (
-                                        <button onClick={() => { handleDeleteDatabase(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-red-400 hover:bg-dark-700 rounded-lg flex items-center gap-2">
+                                        <button onClick={() => { handleDeleteDatabase(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-red-400 hover:bg-slate-200 dark:bg-dark-700 rounded-lg flex items-center gap-2">
                                             <Trash2 className="w-3 h-3" /> Eliminar Actual
                                         </button>
                                     )}
@@ -694,7 +725,7 @@ export default function App() {
                             </div>
                         )}
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-2 text-right">
+                    <p className="text-[10px] text-slate-500 dark:text-slate-500 mt-2 text-right">
                         {officials.length} registros
                     </p>
                 </div>
@@ -702,64 +733,64 @@ export default function App() {
                 <nav className="flex-1 p-4 space-y-2.5 overflow-y-auto custom-scrollbar">
                     <button
                         onClick={() => handleNavigate('dashboard')}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'dashboard' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-400 hover:bg-white/5 hover:text-white border border-transparent hover:border-white/10'}`}
+                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'dashboard' ? 'bg-primary-600 text-slate-900 dark:text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-900/5 dark:bg-white/5 hover:text-slate-900 dark:text-white border border-transparent hover:border-slate-200 dark:border-white/10'}`}
                     >
-                        <LayoutDashboard className={`w-5 h-5 ${view === 'dashboard' ? 'text-primary-100' : 'text-slate-400'}`} />
+                        <LayoutDashboard className={`w-5 h-5 ${view === 'dashboard' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
                         Dashboard
                     </button>
                     <button
                         onClick={() => handleNavigate('database')}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'database' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-400 hover:bg-white/5 hover:text-white border border-transparent hover:border-white/10'}`}
+                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'database' ? 'bg-primary-600 text-slate-900 dark:text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-900/5 dark:bg-white/5 hover:text-slate-900 dark:text-white border border-transparent hover:border-slate-200 dark:border-white/10'}`}
                     >
-                        <Database className={`w-5 h-5 ${view === 'database' ? 'text-primary-100' : 'text-slate-400'}`} />
+                        <Database className={`w-5 h-5 ${view === 'database' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
                         Base de Datos
                     </button>
                     <button
                         onClick={() => handleNavigate('orgChart')}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'orgChart' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-400 hover:bg-white/5 hover:text-white border border-transparent hover:border-white/10'}`}
+                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'orgChart' ? 'bg-primary-600 text-slate-900 dark:text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-900/5 dark:bg-white/5 hover:text-slate-900 dark:text-white border border-transparent hover:border-slate-200 dark:border-white/10'}`}
                     >
-                        <Network className={`w-5 h-5 ${view === 'orgChart' ? 'text-primary-100' : 'text-slate-400'}`} />
+                        <Network className={`w-5 h-5 ${view === 'orgChart' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
                         Organigrama
                     </button>
                     <button
                         onClick={() => handleNavigate('template')}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'template' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-400 hover:bg-white/5 hover:text-white border border-transparent hover:border-white/10'}`}
+                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'template' ? 'bg-primary-600 text-slate-900 dark:text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-900/5 dark:bg-white/5 hover:text-slate-900 dark:text-white border border-transparent hover:border-slate-200 dark:border-white/10'}`}
                     >
-                        <FileEdit className={`w-5 h-5 ${view === 'template' ? 'text-primary-100' : 'text-slate-400'}`} />
+                        <FileEdit className={`w-5 h-5 ${view === 'template' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
                         Editor Plantilla
                     </button>
                     <button
                         onClick={() => handleNavigate('generate')}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'generate' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-400 hover:bg-white/5 hover:text-white border border-transparent hover:border-white/10'}`}
+                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'generate' ? 'bg-primary-600 text-slate-900 dark:text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-900/5 dark:bg-white/5 hover:text-slate-900 dark:text-white border border-transparent hover:border-slate-200 dark:border-white/10'}`}
                     >
-                        <Send className={`w-5 h-5 ${view === 'generate' ? 'text-primary-100' : 'text-slate-400'}`} />
+                        <Send className={`w-5 h-5 ${view === 'generate' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
                         Generar y Enviar
                     </button>
                 </nav>
 
                 <div className="p-6 mt-auto">
-                    <div className="glass-panel rounded-2xl p-5 border border-white/5 shadow-2xl relative overflow-hidden group">
+                    <div className="glass-panel rounded-2xl p-5 border border-slate-100 dark:border-white/5 shadow-2xl relative overflow-hidden group">
                         <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-3">Estado del Sistema</p>
+                        <p className="text-[11px] font-bold text-slate-500 dark:text-slate-500 uppercase tracking-widest mb-3">Estado del Sistema</p>
                         <div className="flex items-center gap-3 mb-2">
                             <div className="relative flex h-3 w-3">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
                             </div>
-                            <span className="text-sm font-semibold text-slate-300 truncate max-w-[150px]">{activeDatabase.name}</span>
+                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate max-w-[150px]">{activeDatabase.name}</span>
                         </div>
                         <div className="flex items-center gap-3">
                             <div className="relative flex h-3 w-3">
                                 <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
                             </div>
-                            <span className="text-sm font-semibold text-slate-300">v2.0 Campaigns</span>
+                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">v2.0 Campaigns</span>
                         </div>
-                        <div className="flex items-center justify-between gap-3 mt-4 pt-4 border-t border-white/10">
+                        <div className="flex items-center justify-between gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-white/10">
                             <div className="flex flex-col overflow-hidden">
-                                <span className="text-xs font-semibold text-slate-300 truncate">{user.email}</span>
-                                <span className="text-[10px] text-slate-500 uppercase">Admin</span>
+                                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">{user.email}</span>
+                                <span className="text-[10px] text-slate-500 dark:text-slate-500 uppercase">Admin</span>
                             </div>
-                            <button onClick={logout} className="p-2 text-slate-400 hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors" title="Cerrar Sesión">
+                            <button onClick={logout} className="p-2 text-slate-600 dark:text-slate-400 hover:text-red-400 hover:bg-slate-900/5 dark:bg-white/5 rounded-lg transition-colors" title="Cerrar Sesión">
                                 <LogOut className="w-4 h-4" />
                             </button>
                         </div>
@@ -771,16 +802,24 @@ export default function App() {
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10 w-full">
 
                 {/* Mobile Header */}
-                <div className="lg:hidden glass-panel border-b border-white/10 p-4 flex items-center justify-between m-4 rounded-3xl mb-0 sticky top-4 z-20">
-                    <div className="flex items-center gap-3 font-bold text-white">
+                <div className="lg:hidden glass-panel border-b border-slate-200 dark:border-white/10 p-4 flex items-center justify-between m-4 rounded-3xl mb-0 sticky top-4 z-20">
+                    <div className="flex items-center gap-3 font-bold text-slate-900 dark:text-white">
                         <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center">
                             <Briefcase className="w-4 h-4 text-white" />
                         </div>
                         Gestor AI
                     </div>
-                    <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-slate-300 hover:bg-white/10 rounded-lg transition-colors">
-                        <Menu className="w-6 h-6" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setIsDarkMode(!isDarkMode)}
+                            className="p-2 text-slate-500 hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400 hover:bg-slate-200 dark:hover:bg-white/5 rounded-xl transition-colors"
+                        >
+                            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                        </button>
+                        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-slate-700 dark:text-slate-300 hover:bg-slate-900/10 dark:bg-white/10 rounded-lg transition-colors">
+                            <Menu className="w-6 h-6" />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 lg:p-8 custom-scrollbar">
@@ -814,7 +853,7 @@ export default function App() {
                                         <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                                             Base de Datos: <span className="text-indigo-600">{activeDatabase.name}</span>
                                         </h2>
-                                        <p className="text-slate-500">Administrando registros para {activeDatabase.name}.</p>
+                                        <p className="text-slate-500 dark:text-slate-500">Administrando registros para {activeDatabase.name}.</p>
                                     </div>
                                     {!showForm && (
                                         <div className="flex gap-2">
@@ -836,7 +875,7 @@ export default function App() {
                                             </button>
                                             <button
                                                 onClick={() => { setEditingOfficial(null); setShowForm(true); }}
-                                                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 font-medium shadow-sm transition-all hover:shadow-md"
+                                                className="px-4 py-2 bg-indigo-600 text-slate-900 dark:text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 font-medium shadow-sm transition-all hover:shadow-md"
                                             >
                                                 <Plus className="w-4 h-4" />
                                                 Nuevo
@@ -873,7 +912,7 @@ export default function App() {
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                     <div>
                                         <h2 className="text-2xl font-bold text-slate-800">Organigrama</h2>
-                                        <p className="text-slate-500">Visualización jerárquica basada en las jefaturas de la base de datos.</p>
+                                        <p className="text-slate-500 dark:text-slate-500">Visualización jerárquica basada en las jefaturas de la base de datos.</p>
                                     </div>
                                 </div>
                                 <OrgChart officials={officials} />
@@ -884,7 +923,7 @@ export default function App() {
                             <div className="h-[calc(100vh-8rem)]">
                                 <div className="mb-4">
                                     <h2 className="text-2xl font-bold text-slate-800">Editor de Plantilla</h2>
-                                    <p className="text-slate-500">Diseña el correo base. Ahora soporta Texto Enriquecido.</p>
+                                    <p className="text-slate-500 dark:text-slate-500">Diseña el correo base. Ahora soporta Texto Enriquecido.</p>
                                 </div>
                                 <TemplateEditor
                                     template={template}
@@ -905,7 +944,7 @@ export default function App() {
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                     <div>
                                         <h2 className="text-2xl font-bold text-slate-800">Generador de Correos</h2>
-                                        <p className="text-slate-500">Enviando a base de datos: <strong className="text-indigo-600">{activeDatabase.name}</strong></p>
+                                        <p className="text-slate-500 dark:text-slate-500">Enviando a base de datos: <strong className="text-indigo-600">{activeDatabase.name}</strong></p>
                                     </div>
                                 </div>
                                 <Generator
@@ -955,7 +994,7 @@ export default function App() {
                                 <button
                                     type="submit"
                                     disabled={!dbModal.value.trim()}
-                                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium text-sm shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="px-4 py-2 bg-indigo-600 text-slate-900 dark:text-white rounded-lg hover:bg-indigo-700 font-medium text-sm shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {dbModal.mode === 'create' ? 'Crear' : 'Guardar'}
                                 </button>
@@ -991,7 +1030,7 @@ export default function App() {
                                 </button>
                                 <button
                                     onClick={executeClearDatabase}
-                                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-md transition-colors flex items-center justify-center gap-2"
+                                    className="flex-1 px-4 py-2 bg-red-600 text-slate-900 dark:text-white rounded-lg hover:bg-red-700 font-medium shadow-md transition-colors flex items-center justify-center gap-2"
                                 >
                                     <Trash2 className="w-4 h-4" />
                                     Vaciar Lista
@@ -1021,7 +1060,7 @@ export default function App() {
                             <div className="flex gap-4 mb-6">
                                 <div className="flex-1 bg-slate-50 p-3 rounded-lg border border-slate-200 text-center">
                                     <span className="block text-2xl font-bold text-slate-700">{importConflict.newOfficials.length}</span>
-                                    <span className="text-xs text-slate-500 font-medium uppercase tracking-wide">Nuevos</span>
+                                    <span className="text-xs text-slate-500 dark:text-slate-500 font-medium uppercase tracking-wide">Nuevos</span>
                                 </div>
                                 <div className="flex-1 bg-amber-50 p-3 rounded-lg border border-amber-200 text-center">
                                     <span className="block text-2xl font-bold text-amber-700">{importConflict.duplicates.length}</span>
@@ -1050,7 +1089,7 @@ export default function App() {
                                     </button>
                                     <button
                                         onClick={() => resolveImportConflict('overwrite')}
-                                        className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium text-sm shadow-sm transition-colors flex items-center justify-center gap-2"
+                                        className="flex-1 px-4 py-2 bg-indigo-600 text-slate-900 dark:text-white rounded-lg hover:bg-indigo-700 font-medium text-sm shadow-sm transition-colors flex items-center justify-center gap-2"
                                     >
                                         <RefreshCw className="w-4 h-4" />
                                         Actualizar
@@ -1084,7 +1123,7 @@ export default function App() {
                             </button>
                             <button
                                 onClick={confirmDeleteOfficial}
-                                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-md transition-colors text-sm"
+                                className="flex-1 px-4 py-2 bg-red-600 text-slate-900 dark:text-white rounded-lg hover:bg-red-700 font-medium shadow-md transition-colors text-sm"
                             >
                                 Eliminar
                             </button>

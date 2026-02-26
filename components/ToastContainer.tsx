@@ -32,7 +32,7 @@ const ToastItem: React.FC<{ toast: ToastNotification; onRemove: () => void }> = 
       case 'error':
         return 'bg-white border-red-500 text-slate-800 shadow-lg shadow-red-900/5';
       default:
-        return 'bg-slate-800 border-slate-700 text-white shadow-lg shadow-slate-900/20';
+        return 'bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white shadow-lg shadow-slate-900/20';
     }
   };
 
