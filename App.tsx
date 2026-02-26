@@ -624,6 +624,16 @@ export default function App() {
         reader.readAsText(file);
     };
 
+    const handleLogout = async () => {
+        try {
+            await logout();
+            addToast("Sesión cerrada exitosamente", "success");
+        } catch (error) {
+            console.error("Error al cerrar sesión", error);
+            addToast("Error al cerrar sesión", "error");
+        }
+    };
+
     if (loadingAuth) {
         return (
             <div className="flex items-center justify-center h-screen bg-slate-50 dark:bg-dark-950 text-slate-900 dark:text-white">
@@ -790,7 +800,7 @@ export default function App() {
                                 <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">{user.email}</span>
                                 <span className="text-[10px] text-slate-500 dark:text-slate-500 uppercase">Admin</span>
                             </div>
-                            <button onClick={logout} className="p-2 text-slate-600 dark:text-slate-400 hover:text-red-400 hover:bg-slate-900/5 dark:bg-white/5 rounded-lg transition-colors" title="Cerrar Sesión">
+                            <button onClick={handleLogout} className="p-2 text-slate-600 dark:text-slate-400 hover:text-red-400 hover:bg-slate-900/5 dark:bg-white/5 rounded-lg transition-colors" title="Cerrar Sesión">
                                 <LogOut className="w-4 h-4" />
                             </button>
                         </div>
@@ -815,6 +825,9 @@ export default function App() {
                             className="p-2 text-slate-500 hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400 hover:bg-slate-200 dark:hover:bg-white/5 rounded-xl transition-colors"
                         >
                             {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                        </button>
+                        <button onClick={handleLogout} className="p-2 text-slate-600 dark:text-slate-400 hover:text-red-400 hover:bg-slate-900/10 dark:hover:bg-white/10 rounded-lg transition-colors" title="Cerrar Sesión">
+                            <LogOut className="w-5 h-5" />
                         </button>
                         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-slate-700 dark:text-slate-300 hover:bg-slate-900/10 dark:bg-white/10 rounded-lg transition-colors">
                             <Menu className="w-6 h-6" />
