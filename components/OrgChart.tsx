@@ -25,6 +25,49 @@ const COLORS = [
 const normalize = (text: string) =>
   text.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
 
+/**
+ * Robust boss→name resolver.
+ * Strategy (in order):
+ *  1. Exact normalized match (fastest)
+ *  2. All words in bossName appear in the candidate name (handles missing middle names)
+ *  3. All words in candidate name appear in bossName (handles abbreviated boss entries)
+ * Returns the id of the best match, or undefined.
+ */
+function resolveBossId(bossName: string, nameToId: Map<string, string>): string | undefined {
+  const normBoss = normalize(bossName);
+
+  // 1. Exact match
+  if (nameToId.has(normBoss)) return nameToId.get(normBoss);
+
+  const bossWords = normBoss.split(' ').filter(Boolean);
+
+  let bestId: string | undefined;
+  let bestScore = 0;
+
+  for (const [candidateName, candidateId] of nameToId.entries()) {
+    const candidateWords = candidateName.split(' ').filter(Boolean);
+
+    // Strategy 2: every word in bossName appears in candidate
+    const bossWordsInCandidate = bossWords.filter(w => candidateWords.includes(w)).length;
+    // Strategy 3: every word in candidate appears in bossName
+    const candidateWordsInBoss = candidateWords.filter(w => bossWords.includes(w)).length;
+
+    // Score = fraction of matched words (weighted by total words to prefer precise matches)
+    const score2 = bossWords.length > 0 ? bossWordsInCandidate / bossWords.length : 0;
+    const score3 = candidateWords.length > 0 ? candidateWordsInBoss / candidateWords.length : 0;
+    const score = Math.max(score2, score3);
+
+    // Require at least 2 matching words AND ≥80% match to avoid false positives
+    const matchedWords = Math.max(bossWordsInCandidate, candidateWordsInBoss);
+    if (matchedWords >= 2 && score >= 0.8 && score > bestScore) {
+      bestScore = score;
+      bestId = candidateId;
+    }
+  }
+
+  return bestId;
+}
+
 // Helper to get color for a department
 function getDepartmentColor(department: string, map: Map<string, string>) {
   if (!department) return '#94a3b8';
@@ -311,11 +354,11 @@ export const OrgChart: React.FC<OrgChartProps> = ({ officials }) => {
       if (o.name) nameToId.set(normalize(o.name), o.id);
     });
 
-    // Resolve parentId from bossName for each official
+    // Resolve parentId from bossName for each official (fuzzy matching)
     const withParent = officials.map(o => ({
       ...o,
       name: o.name || '',   // guard: ensure name is always a string
-      parentId: o.bossName ? nameToId.get(normalize(o.bossName)) : undefined,
+      parentId: o.bossName ? resolveBossId(o.bossName, nameToId) : undefined,
     }));
 
     // Build id → node map (node data IS the official, children added below)
@@ -333,11 +376,8 @@ export const OrgChart: React.FC<OrgChartProps> = ({ officials }) => {
       } else {
         if (o.bossName) {
           orphans++;
-          // DIAGNÓSTICO: mostrar qué bossName no matchea y contra qué nombres existe
-          const normBoss = normalize(o.bossName);
-          const knownNames = Array.from(nameToId.keys());
-          const closest = knownNames.filter(n => n.includes(normBoss) || normBoss.includes(n));
-          console.warn(`[OrgChart] Huérfano: "${o.name}" → bossName="${o.bossName}" (norm="${normBoss}") | Posibles coincidencias:`, closest);
+          // Log unresolved boss names to help identify data inconsistencies
+          console.info(`[OrgChart] Sin match para bossName: "${o.name}" → "${o.bossName}"`);
         }
         roots.push(node);
       }
@@ -347,19 +387,19 @@ export const OrgChart: React.FC<OrgChartProps> = ({ officials }) => {
     const finalRoot: any = roots.length === 1
       ? roots[0]
       : {
-          id: 'dummy_root',
-          name: 'Organización',
-          gender: Gender.Unspecified,
-          isBoss: true,
-          email: '',
-          position: '',
-          department: '',
-          title: '',
-          bossName: '',
-          bossPosition: '',
-          bossEmail: '',
-          children: roots,
-        };
+        id: 'dummy_root',
+        name: 'Organización',
+        gender: Gender.Unspecified,
+        isBoss: true,
+        email: '',
+        position: '',
+        department: '',
+        title: '',
+        bossName: '',
+        bossPosition: '',
+        bossEmail: '',
+        children: roots,
+      };
 
     try {
       const hierarchyRoot = hierarchy(finalRoot, (d: any) => d.children ?? null);
