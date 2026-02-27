@@ -117,6 +117,56 @@ export const generateTemplateWithAI = async (instruction: string): Promise<{ sub
   }
 };
 
+/**
+ * Generates 3 short, contextual AI quick-reply suggestions for an email thread.
+ * Returns an array of ready-to-use reply strings in Spanish.
+ */
+export const generateQuickReplies = async (
+    threadContext: string,
+    lastMessageFrom: string
+): Promise<string[]> => {
+    try {
+        const ai = getAiClient();
+        const model = 'gemini-2.5-flash';
+
+        const response = await ai.models.generateContent({
+            model,
+            contents: `Eres un asistente corporativo. Analiza el siguiente hilo de correo y genera exactamente 3 respuestas rápidas cortas y profesionales en español (máximo 2 oraciones cada una).
+            
+Último mensaje de: ${lastMessageFrom}
+Contexto del hilo:
+"""
+${threadContext.slice(0, 2000)}
+"""
+
+Devuelve exactamente un JSON con la clave "replies" conteniendo un array de 3 strings.`,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        replies: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING },
+                            description: 'Array of exactly 3 short professional reply suggestions in Spanish'
+                        }
+                    },
+                    required: ['replies']
+                }
+            }
+        });
+
+        if (response.text) {
+            const parsed = JSON.parse(response.text);
+            return parsed.replies?.slice(0, 3) || [];
+        }
+        return [];
+    } catch (error) {
+        console.error('Error generating quick replies:', error);
+        return [];
+    }
+};
+
 export const refineEmailWithAI = async (currentBody: string, instruction: string): Promise<string> => {
   try {
     const ai = getAiClient();

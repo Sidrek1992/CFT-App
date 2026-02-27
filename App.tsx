@@ -1,20 +1,35 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { FileEdit, Send, Plus, Database, LayoutDashboard, Upload, Download, AlertTriangle, X, RefreshCw, SkipForward, Trash2, FileSpreadsheet, Menu, Briefcase, CheckCircle2, Settings, ChevronDown, FolderPlus, PenLine, FolderInput, FolderOutput, Network, LogOut, Moon, Sun, Inbox } from 'lucide-react';
-import * as XLSX from 'xlsx';
-import { Official, EmailTemplate, ViewState, ToastNotification, SavedTemplate, Gender, SortOption, FilterCriteria, OfficialDatabase, Campaign, EmailLog } from './types';
+import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
+import { FileEdit, Send, Plus, Database, LayoutDashboard, Upload, Download, AlertTriangle, X, RefreshCw, SkipForward, Trash2, FileSpreadsheet, Menu, Briefcase, CheckCircle2, Settings, ChevronDown, FolderPlus, PenLine, FolderInput, FolderOutput, Network, LogOut, Moon, Sun, Inbox, Loader2, Shield } from 'lucide-react';
+import { Official, EmailTemplate, ViewState, ToastNotification, SavedTemplate, Gender, SortOption, FilterCriteria, OfficialDatabase, Campaign, EmailLog, UserProfile, UserRole, ROLE_LABELS, ROLE_COLORS } from './types';
+import { bootstrapUserProfile, subscribeToMyProfile, canEdit, canSendEmails, canManageRoles } from './services/rolesService';
 import { OfficialForm } from './components/OfficialForm';
 import { OfficialList } from './components/OfficialList';
-import { TemplateEditor } from './components/TemplateEditor';
-import { Generator } from './components/Generator';
-import { Dashboard } from './components/Dashboard';
-import { OrgChart } from './components/OrgChart';
 import { ToastContainer } from './components/ToastContainer';
-import { InboxView } from './components/InboxView';
 import { dbService } from './services/dbService';
-import { subscribeToAuthChanges, logout } from './services/authService';
+import { subscribeToAuthChanges, logout, initAutoRefreshForUser } from './services/authService';
+import { clearTokenState } from './services/tokenService';
 import { Login } from './components/Login';
 import { User } from 'firebase/auth';
+
+// ─── Lazy-loaded heavy components ────────────────────────────────────────────
+// These chunks are only downloaded when the user navigates to those sections.
+const TemplateEditor = lazy(() => import('./components/TemplateEditor').then(m => ({ default: m.TemplateEditor })));
+const Generator      = lazy(() => import('./components/Generator').then(m => ({ default: m.Generator })));
+const Dashboard      = lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })));
+const OrgChart       = lazy(() => import('./components/OrgChart').then(m => ({ default: m.OrgChart })));
+const InboxView      = lazy(() => import('./components/InboxView').then(m => ({ default: m.InboxView })));
+const RolesManager   = lazy(() => import('./components/RolesManager').then(m => ({ default: m.RolesManager })));
+
+// Shared loading skeleton shown while a lazy chunk is downloading
+const LazyLoader: React.FC = () => (
+    <div className="flex items-center justify-center h-64 w-full">
+        <div className="flex flex-col items-center gap-3 text-slate-400 dark:text-slate-500">
+            <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+            <p className="text-sm font-medium">Cargando módulo...</p>
+        </div>
+    </div>
+);
 
 // Safe ID generator that works in non-secure contexts (http) and fast loops
 let idCounter = 0;
@@ -44,14 +59,46 @@ export default function App() {
     // --- AUTH STATE ---
     const [user, setUser] = useState<User | null>(null);
     const [loadingAuth, setLoadingAuth] = useState(true);
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
     useEffect(() => {
         const unsubscribe = subscribeToAuthChanges((currentUser) => {
             setUser(currentUser);
             setLoadingAuth(false);
+            // Start silent token auto-refresh when user is authenticated
+            if (currentUser) {
+                initAutoRefreshForUser(currentUser);
+            }
         });
         return () => unsubscribe();
     }, []);
+
+    // Bootstrap + real-time profile subscription
+    useEffect(() => {
+        if (!user) {
+            setUserProfile(null);
+            return;
+        }
+        let unsubProfile: (() => void) | null = null;
+
+        bootstrapUserProfile(user).then(profile => {
+            setUserProfile(profile);
+            // Subscribe to live role changes (e.g. superadmin changes role from another tab)
+            unsubProfile = subscribeToMyProfile(user.uid, (updated) => {
+                if (updated) setUserProfile(updated);
+            });
+        }).catch(err => {
+            console.error('[App] bootstrapUserProfile error:', err);
+        });
+
+        return () => { unsubProfile?.(); };
+    }, [user]);
+
+    // Derived permissions from role
+    const userRole = userProfile?.role ?? 'reader';
+    const canEditDb    = canEdit(userRole);
+    const canSendMails = canSendEmails(userRole);
+    const canManage    = canManageRoles(userRole);
 
     // --- STATE ---
 
@@ -285,10 +332,10 @@ export default function App() {
         return newCampaign;
     };
 
-    const handleLogEmail = (campaignId: string, logData: Omit<EmailLog, 'id' | 'campaignId' | 'status'>) => {
+    const handleLogEmail = (campaignId: string, logData: Omit<EmailLog, 'id' | 'campaignId' | 'status'>, logId?: string) => {
         const newLog: EmailLog = {
             ...logData,
-            id: generateId(),
+            id: logId ?? generateId(),
             campaignId,
             status: 'sent'
         };
@@ -493,11 +540,13 @@ export default function App() {
     };
 
     // Template Handlers — persist directly to Firestore for immediate response
-    const handleSaveTemplate = async (name: string) => {
+    const handleSaveTemplate = async (name: string, category: import('./types').TemplateCategory) => {
         const newTemplate: SavedTemplate = {
             ...template,
             id: generateId(),
             name,
+            category,
+            archived: false,
             createdAt: Date.now()
         };
         const updated = [...savedTemplates, newTemplate];
@@ -508,6 +557,18 @@ export default function App() {
         } catch (e) {
             console.error('Error guardando plantilla:', e);
             addToast('Error al guardar plantilla', 'error');
+        }
+    };
+
+    const handleArchiveTemplate = async (id: string, archived: boolean) => {
+        const updated = savedTemplates.map(t => t.id === id ? { ...t, archived } : t);
+        setSavedTemplates(updated);
+        try {
+            await dbService.saveSharedConfig({ template, savedTemplates: updated });
+            addToast(archived ? 'Plantilla archivada' : 'Plantilla restaurada', 'success');
+        } catch (e) {
+            console.error('Error archivando plantilla:', e);
+            addToast('Error al archivar plantilla', 'error');
         }
     };
 
@@ -535,6 +596,7 @@ export default function App() {
         reader.onload = async (evt) => {
             try {
                 const buffer = evt.target?.result;
+                const XLSX = await import('xlsx');
                 const wb = XLSX.read(buffer, { type: 'array' });
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
@@ -648,7 +710,7 @@ export default function App() {
         setImportConflict(null);
     };
 
-    const handleExportExcel = () => {
+    const handleExportExcel = async () => {
         const dataToExport = officials.map(o => ({
             Nombre: o.name,
             Correo: o.email,
@@ -662,6 +724,7 @@ export default function App() {
             CorreoJefatura: o.bossEmail
         }));
 
+        const XLSX = await import('xlsx');
         const ws = XLSX.utils.json_to_sheet(dataToExport);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, activeDatabase.name.substring(0, 30));
@@ -739,12 +802,12 @@ export default function App() {
         unsubscribeDbRef.current = null;
         unsubscribeConfigRef.current = null;
 
-        // 3. Clear storage
+        // 3. Clear storage (clearTokenState handles all session token keys)
         localStorage.removeItem('active_db_id');
         localStorage.removeItem('current_template');
         localStorage.removeItem('saved_templates');
         localStorage.removeItem('officialFormDraft');
-        sessionStorage.removeItem('gmail_access_token');
+        clearTokenState();
 
         // 4. Attempt Firebase sign out in background
         try {
@@ -903,6 +966,20 @@ export default function App() {
                         <Inbox className={`w-5 h-5 flex-shrink-0 ${view === 'inbox' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
                         Bandeja de Respuestas
                     </button>
+
+                    {/* Roles panel — only visible to superadmins */}
+                    {canManage && (
+                        <>
+                            <div className="my-2 border-t border-slate-200 dark:border-slate-800/50" />
+                            <button
+                                onClick={() => handleNavigate('roles')}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'roles' ? 'bg-red-600 text-white shadow-[0_0_20px_rgba(239,68,68,0.3)] border border-red-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
+                            >
+                                <Shield className={`w-5 h-5 flex-shrink-0 ${view === 'roles' ? 'text-red-100' : 'text-slate-600 dark:text-slate-400'}`} />
+                                Gestión de Roles
+                            </button>
+                        </>
+                    )}
                 </nav>
 
                 <div className="px-3 pb-3 pt-1 shrink-0">
@@ -915,7 +992,9 @@ export default function App() {
                                 </div>
                                 <div className="flex flex-col min-w-0">
                                     <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate">{user.email}</span>
-                                    <span className="text-[10px] text-slate-500 dark:text-slate-500 uppercase tracking-wider">Admin · Online</span>
+                                    <span className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded-full border ${userProfile ? ROLE_COLORS[userProfile.role] : 'text-slate-500 dark:text-slate-500'}`}>
+                                        {userProfile ? ROLE_LABELS[userProfile.role] : 'Cargando...'} · Online
+                                    </span>
                                 </div>
                             </div>
                             <div className="flex items-center gap-1 flex-shrink-0">
@@ -981,17 +1060,20 @@ export default function App() {
                     <div className="max-w-7xl mx-auto">
 
                         {view === 'dashboard' && (
-                            <Dashboard
-                                officials={officials}
-                                sentHistory={derivedSentHistory}
-                                onNavigate={handleNavigate}
-                                onImport={() => fileInputRef.current?.click()}
-                                onExportExcel={handleExportExcel}
-                                onNewOfficial={() => { setView('database'); setShowForm(true); setEditingOfficial(null); }}
-                                onExportBackup={handleExportBackup}
-                                onImportBackup={handleImportBackup}
-                                onClearDatabase={handleClearDatabaseRequest}
-                            />
+                            <Suspense fallback={<LazyLoader />}>
+                                <Dashboard
+                                    officials={officials}
+                                    campaigns={campaigns}
+                                    sentHistory={derivedSentHistory}
+                                    onNavigate={handleNavigate}
+                                    onImport={() => fileInputRef.current?.click()}
+                                    onExportExcel={handleExportExcel}
+                                    onNewOfficial={() => { setView('database'); setShowForm(true); setEditingOfficial(null); }}
+                                    onExportBackup={handleExportBackup}
+                                    onImportBackup={handleImportBackup}
+                                    onClearDatabase={handleClearDatabaseRequest}
+                                />
+                            </Suspense>
                         )}
 
                         {view === 'database' && (
@@ -1063,7 +1145,9 @@ export default function App() {
                                         <p className="text-slate-500 dark:text-slate-400">Visualización jerárquica basada en las jefaturas de la base de datos.</p>
                                     </div>
                                 </div>
-                                <OrgChart officials={officials} />
+                                <Suspense fallback={<LazyLoader />}>
+                                    <OrgChart officials={officials} />
+                                </Suspense>
                             </div>
                         )}
 
@@ -1087,17 +1171,20 @@ export default function App() {
                                         </div>
                                     )}
                                 </div>
-                                <TemplateEditor
-                                    template={template}
-                                    onChange={setTemplate}
-                                    files={files}
-                                    onFilesChange={setFiles}
-                                    officials={officials}
-                                    onToast={(msg, type) => addToast(msg, type)}
-                                    savedTemplates={savedTemplates}
-                                    onSaveTemplate={handleSaveTemplate}
-                                    onDeleteTemplate={handleDeleteTemplate}
-                                />
+                                <Suspense fallback={<LazyLoader />}>
+                                    <TemplateEditor
+                                        template={template}
+                                        onChange={setTemplate}
+                                        files={files}
+                                        onFilesChange={setFiles}
+                                        officials={officials}
+                                        onToast={(msg, type) => addToast(msg, type)}
+                                        savedTemplates={savedTemplates}
+                                        onSaveTemplate={handleSaveTemplate}
+                                        onDeleteTemplate={handleDeleteTemplate}
+                                        onArchiveTemplate={handleArchiveTemplate}
+                                    />
+                                </Suspense>
                             </div>
                         )}
 
@@ -1110,15 +1197,18 @@ export default function App() {
                                         <p className="text-slate-500 dark:text-slate-400">Enviando a base de datos: <strong className="text-indigo-600 dark:text-indigo-400">{activeDatabase.name}</strong></p>
                                     </div>
                                 </div>
-                                <Generator
-                                    officials={officials}
-                                    template={template}
-                                    files={files}
-                                    campaigns={campaigns}
-                                    onCampaignCreate={handleCampaignCreate}
-                                    onLogEmail={handleLogEmail}
-                                    onToast={(msg, type) => addToast(msg, type)}
-                                />
+                                <Suspense fallback={<LazyLoader />}>
+                                    <Generator
+                                        officials={officials}
+                                        template={template}
+                                        files={files}
+                                        campaigns={campaigns}
+                                        databaseId={activeDatabase.id}
+                                        onCampaignCreate={handleCampaignCreate}
+                                        onLogEmail={handleLogEmail}
+                                        onToast={(msg, type) => addToast(msg, type)}
+                                    />
+                                </Suspense>
                             </div>
                         )}
 
@@ -1130,10 +1220,24 @@ export default function App() {
                                         <p className="text-slate-500 dark:text-slate-400">Respuestas de los funcionarios a tus correos enviados</p>
                                     </div>
                                 </div>
-                                <InboxView
-                                    campaigns={campaigns}
-                                    onToast={(msg, type) => addToast(msg, type)}
-                                />
+                                <Suspense fallback={<LazyLoader />}>
+                                    <InboxView
+                                        campaigns={campaigns}
+                                        onToast={(msg, type) => addToast(msg, type)}
+                                        savedTemplates={savedTemplates}
+                                    />
+                                </Suspense>
+                            </div>
+                        )}
+
+                        {view === 'roles' && canManage && userProfile && (
+                            <div className="space-y-6">
+                                <Suspense fallback={<LazyLoader />}>
+                                    <RolesManager
+                                        currentUser={userProfile}
+                                        onToast={(msg, type) => addToast(msg, type)}
+                                    />
+                                </Suspense>
                             </div>
                         )}
                     </div>

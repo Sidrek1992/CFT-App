@@ -4,6 +4,7 @@ import { refineEmailWithAI } from '../services/geminiService';
 import { EmailEditor } from './EmailEditor';
 import { sendGmail, buildRawMessage, fileToBase64 } from '../services/gmailService';
 import { hasGmailToken, reauthorizeWithGoogle } from '../services/authService';
+import { buildTrackingPixel, isTrackingEnabled } from '../services/trackingService';
 import {
   Send, AlertCircle, CheckSquare, Square, Search, ChevronLeft, ChevronRight,
   Check, Download, Sparkles, Building2, UserCog, X, LayoutList, LayoutGrid,
@@ -16,8 +17,9 @@ interface GeneratorProps {
   template: EmailTemplate;
   files: File[]; // Global attachments from TemplateEditor
   campaigns: Campaign[];
+  databaseId: string;
   onCampaignCreate: (name: string) => Campaign;
-  onLogEmail: (campaignId: string, log: Omit<EmailLog, 'id' | 'campaignId' | 'status'>) => void;
+  onLogEmail: (campaignId: string, log: Omit<EmailLog, 'id' | 'campaignId' | 'status'>, logId?: string) => void;
   onToast: (msg: string, type: 'success' | 'error') => void;
 }
 
@@ -164,13 +166,32 @@ const PreviewModal: React.FC<{
   );
 };
 
+// ─── Draft autosave key ───────────────────────────────────────────────────────
+const DRAFT_KEY = 'generator_draft_v1';
+
+interface GeneratorDraft {
+    step: Step;
+    selectedIds: string[];
+    activeCampaignId: string;
+    subdirectoraEmail: string;
+    // Serializable form of editable emails (no File objects)
+    emailBodies: Record<string, { subject: string; body: string; includeCc: boolean; includeSubdirectora: boolean; additionalCc: string }>;
+    savedAt: number;
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export const Generator: React.FC<GeneratorProps> = ({
-  officials, template, files, campaigns, onCampaignCreate, onLogEmail, onToast
+  officials, template, files, campaigns, databaseId, onCampaignCreate, onLogEmail, onToast
 }) => {
 
   // ── Step State ────────────────────────────────────────────────────────────
-  const [step, setStep] = useState<Step>('select');
+  const [step, setStep] = useState<Step>(() => {
+      try {
+          const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null') as GeneratorDraft | null;
+          return draft?.step || 'select';
+      } catch { return 'select'; }
+  });
+  const [hasDraft, setHasDraft] = useState(() => !!localStorage.getItem(DRAFT_KEY));
 
   // ── Gmail Token State ─────────────────────────────────────────────────────
   const [gmailTokenPresent, setGmailTokenPresent] = useState<boolean>(() => hasGmailToken());
@@ -192,13 +213,23 @@ export const Generator: React.FC<GeneratorProps> = ({
   };
 
   // ── Campaign State ────────────────────────────────────────────────────────
-  const [activeCampaignId, setActiveCampaignId] = useState<string>('');
+  const [activeCampaignId, setActiveCampaignId] = useState<string>(() => {
+      try {
+          const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null') as GeneratorDraft | null;
+          return draft?.activeCampaignId || '';
+      } catch { return ''; }
+  });
   const [newCampaignName, setNewCampaignName] = useState('');
   const [isCreatingCampaign, setIsCreatingCampaign] = useState(false);
   const activeCampaign = campaigns.find(c => c.id === activeCampaignId);
 
   // ── Step 1: Selection State ───────────────────────────────────────────────
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => {
+      try {
+          const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null') as GeneratorDraft | null;
+          return new Set(draft?.selectedIds || []);
+      } catch { return new Set(); }
+  });
   const [selectionSearch, setSelectionSearch] = useState('');
   const [selectionDept, setSelectionDept] = useState('Todos');
   const [selectionView, setSelectionView] = useState<'grid' | 'boss'>('grid');
@@ -208,12 +239,48 @@ export const Generator: React.FC<GeneratorProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'compact'>('cards');
-  const [subdirectoraEmail, setSubdirectoraEmail] = useState('gestion.personas@cftestatalaricayparinacota.cl');
+  const [subdirectoraEmail, setSubdirectoraEmail] = useState(() => {
+      try {
+          const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null') as GeneratorDraft | null;
+          return draft?.subdirectoraEmail || 'gestion.personas@cftestatalaricayparinacota.cl';
+      } catch { return 'gestion.personas@cftestatalaricayparinacota.cl'; }
+  });
   const [currentPage, setCurrentPage] = useState(1);
   const [previewEmail, setPreviewEmail] = useState<EditableEmail | null>(null);
 
   // File input refs per email card (keyed by email id)
   const attachmentRefs = useRef<Map<string, HTMLInputElement>>(new Map());
+
+  // ── Draft Autosave (runs on every meaningful state change, 2s debounce) ──
+  useEffect(() => {
+      const timer = setTimeout(() => {
+          const emailBodies: GeneratorDraft['emailBodies'] = {};
+          editableEmails.forEach(e => {
+              emailBodies[e.official.id] = {
+                  subject: e.subject,
+                  body: e.body,
+                  includeCc: e.includeCc,
+                  includeSubdirectora: e.includeSubdirectora,
+                  additionalCc: e.additionalCc,
+              };
+          });
+          const draft: GeneratorDraft = {
+              step,
+              selectedIds: Array.from(selectedIds),
+              activeCampaignId,
+              subdirectoraEmail,
+              emailBodies,
+              savedAt: Date.now(),
+          };
+          localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      }, 2000);
+      return () => clearTimeout(timer);
+  }, [step, selectedIds, activeCampaignId, subdirectoraEmail, editableEmails]);
+
+  const clearDraft = () => {
+      localStorage.removeItem(DRAFT_KEY);
+      setHasDraft(false);
+  };
 
   const itemsPerPage = viewMode === 'compact' ? 10 : 5;
 
@@ -429,11 +496,19 @@ export const Generator: React.FC<GeneratorProps> = ({
     try {
       const { to, cc } = getEmailAddresses(email);
       const allFiles = [...files, ...email.personalAttachments];
-      const raw = await buildRawMessage(to, email.subject, email.body, cc, allFiles);
+
+      // Generate a logId upfront so the tracking pixel and the Firestore log share the same ID
+      const logId = crypto.randomUUID();
+      const trackingPixel = isTrackingEnabled()
+        ? buildTrackingPixel(logId, activeCampaignId, databaseId)
+        : undefined;
+
+      const raw = await buildRawMessage(to, email.subject, email.body, cc, allFiles, trackingPixel);
       await sendGmail(raw);
       onLogEmail(activeCampaignId, {
-        officialId: email.id, recipientEmail: to, sentAt: Date.now(), method: 'gmail_api'
-      });
+        officialId: email.id, recipientEmail: to, sentAt: Date.now(), method: 'gmail_api',
+        databaseId,
+      }, logId);
       markSent(email.id);
       setPreviewEmail(null);
       onToast(`Correo enviado a ${to}`, 'success');
@@ -493,9 +568,13 @@ export const Generator: React.FC<GeneratorProps> = ({
       const { to, cc } = getEmailAddresses(email);
       try {
         const allFiles = [...files, ...email.personalAttachments];
-        const raw = await buildRawMessage(to, email.subject, email.body, cc, allFiles);
+        const logId = crypto.randomUUID();
+        const trackingPixel = isTrackingEnabled()
+          ? buildTrackingPixel(logId, activeCampaignId, databaseId)
+          : undefined;
+        const raw = await buildRawMessage(to, email.subject, email.body, cc, allFiles, trackingPixel);
         await sendGmail(raw);
-        onLogEmail(activeCampaignId, { officialId: email.id, recipientEmail: to, sentAt: Date.now(), method: 'gmail_api' });
+        onLogEmail(activeCampaignId, { officialId: email.id, recipientEmail: to, sentAt: Date.now(), method: 'gmail_api', databaseId }, logId);
         markSent(email.id);
         results.push({ emailId: email.id, to, status: 'ok' });
       } catch (err: any) {
@@ -518,6 +597,7 @@ export const Generator: React.FC<GeneratorProps> = ({
     const errCount = results.filter(r => r.status === 'error').length;
     if (errCount === 0) {
       onToast(`✅ ${okCount} correo(s) enviados exitosamente.`, 'success');
+      clearDraft(); // Clear draft after successful bulk send
     } else {
       onToast(`Enviados: ${okCount} ✅  |  Errores: ${errCount} ❌`, 'error');
     }
@@ -577,6 +657,29 @@ export const Generator: React.FC<GeneratorProps> = ({
 
   return (
     <div className="space-y-6">
+
+      {/* ── Draft Recovery Banner ────────────────────────────────────────── */}
+      {hasDraft && step === 'select' && selectedIds.size > 0 && (
+        <div className="flex items-center justify-between gap-4 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-xl p-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-center flex-shrink-0">
+              <RefreshCw className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <p className="font-bold text-blue-900 dark:text-blue-300 text-sm">Borrador recuperado</p>
+              <p className="text-xs text-blue-700 dark:text-blue-400 mt-0.5">
+                Se encontró un borrador guardado con <strong>{selectedIds.size}</strong> destinatarios seleccionados.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={clearDraft}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg transition-colors"
+          >
+            <X className="w-3 h-3" /> Descartar
+          </button>
+        </div>
+      )}
 
       {/* ── Gmail Authorization Warning ──────────────────────────────────── */}
       {!gmailTokenPresent && (

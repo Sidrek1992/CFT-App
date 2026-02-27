@@ -3,6 +3,8 @@
  * Service to send emails using the Gmail API
  */
 
+import { isTokenFresh } from './tokenService';
+
 const GMAIL_BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
 
 const gmailFetch = async (path: string, options?: RequestInit) => {
@@ -85,7 +87,14 @@ const encodeSubject = (subject: string): string => {
     return subject;
 };
 
-export const buildRawMessage = async (to: string, subject: string, bodyHTML: string, cc?: string, files: File[] = []) => {
+export const buildRawMessage = async (
+    to: string,
+    subject: string,
+    bodyHTML: string,
+    cc?: string,
+    files: File[] = [],
+    trackingPixel?: string
+) => {
     const boundary = `----=_NextPart_${Date.now()}`;
     const encodedSubject = encodeSubject(subject);
 
@@ -96,10 +105,11 @@ export const buildRawMessage = async (to: string, subject: string, bodyHTML: str
     message += `Content-Type: multipart/mixed; boundary="${boundary}"\n\n`;
 
     // HTML Part
+    const pixelHtml = trackingPixel ? `\n${trackingPixel}` : '';
     message += `--${boundary}\n`;
     message += `Content-Type: text/html; charset="utf-8"\n`;
     message += `Content-Transfer-Encoding: quoted-printable\n\n`;
-    message += `<html><body style="font-family: sans-serif;">${bodyHTML}</body></html>\n\n`;
+    message += `<html><body style="font-family: sans-serif;">${bodyHTML}${pixelHtml}</body></html>\n\n`;
 
     // Attachments
     for (const file of files) {
