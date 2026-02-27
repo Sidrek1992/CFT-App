@@ -106,6 +106,27 @@ export function useEmailGenerator({
   const [gmailTokenPresent, setGmailTokenPresent] = useState<boolean>(() => hasGmailToken());
   const [authorizingGmail, setAuthorizingGmail] = useState(false);
 
+  // Re-check token presence after mount (bootstrapGmailToken may finish async)
+  useEffect(() => {
+    // Check immediately in case bootstrap already finished
+    if (hasGmailToken()) {
+      setGmailTokenPresent(true);
+      return;
+    }
+    // Poll briefly (max 5 s) for the token to appear after silent reauth
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      if (hasGmailToken()) {
+        setGmailTokenPresent(true);
+        clearInterval(interval);
+      } else if (attempts >= 10) {
+        clearInterval(interval);
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, []);
+
   const handleAuthorizeGmail = async () => {
     setAuthorizingGmail(true);
     try {
