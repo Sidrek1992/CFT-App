@@ -3,6 +3,8 @@ import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'rea
 import { FileEdit, Send, Plus, Database, LayoutDashboard, Upload, Download, AlertTriangle, X, RefreshCw, SkipForward, Trash2, FileSpreadsheet, Menu, Briefcase, CheckCircle2, Settings, ChevronDown, FolderPlus, PenLine, FolderInput, FolderOutput, Network, LogOut, Moon, Sun, Inbox, Loader2, Shield } from 'lucide-react';
 import { Official, EmailTemplate, ViewState, ToastNotification, SavedTemplate, Gender, SortOption, FilterCriteria, OfficialDatabase, Campaign, EmailLog, UserProfile, UserRole, ROLE_LABELS, ROLE_COLORS } from './types';
 import { bootstrapUserProfile, subscribeToMyProfile, canEdit, canSendEmails, canManageRoles } from './services/rolesService';
+import { useRBAC } from './hooks/useRBAC';
+import { ProtectedView } from './components/rbac/ProtectedView';
 import { OfficialForm } from './components/OfficialForm';
 import { OfficialList } from './components/OfficialList';
 import { ToastContainer } from './components/ToastContainer';
@@ -99,6 +101,9 @@ export default function App() {
     const canEditDb    = canEdit(userRole);
     const canSendMails = canSendEmails(userRole);
     const canManage    = canManageRoles(userRole);
+
+    // Centralized RBAC context
+    const rbac = useRBAC(userRole);
 
     // --- STATE ---
 
@@ -896,20 +901,30 @@ export default function App() {
                                     ))}
                                 </div>
                                 <div className="border-t border-slate-300 dark:border-slate-700 p-2 space-y-1">
-                                    <button onClick={() => { handleCreateDatabase(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-primary-600 dark:text-primary-400 hover:bg-slate-200 dark:hover:bg-dark-700 rounded-lg flex items-center gap-2">
-                                        <Plus className="w-3 h-3" /> Crear Nueva BD
-                                    </button>
-                                    <button onClick={() => { dbImportInputRef.current?.click(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 rounded-lg flex items-center gap-2">
-                                        <FolderInput className="w-3 h-3" /> Importar BD (JSON)
-                                    </button>
-                                    <div className="border-t border-slate-300 dark:border-slate-700 my-1"></div>
-                                    <button onClick={() => { handleRenameDatabase(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 rounded-lg flex items-center gap-2">
-                                        <PenLine className="w-3 h-3" /> Renombrar Actual
-                                    </button>
-                                    <button onClick={() => { handleExportDatabase(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 rounded-lg flex items-center gap-2">
-                                        <FolderOutput className="w-3 h-3" /> Exportar Actual (JSON)
-                                    </button>
-                                    {databases.length > 1 && (
+                                    {rbac.canCreateDb && (
+                                        <button onClick={() => { handleCreateDatabase(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-primary-600 dark:text-primary-400 hover:bg-slate-200 dark:hover:bg-dark-700 rounded-lg flex items-center gap-2">
+                                            <Plus className="w-3 h-3" /> Crear Nueva BD
+                                        </button>
+                                    )}
+                                    {rbac.canImport && (
+                                        <button onClick={() => { dbImportInputRef.current?.click(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 rounded-lg flex items-center gap-2">
+                                            <FolderInput className="w-3 h-3" /> Importar BD (JSON)
+                                        </button>
+                                    )}
+                                    {(rbac.canRenameDb || rbac.canExport || rbac.canDeleteDb) && (
+                                        <div className="border-t border-slate-300 dark:border-slate-700 my-1"></div>
+                                    )}
+                                    {rbac.canRenameDb && (
+                                        <button onClick={() => { handleRenameDatabase(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 rounded-lg flex items-center gap-2">
+                                            <PenLine className="w-3 h-3" /> Renombrar Actual
+                                        </button>
+                                    )}
+                                    {rbac.canExport && (
+                                        <button onClick={() => { handleExportDatabase(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 rounded-lg flex items-center gap-2">
+                                            <FolderOutput className="w-3 h-3" /> Exportar Actual (JSON)
+                                        </button>
+                                    )}
+                                    {rbac.canDeleteDb && databases.length > 1 && (
                                         <button onClick={() => { handleDeleteDatabase(); setIsDbMenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs text-red-500 dark:text-red-400 hover:bg-slate-200 dark:hover:bg-dark-700 rounded-lg flex items-center gap-2">
                                             <Trash2 className="w-3 h-3" /> Eliminar Actual
                                         </button>
@@ -924,51 +939,74 @@ export default function App() {
                 </div>
 
                 <nav className="flex-1 min-h-0 px-3 py-2 space-y-1">
-                    <button
-                        onClick={() => handleNavigate('dashboard')}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'dashboard' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
-                    >
-                        <LayoutDashboard className={`w-5 h-5 flex-shrink-0 ${view === 'dashboard' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
-                        Dashboard
-                    </button>
-                    <button
-                        onClick={() => handleNavigate('database')}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'database' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
-                    >
-                        <Database className={`w-5 h-5 flex-shrink-0 ${view === 'database' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
-                        Base de Datos
-                    </button>
-                    <button
-                        onClick={() => handleNavigate('orgChart')}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'orgChart' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
-                    >
-                        <Network className={`w-5 h-5 flex-shrink-0 ${view === 'orgChart' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
-                        Organigrama
-                    </button>
-                    <button
-                        onClick={() => handleNavigate('template')}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'template' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
-                    >
-                        <FileEdit className={`w-5 h-5 flex-shrink-0 ${view === 'template' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
-                        Editor Plantilla
-                    </button>
-                    <button
-                        onClick={() => handleNavigate('generate')}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'generate' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
-                    >
-                        <Send className={`w-5 h-5 flex-shrink-0 ${view === 'generate' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
-                        Generar y Enviar
-                    </button>
-                    <button
-                        onClick={() => handleNavigate('inbox')}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'inbox' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
-                    >
-                        <Inbox className={`w-5 h-5 flex-shrink-0 ${view === 'inbox' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
-                        Bandeja de Respuestas
-                    </button>
+                    {/* Dashboard — all roles */}
+                    {rbac.canView('dashboard') && (
+                        <button
+                            onClick={() => handleNavigate('dashboard')}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'dashboard' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
+                        >
+                            <LayoutDashboard className={`w-5 h-5 flex-shrink-0 ${view === 'dashboard' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
+                            Dashboard
+                        </button>
+                    )}
 
-                    {/* Roles panel — only visible to superadmins */}
-                    {canManage && (
+                    {/* Database — all roles (mutations gated inside) */}
+                    {rbac.canView('database') && (
+                        <button
+                            onClick={() => handleNavigate('database')}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'database' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
+                        >
+                            <Database className={`w-5 h-5 flex-shrink-0 ${view === 'database' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
+                            Base de Datos
+                        </button>
+                    )}
+
+                    {/* Org chart — all roles */}
+                    {rbac.canView('orgChart') && (
+                        <button
+                            onClick={() => handleNavigate('orgChart')}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'orgChart' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
+                        >
+                            <Network className={`w-5 h-5 flex-shrink-0 ${view === 'orgChart' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
+                            Organigrama
+                        </button>
+                    )}
+
+                    {/* Template editor — superadmin, admin */}
+                    {rbac.canView('template') && (
+                        <button
+                            onClick={() => handleNavigate('template')}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'template' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
+                        >
+                            <FileEdit className={`w-5 h-5 flex-shrink-0 ${view === 'template' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
+                            Editor Plantilla
+                        </button>
+                    )}
+
+                    {/* Generator — superadmin, admin, operator */}
+                    {rbac.canView('generate') && (
+                        <button
+                            onClick={() => handleNavigate('generate')}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'generate' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
+                        >
+                            <Send className={`w-5 h-5 flex-shrink-0 ${view === 'generate' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
+                            Generar y Enviar
+                        </button>
+                    )}
+
+                    {/* Inbox — superadmin, admin, operator */}
+                    {rbac.canView('inbox') && (
+                        <button
+                            onClick={() => handleNavigate('inbox')}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'inbox' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
+                        >
+                            <Inbox className={`w-5 h-5 flex-shrink-0 ${view === 'inbox' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
+                            Bandeja de Respuestas
+                        </button>
+                    )}
+
+                    {/* Roles panel — superadmin only */}
+                    {rbac.canView('roles') && (
                         <>
                             <div className="my-2 border-t border-slate-200 dark:border-slate-800/50" />
                             <button
@@ -1060,185 +1098,210 @@ export default function App() {
                     <div className="max-w-7xl mx-auto">
 
                         {view === 'dashboard' && (
-                            <Suspense fallback={<LazyLoader />}>
-                                <Dashboard
-                                    officials={officials}
-                                    campaigns={campaigns}
-                                    sentHistory={derivedSentHistory}
-                                    onNavigate={handleNavigate}
-                                    onImport={() => fileInputRef.current?.click()}
-                                    onExportExcel={handleExportExcel}
-                                    onNewOfficial={() => { setView('database'); setShowForm(true); setEditingOfficial(null); }}
-                                    onExportBackup={handleExportBackup}
-                                    onImportBackup={handleImportBackup}
-                                    onClearDatabase={handleClearDatabaseRequest}
-                                />
-                            </Suspense>
+                            <ProtectedView allowed={rbac.canView('dashboard')} role={userRole} resource="Dashboard">
+                                <Suspense fallback={<LazyLoader />}>
+                                    <Dashboard
+                                        officials={officials}
+                                        campaigns={campaigns}
+                                        sentHistory={derivedSentHistory}
+                                        onNavigate={handleNavigate}
+                                        onImport={() => fileInputRef.current?.click()}
+                                        onExportExcel={handleExportExcel}
+                                        onNewOfficial={() => { setView('database'); setShowForm(true); setEditingOfficial(null); }}
+                                        onExportBackup={handleExportBackup}
+                                        onImportBackup={handleImportBackup}
+                                        onClearDatabase={handleClearDatabaseRequest}
+                                    />
+                                </Suspense>
+                            </ProtectedView>
                         )}
 
                         {view === 'database' && (
-                            <div className="space-y-6 animate-in fade-in duration-300">
-                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                    <div>
-                                        <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                                            Base de Datos: <span className="text-indigo-600 dark:text-indigo-400">{activeDatabase.name}</span>
-                                        </h2>
-                                        <p className="text-slate-500 dark:text-slate-400">Administrando registros para {activeDatabase.name}.</p>
-                                    </div>
-                                    {!showForm && (
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => fileInputRef.current?.click()}
-                                                className="px-3 py-2 bg-white dark:bg-dark-800 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-dark-700 flex items-center gap-2 text-sm font-medium transition-colors"
-                                                title="Importar Excel a esta BD"
-                                            >
-                                                <Upload className="w-4 h-4" />
-                                                <span className="hidden sm:inline">Importar</span>
-                                            </button>
-                                            <button
-                                                onClick={handleExportExcel}
-                                                className="px-3 py-2 bg-white dark:bg-dark-800 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-dark-700 flex items-center gap-2 text-sm font-medium transition-colors"
-                                                title="Exportar Excel de esta BD"
-                                            >
-                                                <FileSpreadsheet className="w-4 h-4" />
-                                                <span className="hidden sm:inline">Exportar</span>
-                                            </button>
-                                            <button
-                                                onClick={() => { setEditingOfficial(null); setShowForm(true); }}
-                                                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 font-medium shadow-sm transition-all hover:shadow-md"
-                                            >
-                                                <Plus className="w-4 h-4" />
-                                                Nuevo
-                                            </button>
+                            <ProtectedView allowed={rbac.canView('database')} role={userRole} resource="Base de Datos">
+                                <div className="space-y-6 animate-in fade-in duration-300">
+                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                        <div>
+                                            <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                                Base de Datos: <span className="text-indigo-600 dark:text-indigo-400">{activeDatabase.name}</span>
+                                            </h2>
+                                            <p className="text-slate-500 dark:text-slate-400">Administrando registros para {activeDatabase.name}.</p>
                                         </div>
+                                        {!showForm && (
+                                            <div className="flex gap-2">
+                                                {/* Import — superadmin, admin only */}
+                                                {rbac.canImport && (
+                                                    <button
+                                                        onClick={() => fileInputRef.current?.click()}
+                                                        className="px-3 py-2 bg-white dark:bg-dark-800 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-dark-700 flex items-center gap-2 text-sm font-medium transition-colors"
+                                                        title="Importar Excel a esta BD"
+                                                    >
+                                                        <Upload className="w-4 h-4" />
+                                                        <span className="hidden sm:inline">Importar</span>
+                                                    </button>
+                                                )}
+                                                {/* Export — superadmin, admin only */}
+                                                {rbac.canExport && (
+                                                    <button
+                                                        onClick={handleExportExcel}
+                                                        className="px-3 py-2 bg-white dark:bg-dark-800 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-dark-700 flex items-center gap-2 text-sm font-medium transition-colors"
+                                                        title="Exportar Excel de esta BD"
+                                                    >
+                                                        <FileSpreadsheet className="w-4 h-4" />
+                                                        <span className="hidden sm:inline">Exportar</span>
+                                                    </button>
+                                                )}
+                                                {/* Add official — superadmin, admin only */}
+                                                {rbac.canAddOff && (
+                                                    <button
+                                                        onClick={() => { setEditingOfficial(null); setShowForm(true); }}
+                                                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 font-medium shadow-sm transition-all hover:shadow-md"
+                                                    >
+                                                        <Plus className="w-4 h-4" />
+                                                        Nuevo
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {showForm ? (
+                                        <OfficialForm
+                                            initialData={editingOfficial}
+                                            existingOfficials={officials}
+                                            onSave={handleSaveOfficial}
+                                            onCancel={() => { setShowForm(false); setEditingOfficial(null); }}
+                                        />
+                                    ) : (
+                                        <OfficialList
+                                            officials={officials}
+                                            onEdit={rbac.canEditOff ? handleEditOfficial : undefined}
+                                            onDelete={rbac.canDeleteOff ? handleDeleteOfficial : undefined}
+                                            onBulkDelete={rbac.canDeleteOff ? handleBulkDelete : undefined}
+                                            onBulkUpdate={rbac.canEditOff ? handleBulkUpdate : undefined}
+                                            sortOption={sortOption}
+                                            onSortChange={setSortOption}
+                                            initialFilter={filterCriteria}
+                                            onClearFilter={handleClearFilter}
+                                        />
                                     )}
                                 </div>
-
-                                {showForm ? (
-                                    <OfficialForm
-                                        initialData={editingOfficial}
-                                        existingOfficials={officials}
-                                        onSave={handleSaveOfficial}
-                                        onCancel={() => { setShowForm(false); setEditingOfficial(null); }}
-                                    />
-                                ) : (
-                                    <OfficialList
-                                        officials={officials}
-                                        onEdit={handleEditOfficial}
-                                        onDelete={handleDeleteOfficial}
-                                        onBulkDelete={handleBulkDelete}
-                                        onBulkUpdate={handleBulkUpdate}
-                                        sortOption={sortOption}
-                                        onSortChange={setSortOption}
-                                        initialFilter={filterCriteria}
-                                        onClearFilter={handleClearFilter}
-                                    />
-                                )}
-                            </div>
+                            </ProtectedView>
                         )}
 
                         {view === 'orgChart' && (
-                            <div className="space-y-6">
-                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                    <div>
-                                        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Organigrama</h2>
-                                        <p className="text-slate-500 dark:text-slate-400">Visualización jerárquica basada en las jefaturas de la base de datos.</p>
+                            <ProtectedView allowed={rbac.canView('orgChart')} role={userRole} resource="Organigrama">
+                                <div className="space-y-6">
+                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                        <div>
+                                            <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Organigrama</h2>
+                                            <p className="text-slate-500 dark:text-slate-400">Visualización jerárquica basada en las jefaturas de la base de datos.</p>
+                                        </div>
                                     </div>
+                                    <Suspense fallback={<LazyLoader />}>
+                                        <OrgChart officials={officials} />
+                                    </Suspense>
                                 </div>
-                                <Suspense fallback={<LazyLoader />}>
-                                    <OrgChart officials={officials} />
-                                </Suspense>
-                            </div>
+                            </ProtectedView>
                         )}
 
                         {view === 'template' && (
-                            <div className="h-[calc(100vh-8rem)]">
-                                <div className="mb-4 flex items-start justify-between">
-                                    <div>
-                                        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Editor de Plantilla</h2>
-                                        <p className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                                            Diseña el correo base. Tus plantillas se guardan automáticamente en
-                                            <span className="inline-flex items-center gap-1 text-orange-500 dark:text-orange-400 font-medium">
-                                                <svg className="w-3.5 h-3.5" viewBox="0 0 32 32" fill="currentColor"><path d="M19.62 11.558l-3.203 9.983-3.202-9.983H6.501L3 21.541l-3.501-9.983H-2l4.001 11.425h2.8l3.201-9.184 3.2 9.184H14l4-11.425z" transform="translate(7 5)" /></svg>
-                                                Firebase
-                                            </span>
-                                        </p>
-                                    </div>
-                                    {!configLoaded && (
-                                        <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-dark-800 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700">
-                                            <span className="w-3 h-3 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></span>
-                                            Cargando plantillas...
+                            <ProtectedView allowed={rbac.canView('template')} role={userRole} resource="Editor de Plantilla">
+                                <div className="h-[calc(100vh-8rem)]">
+                                    <div className="mb-4 flex items-start justify-between">
+                                        <div>
+                                            <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Editor de Plantilla</h2>
+                                            <p className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                                                Diseña el correo base. Tus plantillas se guardan automáticamente en
+                                                <span className="inline-flex items-center gap-1 text-orange-500 dark:text-orange-400 font-medium">
+                                                    <svg className="w-3.5 h-3.5" viewBox="0 0 32 32" fill="currentColor"><path d="M19.62 11.558l-3.203 9.983-3.202-9.983H6.501L3 21.541l-3.501-9.983H-2l4.001 11.425h2.8l3.201-9.184 3.2 9.184H14l4-11.425z" transform="translate(7 5)" /></svg>
+                                                    Firebase
+                                                </span>
+                                            </p>
                                         </div>
-                                    )}
+                                        {!configLoaded && (
+                                            <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-dark-800 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                                                <span className="w-3 h-3 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></span>
+                                                Cargando plantillas...
+                                            </div>
+                                        )}
+                                    </div>
+                                    <Suspense fallback={<LazyLoader />}>
+                                        <TemplateEditor
+                                            template={template}
+                                            onChange={setTemplate}
+                                            files={files}
+                                            onFilesChange={setFiles}
+                                            officials={officials}
+                                            onToast={(msg, type) => addToast(msg, type)}
+                                            savedTemplates={savedTemplates}
+                                            onSaveTemplate={handleSaveTemplate}
+                                            onDeleteTemplate={handleDeleteTemplate}
+                                            onArchiveTemplate={handleArchiveTemplate}
+                                        />
+                                    </Suspense>
                                 </div>
-                                <Suspense fallback={<LazyLoader />}>
-                                    <TemplateEditor
-                                        template={template}
-                                        onChange={setTemplate}
-                                        files={files}
-                                        onFilesChange={setFiles}
-                                        officials={officials}
-                                        onToast={(msg, type) => addToast(msg, type)}
-                                        savedTemplates={savedTemplates}
-                                        onSaveTemplate={handleSaveTemplate}
-                                        onDeleteTemplate={handleDeleteTemplate}
-                                        onArchiveTemplate={handleArchiveTemplate}
-                                    />
-                                </Suspense>
-                            </div>
+                            </ProtectedView>
                         )}
 
 
                         {view === 'generate' && (
-                            <div className="space-y-6">
-                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                    <div>
-                                        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Generador de Correos</h2>
-                                        <p className="text-slate-500 dark:text-slate-400">Enviando a base de datos: <strong className="text-indigo-600 dark:text-indigo-400">{activeDatabase.name}</strong></p>
+                            <ProtectedView allowed={rbac.canView('generate')} role={userRole} resource="Generador de Correos">
+                                <div className="space-y-6">
+                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                        <div>
+                                            <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Generador de Correos</h2>
+                                            <p className="text-slate-500 dark:text-slate-400">Enviando a base de datos: <strong className="text-indigo-600 dark:text-indigo-400">{activeDatabase.name}</strong></p>
+                                        </div>
                                     </div>
+                                    <Suspense fallback={<LazyLoader />}>
+                                        <Generator
+                                            officials={officials}
+                                            template={template}
+                                            files={files}
+                                            campaigns={campaigns}
+                                            databaseId={activeDatabase.id}
+                                            onCampaignCreate={handleCampaignCreate}
+                                            onLogEmail={handleLogEmail}
+                                            onToast={(msg, type) => addToast(msg, type)}
+                                        />
+                                    </Suspense>
                                 </div>
-                                <Suspense fallback={<LazyLoader />}>
-                                    <Generator
-                                        officials={officials}
-                                        template={template}
-                                        files={files}
-                                        campaigns={campaigns}
-                                        databaseId={activeDatabase.id}
-                                        onCampaignCreate={handleCampaignCreate}
-                                        onLogEmail={handleLogEmail}
-                                        onToast={(msg, type) => addToast(msg, type)}
-                                    />
-                                </Suspense>
-                            </div>
+                            </ProtectedView>
                         )}
 
                         {view === 'inbox' && (
-                            <div className="space-y-6">
-                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                    <div>
-                                        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Bandeja de Respuestas</h2>
-                                        <p className="text-slate-500 dark:text-slate-400">Respuestas de los funcionarios a tus correos enviados</p>
+                            <ProtectedView allowed={rbac.canView('inbox')} role={userRole} resource="Bandeja de Respuestas">
+                                <div className="space-y-6">
+                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                        <div>
+                                            <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Bandeja de Respuestas</h2>
+                                            <p className="text-slate-500 dark:text-slate-400">Respuestas de los funcionarios a tus correos enviados</p>
+                                        </div>
                                     </div>
+                                    <Suspense fallback={<LazyLoader />}>
+                                        <InboxView
+                                            campaigns={campaigns}
+                                            onToast={(msg, type) => addToast(msg, type)}
+                                            savedTemplates={savedTemplates}
+                                        />
+                                    </Suspense>
                                 </div>
-                                <Suspense fallback={<LazyLoader />}>
-                                    <InboxView
-                                        campaigns={campaigns}
-                                        onToast={(msg, type) => addToast(msg, type)}
-                                        savedTemplates={savedTemplates}
-                                    />
-                                </Suspense>
-                            </div>
+                            </ProtectedView>
                         )}
 
-                        {view === 'roles' && canManage && userProfile && (
-                            <div className="space-y-6">
-                                <Suspense fallback={<LazyLoader />}>
-                                    <RolesManager
-                                        currentUser={userProfile}
-                                        onToast={(msg, type) => addToast(msg, type)}
-                                    />
-                                </Suspense>
-                            </div>
+                        {view === 'roles' && (
+                            <ProtectedView allowed={rbac.canView('roles')} role={userRole} resource="Gestión de Roles">
+                                {userProfile && (
+                                    <div className="space-y-6">
+                                        <Suspense fallback={<LazyLoader />}>
+                                            <RolesManager
+                                                currentUser={userProfile}
+                                                onToast={(msg, type) => addToast(msg, type)}
+                                            />
+                                        </Suspense>
+                                    </div>
+                                )}
+                            </ProtectedView>
                         )}
                     </div>
                 </div>
