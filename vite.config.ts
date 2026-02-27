@@ -18,6 +18,32 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
-      }
+      },
+      build: {
+        // Increase warning threshold since we've added code splitting
+        chunkSizeWarningLimit: 600,
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              // Firebase SDK — large but shared across all views
+              'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+              // Rich text editor — only loaded on Template view
+              'vendor-tiptap': [
+                '@tiptap/react',
+                '@tiptap/starter-kit',
+                '@tiptap/extension-heading',
+              ],
+              // Charts — only loaded on Dashboard view
+              'vendor-recharts': ['recharts'],
+              // Excel — only loaded on import/export actions
+              'vendor-xlsx': ['xlsx'],
+              // AI SDK
+              'vendor-gemini': ['@google/genai'],
+              // Lucide icons (tree-shaken but still sizeable)
+              'vendor-lucide': ['lucide-react'],
+            },
+          },
+        },
+      },
     };
 });

@@ -1,0 +1,20 @@
+{
+  "name": "cft-correo-functions",
+  "description": "Cloud Functions for CFT-CORREO — email read receipt tracking",
+  "scripts": {
+    "build": "tsc",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions"
+  },
+  "engines": { "node": "20" },
+  "main": "lib/index.js",
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "firebase-functions": "^5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@firebase/rules-unit-testing": "^3.0.0"
+  },
+  "private": true
+}

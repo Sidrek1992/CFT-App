@@ -1,6 +1,11 @@
-import { collection, doc, getDocs, setDoc, deleteDoc, onSnapshot } from "firebase/firestore";
+import {
+    collection, doc, getDocs, setDoc, deleteDoc, onSnapshot,
+    query, orderBy, limit, startAfter, DocumentSnapshot, getDoc,
+} from "firebase/firestore";
 import { db } from "./firebaseService";
 import { OfficialDatabase } from "../types";
+
+export const DB_PAGE_SIZE = 50;
 
 const DB_COLLECTION = "databases";
 const SHARED_DOC_ID = "shared_config";
@@ -50,6 +55,32 @@ export const dbService = {
                 }
             }
         );
+    },
+
+    /**
+     * Load a page of databases ordered by name, excluding shared_config.
+     * Pass `afterDoc` (a DocumentSnapshot from the previous page's last item) to get the next page.
+     * Returns the loaded databases and the last DocumentSnapshot for use as the next cursor.
+     */
+    async loadDatabasesPage(
+        afterDoc?: DocumentSnapshot
+    ): Promise<{ databases: OfficialDatabase[]; lastDoc: DocumentSnapshot | null }> {
+        const col = collection(db, DB_COLLECTION);
+        const constraints = afterDoc
+            ? [orderBy('name'), startAfter(afterDoc), limit(DB_PAGE_SIZE)]
+            : [orderBy('name'), limit(DB_PAGE_SIZE)];
+
+        const q = query(col, ...constraints);
+        const snapshot = await getDocs(q);
+        const databases: OfficialDatabase[] = [];
+        snapshot.forEach((docSnap) => {
+            if (docSnap.id !== SHARED_DOC_ID) {
+                databases.push(docSnap.data() as OfficialDatabase);
+            }
+        });
+
+        const lastDoc = snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : null;
+        return { databases, lastDoc };
     },
 
     // Save Shared Config (Templates)
