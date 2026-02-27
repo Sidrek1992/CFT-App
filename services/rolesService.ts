@@ -141,6 +141,7 @@ export const updateUserRole = async (
 
 // ─── Permission helpers ───────────────────────────────────────────────────────
 
+// Legacy helpers (kept for backward compatibility)
 export const canEdit = (role: UserRole): boolean =>
     role === 'superadmin' || role === 'admin';
 
@@ -151,3 +152,87 @@ export const canManageRoles = (role: UserRole): boolean =>
     role === 'superadmin';
 
 export const canViewDashboard = (_role: UserRole): boolean => true; // all roles
+
+// ─── Granular view-level permissions ─────────────────────────────────────────
+
+/**
+ * Which views each role can access.
+ *
+ * dashboard   → all roles
+ * database    → all roles (read), but mutation buttons are hidden for reader
+ * orgChart    → all roles
+ * template    → superadmin, admin
+ * generate    → superadmin, admin, operator
+ * inbox       → superadmin, admin, operator
+ * roles       → superadmin only
+ */
+export type ViewPermission = {
+    /** Can the role see this navigation item and render the view? */
+    canView: (role: UserRole) => boolean;
+    /** Optional: can the role perform write/mutation actions inside this view? */
+    canMutate?: (role: UserRole) => boolean;
+};
+
+export const VIEW_PERMISSIONS: Record<string, ViewPermission> = {
+    dashboard: {
+        canView: () => true,
+    },
+    database: {
+        canView: () => true,
+        canMutate: (role) => role === 'superadmin' || role === 'admin',
+    },
+    orgChart: {
+        canView: () => true,
+    },
+    template: {
+        canView: (role) => role === 'superadmin' || role === 'admin',
+        canMutate: (role) => role === 'superadmin' || role === 'admin',
+    },
+    generate: {
+        canView: (role) => role === 'superadmin' || role === 'admin' || role === 'operator',
+    },
+    inbox: {
+        canView: (role) => role === 'superadmin' || role === 'admin' || role === 'operator',
+    },
+    roles: {
+        canView: (role) => role === 'superadmin',
+        canMutate: (role) => role === 'superadmin',
+    },
+};
+
+// ─── Granular action-level permissions ───────────────────────────────────────
+
+/** Database management actions */
+export const canCreateDatabase = (role: UserRole): boolean =>
+    role === 'superadmin' || role === 'admin';
+
+export const canDeleteDatabase = (role: UserRole): boolean =>
+    role === 'superadmin';
+
+export const canRenameDatabase = (role: UserRole): boolean =>
+    role === 'superadmin' || role === 'admin';
+
+export const canImportData = (role: UserRole): boolean =>
+    role === 'superadmin' || role === 'admin';
+
+export const canExportData = (role: UserRole): boolean =>
+    role === 'superadmin' || role === 'admin';
+
+export const canAddOfficial = (role: UserRole): boolean =>
+    role === 'superadmin' || role === 'admin';
+
+export const canEditOfficial = (role: UserRole): boolean =>
+    role === 'superadmin' || role === 'admin';
+
+export const canDeleteOfficial = (role: UserRole): boolean =>
+    role === 'superadmin' || role === 'admin';
+
+/** Template actions */
+export const canEditTemplate = (role: UserRole): boolean =>
+    role === 'superadmin' || role === 'admin';
+
+export const canSaveTemplate = (role: UserRole): boolean =>
+    role === 'superadmin' || role === 'admin';
+
+export const canDeleteTemplate = (role: UserRole): boolean =>
+    role === 'superadmin' || role === 'admin';

@@ -6,10 +6,14 @@ const PAGE_SIZE = 20;
 
 interface OfficialListProps {
   officials: Official[];
-  onEdit: (official: Official) => void;
-  onDelete: (id: string) => void;
-  onBulkDelete: (ids: string[]) => void;
-  onBulkUpdate: (ids: string[], field: keyof Official, value: any) => void;
+  /** If undefined, edit buttons are hidden (read-only mode) */
+  onEdit?: (official: Official) => void;
+  /** If undefined, delete buttons are hidden (read-only mode) */
+  onDelete?: (id: string) => void;
+  /** If undefined, bulk-delete is hidden */
+  onBulkDelete?: (ids: string[]) => void;
+  /** If undefined, bulk-update is hidden */
+  onBulkUpdate?: (ids: string[], field: keyof Official, value: any) => void;
   sortOption: SortOption;
   onSortChange: (option: SortOption) => void;
   initialFilter?: FilterCriteria;
@@ -180,7 +184,7 @@ export const OfficialList: React.FC<OfficialListProps> = ({
 
   const confirmBulkChangeDept = () => {
     if (deptModal.value.trim() !== '') {
-      onBulkUpdate(selectedIds, 'department', deptModal.value.trim());
+      onBulkUpdate?.(selectedIds, 'department', deptModal.value.trim());
       setSelectedIds([]);
     }
     setDeptModal({ open: false, value: '' });
@@ -288,13 +292,15 @@ export const OfficialList: React.FC<OfficialListProps> = ({
               <Building2 className="w-3 h-3" />
               Cambiar Dept.
             </button>
-            <button
-              onClick={() => { onBulkDelete(selectedIds); setSelectedIds([]); }}
-              className="flex items-center gap-2 px-3 py-1.5 bg-red-600 hover:bg-red-500 rounded-lg text-xs font-medium transition-colors shadow-sm"
-            >
-              <Trash2 className="w-3 h-3" />
-              Eliminar
-            </button>
+            {onBulkDelete && (
+              <button
+                onClick={() => { onBulkDelete(selectedIds); setSelectedIds([]); }}
+                className="flex items-center gap-2 px-3 py-1.5 bg-red-600 hover:bg-red-500 rounded-lg text-xs font-medium transition-colors shadow-sm"
+              >
+                <Trash2 className="w-3 h-3" />
+                Eliminar
+              </button>
+            )}
             <button
               onClick={() => setSelectedIds([])}
               className="p-1.5 text-indigo-300 hover:text-slate-900 dark:text-white"
@@ -490,20 +496,24 @@ export const OfficialList: React.FC<OfficialListProps> = ({
 
                     <td className="px-3 py-3 text-right">
                       <div className="flex justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); onEdit(official); }}
-                          className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-md transition-colors"
-                        >
-                          <Edit2 className="w-3.5 h-3.5 pointer-events-none" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); onDelete(official.id); }}
-                          className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 pointer-events-none" />
-                        </button>
+                        {onEdit && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onEdit(official); }}
+                            className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-md transition-colors"
+                          >
+                            <Edit2 className="w-3.5 h-3.5 pointer-events-none" />
+                          </button>
+                        )}
+                        {onDelete && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onDelete(official.id); }}
+                            className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 pointer-events-none" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
