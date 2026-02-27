@@ -57,7 +57,9 @@ export const OfficialList: React.FC<OfficialListProps> = ({
 
   // Tooltip State (JS Based Positioning to avoid overflow clipping)
   const [activeTooltip, setActiveTooltip] = useState<{
-    official: Official;
+    type: 'boss' | 'text';
+    content?: string;
+    official?: Official;
     x: number;
     y: number;
     position: 'top' | 'bottom';
@@ -190,7 +192,22 @@ export const OfficialList: React.FC<OfficialListProps> = ({
     setDeptModal({ open: false, value: '' });
   };
 
-  const handleMouseEnterTooltip = (e: React.MouseEvent, official: Official) => {
+  const handleMouseEnterTextTooltip = (e: React.MouseEvent, content?: string) => {
+    if (!content) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const position = spaceBelow < 180 ? 'top' : 'bottom';
+
+    setActiveTooltip({
+      type: 'text',
+      content,
+      x: rect.left + 20,
+      y: position === 'bottom' ? rect.bottom + 5 : rect.top - 5,
+      position
+    });
+  };
+
+  const handleMouseEnterBossTooltip = (e: React.MouseEvent, official: Official) => {
     if (!official.bossName) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
@@ -198,6 +215,7 @@ export const OfficialList: React.FC<OfficialListProps> = ({
     const position = spaceBelow < 180 ? 'top' : 'bottom'; // Show on top if near bottom edge
 
     setActiveTooltip({
+      type: 'boss',
       official,
       x: rect.left + 20,
       y: position === 'bottom' ? rect.bottom + 5 : rect.top - 5,
@@ -437,7 +455,11 @@ export const OfficialList: React.FC<OfficialListProps> = ({
                         )}
                       </button>
                     </td>
-                    <td className="px-3 py-3 max-w-[180px]">
+                    <td
+                      className="px-3 py-3 max-w-[180px]"
+                      onMouseEnter={(e) => handleMouseEnterTextTooltip(e, official.name)}
+                      onMouseLeave={handleMouseLeaveTooltip}
+                    >
                       <div className="flex items-center gap-2">
                         {official.isBoss && (
                           <span title="Jefatura">
@@ -453,7 +475,11 @@ export const OfficialList: React.FC<OfficialListProps> = ({
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-sm text-slate-600 dark:text-slate-300 max-w-[130px]">
+                    <td
+                      className="px-3 py-3 text-sm text-slate-600 dark:text-slate-300 max-w-[130px]"
+                      onMouseEnter={(e) => handleMouseEnterTextTooltip(e, official.department)}
+                      onMouseLeave={handleMouseLeaveTooltip}
+                    >
                       {official.department ? (
                         <div className="flex items-center gap-1.5">
                           <Building2 className="w-3 h-3 text-slate-400 dark:text-slate-500 flex-shrink-0" />
@@ -461,18 +487,25 @@ export const OfficialList: React.FC<OfficialListProps> = ({
                         </div>
                       ) : '-'}
                     </td>
-                    <td className="px-3 py-3 text-sm text-slate-600 dark:text-slate-300 max-w-[120px]">
+                    <td
+                      className="px-3 py-3 text-sm text-slate-600 dark:text-slate-300 max-w-[120px]"
+                      onMouseEnter={(e) => handleMouseEnterTextTooltip(e, official.position)}
+                      onMouseLeave={handleMouseLeaveTooltip}
+                    >
                       <span className="truncate block">{official.position}</span>
                     </td>
 
                     {/* Clickable Email Column */}
-                    <td className="px-3 py-3 text-sm max-w-[160px]">
+                    <td
+                      className="px-3 py-3 text-sm max-w-[160px]"
+                      onMouseEnter={(e) => handleMouseEnterTextTooltip(e, official.email)}
+                      onMouseLeave={handleMouseLeaveTooltip}
+                    >
                       {official.email ? (
                         <a
                           href={`mailto:${official.email}`}
                           className="text-indigo-600 dark:text-indigo-400 hover:underline hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center gap-1 transition-colors font-medium"
                           onClick={(e) => e.stopPropagation()}
-                          title={official.email}
                         >
                           <Mail className="w-3 h-3 flex-shrink-0" />
                           <span className="truncate">{official.email}</span>
@@ -485,7 +518,7 @@ export const OfficialList: React.FC<OfficialListProps> = ({
                     {/* Boss Column with JS-based Tooltip */}
                     <td
                       className="px-3 py-3 cursor-help max-w-[130px]"
-                      onMouseEnter={(e) => handleMouseEnterTooltip(e, official)}
+                      onMouseEnter={(e) => handleMouseEnterBossTooltip(e, official)}
                       onMouseLeave={handleMouseLeaveTooltip}
                     >
                       <div className="text-sm text-slate-900 dark:text-white font-medium truncate decoration-slate-300 dark:decoration-slate-600 decoration-dotted underline-offset-2 hover:underline">
@@ -616,24 +649,33 @@ export const OfficialList: React.FC<OfficialListProps> = ({
             left: activeTooltip.x,
             top: activeTooltip.position === 'bottom' ? activeTooltip.y : undefined,
             bottom: activeTooltip.position === 'top' ? (window.innerHeight - activeTooltip.y) : undefined,
-            width: '260px'
+            width: activeTooltip.type === 'boss' ? '260px' : 'auto',
+            maxWidth: '300px'
           }}
         >
-          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Detalles Jefatura</div>
-          <div className="space-y-1">
-            <div className="flex items-start gap-2">
-              <User className="w-3 h-3 text-indigo-400 mt-0.5" />
-              <span className="text-sm font-medium text-white">{activeTooltip.official.bossName}</span>
+          {activeTooltip.type === 'boss' && activeTooltip.official ? (
+            <>
+              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Detalles Jefatura</div>
+              <div className="space-y-1">
+                <div className="flex items-start gap-2">
+                  <User className="w-3 h-3 text-indigo-400 mt-0.5" />
+                  <span className="text-sm font-medium text-white">{activeTooltip.official.bossName}</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Briefcase className="w-3 h-3 text-indigo-400 mt-0.5" />
+                  <span className="text-xs text-slate-300">{activeTooltip.official.bossPosition || 'Sin Cargo'}</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Mail className="w-3 h-3 text-indigo-400 mt-0.5" />
+                  <span className="text-xs text-slate-300 break-all">{activeTooltip.official.bossEmail || 'Sin Correo'}</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="text-sm font-medium text-white break-words">
+              {activeTooltip.content}
             </div>
-            <div className="flex items-start gap-2">
-              <Briefcase className="w-3 h-3 text-indigo-400 mt-0.5" />
-              <span className="text-xs text-slate-300">{activeTooltip.official.bossPosition || 'Sin Cargo'}</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <Mail className="w-3 h-3 text-indigo-400 mt-0.5" />
-              <span className="text-xs text-slate-300 break-all">{activeTooltip.official.bossEmail || 'Sin Correo'}</span>
-            </div>
-          </div>
+          )}
           {/* Arrow */}
           <div
             className="absolute left-6 w-2 h-2 bg-slate-800 dark:bg-dark-900 rotate-45"
