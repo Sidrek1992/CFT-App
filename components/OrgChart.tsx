@@ -296,94 +296,100 @@ export const OrgChart: React.FC<OrgChartProps> = ({ officials }) => {
   const deptColors = useMemo(() => new Map<string, string>(), []);
 
   // ── Build tree ────────────────────────────────────────────────────────────
-  const { rootObj, nodeMap, orphanCount } = useMemo(() => {
-    if (officials.length === 0) return { rootObj: null, nodeMap: new Map(), orphanCount: 0 };
+  //
+  // Node shape used throughout: { ...Official fields, children?: Node[] }
+  // i.e. the Official data is spread directly at the top level so that every
+  // d3-hierarchy node satisfies:  node.data.name, node.data.id, etc.
+  // This avoids the nested node.data.data.name pattern that caused the crash.
+  //
+  const { rootObj, orphanCount } = useMemo(() => {
+    if (officials.length === 0) return { rootObj: null, orphanCount: 0 };
 
-    // Create mapping by normalized name to handle 'bossName' matching
+    // Map normalised name → id for bossName resolution
     const nameToId = new Map<string, string>();
-    officials.forEach(o => nameToId.set(normalize(o.name), o.id));
-
-    // Fix up parentIds based on bossName
-    const officialsWithParent = officials.map(o => {
-      let parentId = undefined;
-      if (o.bossName) {
-        const normBoss = normalize(o.bossName);
-        parentId = nameToId.get(normBoss);
-      }
-      return { ...o, parentId };
+    officials.forEach(o => {
+      if (o.name) nameToId.set(normalize(o.name), o.id);
     });
 
-    const map = new Map<string, any>();
-    officialsWithParent.forEach(o => map.set(o.id, { data: o, id: o.id }));
+    // Resolve parentId from bossName for each official
+    const withParent = officials.map(o => ({
+      ...o,
+      name: o.name || '',   // guard: ensure name is always a string
+      parentId: o.bossName ? nameToId.get(normalize(o.bossName)) : undefined,
+    }));
+
+    // Build id → node map (node data IS the official, children added below)
+    const nodeMap = new Map<string, any>();
+    withParent.forEach(o => nodeMap.set(o.id, { ...o }));
 
     let orphans = 0;
     const roots: any[] = [];
 
-    officialsWithParent.forEach(o => {
-      const node = map.get(o.id)!;
-      if (o.parentId && map.has(o.parentId)) {
-        const parent = map.get(o.parentId)!;
-        if (!parent.children) parent.children = [];
-        // Prevent circular dependencies
-        if (o.id !== o.parentId) {
-          parent.children.push(node);
-        }
+    withParent.forEach(o => {
+      const node = nodeMap.get(o.id)!;
+      if (o.parentId && nodeMap.has(o.parentId) && o.parentId !== o.id) {
+        const parent = nodeMap.get(o.parentId)!;
+        (parent.children ??= []).push(node);
       } else {
         if (o.bossName) orphans++;
         roots.push(node);
       }
     });
 
-    // If multiple roots, create a dummy root
-    let finalRoot: any;
-    if (roots.length === 1) {
-      finalRoot = roots[0];
-    } else {
-      finalRoot = {
-        id: 'dummy_root',
-        data: { name: 'Organización', id: 'dummy_root', gender: Gender.Unspecified, isBoss: true } as any,
-        children: roots
-      };
-    }
+    // Wrap multiple roots under a single virtual root
+    const finalRoot: any = roots.length === 1
+      ? roots[0]
+      : {
+          id: 'dummy_root',
+          name: 'Organización',
+          gender: Gender.Unspecified,
+          isBoss: true,
+          email: '',
+          position: '',
+          department: '',
+          title: '',
+          bossName: '',
+          bossPosition: '',
+          bossEmail: '',
+          children: roots,
+        };
 
     try {
-      const hierarchyRoot = hierarchy(finalRoot, d => d.children);
-
-      // Save all children to _children for collapsing
-      hierarchyRoot.each(d => {
-        (d as any)._children = d.children;
-      });
-
-      return { rootObj: hierarchyRoot, nodeMap: map, orphanCount: orphans };
+      const hierarchyRoot = hierarchy(finalRoot, (d: any) => d.children ?? null);
+      // Store original children for collapse/expand logic
+      hierarchyRoot.each((d: any) => { d._children = d.children; });
+      return { rootObj: hierarchyRoot, orphanCount: orphans };
     } catch (e) {
-      console.error("Error creating hierarchy", e);
-      return { rootObj: null, nodeMap: new Map(), orphanCount: 0 };
+      console.error('Error creating hierarchy', e);
+      return { rootObj: null, orphanCount: 0 };
     }
   }, [officials]);
 
-  // Handle collapsing
+  // Handle collapsing — rebuild a filtered hierarchy from rootObj
   const treeData = useMemo(() => {
     if (!rootObj) return null;
 
-    // Create a copy of the hierarchy structure reflecting collapsed state
+    // Build id → d3-node lookup for fast access
+    const nodeById = new Map<string, any>();
+    rootObj.each((n: any) => nodeById.set(n.data.id, n));
+
+    // Rebuild hierarchy respecting collapsed state
     const copy = hierarchy(rootObj.data, (d: any) => {
-      const id = d.id;
-      if (collapsedNodes.has(id)) return null;
-      // Need to find original node to get _children
-      let origNode = null;
-      rootObj.each((n: any) => { if (n.data.id === id) origNode = n; });
-      return origNode ? (origNode as any)._children?.map((c: any) => c.data) : null;
+      if (collapsedNodes.has(d.id)) return null;
+      const orig = nodeById.get(d.id);
+      return orig?._children?.map((c: any) => c.data) ?? null;
     });
 
-    // Copy _children ref
-    copy.each(d => {
-      let origNode = null;
-      rootObj.each((n: any) => { if (n.data.id === d.data.id) origNode = n; });
-      (d as any)._children = origNode ? (origNode as any)._children : null;
+    // Carry _children refs so collapse buttons know child counts
+    copy.each((d: any) => {
+      const orig = nodeById.get(d.data.id);
+      d._children = orig?._children ?? null;
     });
 
     const layoutTree = tree().nodeSize(
-      layout === 'vertical' ? [NODE_W + H_GAP, NODE_H + V_GAP] : [NODE_H + H_GAP, NODE_W + V_GAP + 60] // Extra space for horizontal words
+      layout === 'vertical'
+        ? [NODE_W + H_GAP, NODE_H + V_GAP]
+        : [NODE_H + H_GAP, NODE_W + V_GAP + 60]
     );
 
     return layoutTree(copy);

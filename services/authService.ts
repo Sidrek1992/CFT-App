@@ -7,7 +7,7 @@ import {
     User,
     reauthenticateWithPopup
 } from 'firebase/auth';
-import { persistTokenMeta, clearTokenState, isTokenFresh, canShowReauthPopup } from './tokenService';
+import { persistTokenMeta, clearTokenState, isTokenFresh, canShowReauthPopup, loadTokenMeta } from './tokenService';
 import { DRIVE_SCOPE } from './driveService';
 
 // ─── Scopes ───────────────────────────────────────────────────────────────────
@@ -162,6 +162,71 @@ export const hasGmailToken = (): boolean => !!sessionStorage.getItem('gmail_acce
 /** Starts the auto-refresh background timer for an already-authenticated user. */
 export const initAutoRefreshForUser = (user: User) => {
     startAutoRefresh(user.uid, user.email || '');
+};
+
+/**
+ * Called once on app bootstrap when Firebase Auth restores a previous session.
+ * Attempts a silent Gmail token refresh so the user never needs to re-authorize
+ * manually after a page reload.
+ *
+ * Strategy:
+ *  1. If a token already exists in sessionStorage (same tab), do nothing.
+ *  2. Check Firestore token metadata to see if the user had a recent valid session.
+ *  3. If the stored token is not stale (< 1 hour old), attempt a silent
+ *     reauthentication with prompt='select_account'. In most cases Google
+ *     resolves this instantly without showing a visible popup because the user's
+ *     Google session is still alive in the browser.
+ *  4. On any failure (popup blocked, cancelled, no Google session) we just
+ *     return false — the GmailAuthBanner in the Generator handles the fallback.
+ */
+export const bootstrapGmailToken = async (user: User): Promise<boolean> => {
+    // Already have a token in this tab — nothing to do
+    if (hasGmailToken()) return true;
+
+    try {
+        const meta = await loadTokenMeta(user.uid);
+
+        if (!meta) return false;
+
+        // Only attempt silent re-auth if the Firestore record is recent enough
+        // (within the last 2 hours — if older the Google session is likely gone too)
+        const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+        if (Date.now() - meta.updatedAt > TWO_HOURS_MS) return false;
+
+        const provider = buildGoogleProvider(false);
+        // 'select_account' with an existing Google session usually resolves
+        // silently without user interaction
+        provider.setCustomParameters({ prompt: 'select_account' });
+
+        const currentUser = auth.currentUser;
+        if (!currentUser) return false;
+
+        const result = await reauthenticateWithPopup(currentUser, provider);
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        const token = credential?.accessToken;
+
+        if (token) {
+            sessionStorage.setItem('gmail_access_token', token);
+            const email = result.user?.email || user.email || '';
+            sessionStorage.setItem('gmail_user_email', email);
+            await persistTokenMeta(user.uid, token, email);
+            startAutoRefresh(user.uid, email);
+            console.log('[authService] Gmail token restored silently on bootstrap.');
+            return true;
+        }
+    } catch (err: any) {
+        // Popup blocked or cancelled by user — non-fatal, GmailAuthBanner handles it
+        const ignoredCodes = [
+            'auth/popup-blocked',
+            'auth/popup-closed-by-user',
+            'auth/cancelled-popup-request',
+        ];
+        if (!ignoredCodes.includes(err?.code)) {
+            console.warn('[authService] bootstrapGmailToken silent reauth failed:', err?.code ?? err);
+        }
+    }
+
+    return false;
 };
 
 export const logout = async () => {

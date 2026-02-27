@@ -42,7 +42,7 @@ import { OfficialList } from './components/OfficialList';
 import { OfficialDrawer } from './components/OfficialDrawer';
 import { ToastContainer } from './components/ToastContainer';
 import { dbService } from './services/dbService';
-import { subscribeToAuthChanges, logout, initAutoRefreshForUser } from './services/authService';
+import { subscribeToAuthChanges, logout, initAutoRefreshForUser, bootstrapGmailToken } from './services/authService';
 import { clearTokenState } from './services/tokenService';
 import { Login } from './components/Login';
 import { User } from 'firebase/auth';
@@ -100,9 +100,14 @@ export default function App() {
         const unsubscribe = subscribeToAuthChanges((currentUser) => {
             setUser(currentUser);
             setLoadingAuth(false);
-            // Start silent token auto-refresh when user is authenticated
             if (currentUser) {
+                // Start the background auto-refresh timer
                 initAutoRefreshForUser(currentUser);
+                // Silently restore the Gmail OAuth token if this is a page reload.
+                // Runs in the background — does not block the UI.
+                bootstrapGmailToken(currentUser).catch(() => {
+                    // Failure is non-fatal; the GmailAuthBanner handles the fallback.
+                });
             }
         });
         return () => unsubscribe();
