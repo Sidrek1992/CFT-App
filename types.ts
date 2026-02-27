@@ -67,7 +67,7 @@ export interface GeneratedEmail {
   attachments: File[];
 }
 
-export type ViewState = 'dashboard' | 'database' | 'orgChart' | 'template' | 'generate';
+export type ViewState = 'dashboard' | 'database' | 'orgChart' | 'template' | 'generate' | 'inbox';
 
 export interface ToastNotification {
   id: string;

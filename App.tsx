@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { FileEdit, Send, Plus, Database, LayoutDashboard, Upload, Download, AlertTriangle, X, RefreshCw, SkipForward, Trash2, FileSpreadsheet, Menu, Briefcase, CheckCircle2, Settings, ChevronDown, FolderPlus, PenLine, FolderInput, FolderOutput, Network, LogOut, Moon, Sun } from 'lucide-react';
+import { FileEdit, Send, Plus, Database, LayoutDashboard, Upload, Download, AlertTriangle, X, RefreshCw, SkipForward, Trash2, FileSpreadsheet, Menu, Briefcase, CheckCircle2, Settings, ChevronDown, FolderPlus, PenLine, FolderInput, FolderOutput, Network, LogOut, Moon, Sun, Inbox } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Official, EmailTemplate, ViewState, ToastNotification, SavedTemplate, Gender, SortOption, FilterCriteria, OfficialDatabase, Campaign, EmailLog } from './types';
 import { OfficialForm } from './components/OfficialForm';
@@ -10,6 +10,7 @@ import { Generator } from './components/Generator';
 import { Dashboard } from './components/Dashboard';
 import { OrgChart } from './components/OrgChart';
 import { ToastContainer } from './components/ToastContainer';
+import { InboxView } from './components/InboxView';
 import { dbService } from './services/dbService';
 import { subscribeToAuthChanges, logout } from './services/authService';
 import { Login } from './components/Login';
@@ -223,6 +224,38 @@ export default function App() {
             }
         }
     };
+
+    // ─── Migration helper — exposed on window for one-time use from dev console ─
+    // Usage: await window.__migrateFixBossName('Carlos Araos Uribe', 'Carlos Alberto Araos Uribe')
+    useEffect(() => {
+        (window as any).__migrateFixBossName = async (oldName: string, newName: string) => {
+            console.log(`\n🔍 Buscando "${oldName}" en ${databases.length} base(s)...`);
+            let totalFixed = 0;
+            for (const database of databases) {
+                let modified = false;
+                const updatedOfficials = database.officials.map(o => {
+                    let changed = false;
+                    const updated = { ...o };
+                    if (o.bossName === oldName) { updated.bossName = newName; changed = true; }
+                    if (o.name === oldName) { updated.name = newName; changed = true; }
+                    if (changed) {
+                        console.log(`  ✅ [${database.name}] ${o.name}: bossName "${oldName}" → "${newName}"`);
+                        totalFixed++;
+                        modified = true;
+                    }
+                    return updated;
+                });
+                if (modified) {
+                    await dbService.saveDatabase({ ...database, officials: updatedOfficials });
+                    console.log(`  💾 Base "${database.name}" guardada.`);
+                }
+            }
+            console.log(`\n📊 ${totalFixed} campo(s) corregido(s). Recarga la app si no ves los cambios.`);
+            return totalFixed;
+        };
+        return () => { delete (window as any).__migrateFixBossName; };
+    }, [databases]);
+
 
     const updateActiveDbOfficials = async (newOfficials: Official[] | ((prev: Official[]) => Official[])) => {
         await updateActiveDb(db => ({
@@ -863,6 +896,13 @@ export default function App() {
                         <Send className={`w-5 h-5 flex-shrink-0 ${view === 'generate' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
                         Generar y Enviar
                     </button>
+                    <button
+                        onClick={() => handleNavigate('inbox')}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'inbox' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
+                    >
+                        <Inbox className={`w-5 h-5 flex-shrink-0 ${view === 'inbox' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
+                        Bandeja de Respuestas
+                    </button>
                 </nav>
 
                 <div className="px-3 pb-3 pt-1 shrink-0">
@@ -1077,6 +1117,21 @@ export default function App() {
                                     campaigns={campaigns}
                                     onCampaignCreate={handleCampaignCreate}
                                     onLogEmail={handleLogEmail}
+                                    onToast={(msg, type) => addToast(msg, type)}
+                                />
+                            </div>
+                        )}
+
+                        {view === 'inbox' && (
+                            <div className="space-y-6">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Bandeja de Respuestas</h2>
+                                        <p className="text-slate-500 dark:text-slate-400">Respuestas de los funcionarios a tus correos enviados</p>
+                                    </div>
+                                </div>
+                                <InboxView
+                                    campaigns={campaigns}
                                     onToast={(msg, type) => addToast(msg, type)}
                                 />
                             </div>
