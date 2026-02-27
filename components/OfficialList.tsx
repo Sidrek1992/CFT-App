@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Official, Gender, SortOption, FilterCriteria } from '../types';
-import { Edit2, Trash2, UserCircle2, User, Building2, Search, Filter, UserCheck, ArrowUpDown, PieChart, Crown, CheckSquare, Square, MoreHorizontal, Mail, Briefcase, X } from 'lucide-react';
+import { Edit2, Trash2, UserCircle2, User, Building2, Search, Filter, UserCheck, ArrowUpDown, PieChart, Crown, CheckSquare, Square, MoreHorizontal, Mail, Briefcase, X, ChevronLeft, ChevronRight } from 'lucide-react';
+
+const PAGE_SIZE = 20;
 
 interface OfficialListProps {
   officials: Official[];
@@ -42,6 +44,12 @@ export const OfficialList: React.FC<OfficialListProps> = ({
 
   // Selection State (Checkboxes)
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Bulk-change-department Modal State
+  const [deptModal, setDeptModal] = useState<{ open: boolean; value: string }>({ open: false, value: '' });
 
   // Tooltip State (JS Based Positioning to avoid overflow clipping)
   const [activeTooltip, setActiveTooltip] = useState<{
@@ -104,8 +112,8 @@ export const OfficialList: React.FC<OfficialListProps> = ({
   const maleCount = officials.filter(o => o.gender === Gender.Male).length;
   const femaleCount = officials.filter(o => o.gender === Gender.Female).length;
 
-  // Filter Logic
-  const filteredOfficials = officials.filter(official => {
+  // Filter Logic — memoized so it only recalculates when inputs change
+  const filteredOfficials = useMemo(() => officials.filter(official => {
     // Smart Filters from Dashboard
     if (initialFilter?.type === 'missingBoss' && official.bossName) return false;
     if (initialFilter?.type === 'missingGender' && official.gender !== Gender.Unspecified) return false;
@@ -122,24 +130,34 @@ export const OfficialList: React.FC<OfficialListProps> = ({
     const matchesBoss = selectedBoss === 'Todos' || official.bossName === selectedBoss;
 
     return matchesSearch && matchesDept && matchesBoss;
-  });
+  }), [officials, initialFilter, searchTerm, selectedDept, selectedBoss]);
 
-  // Sort Logic
-  const sortedOfficials = [...filteredOfficials].sort((a, b) => {
+  // Sort Logic — memoized
+  const sortedOfficials = useMemo(() => [...filteredOfficials].sort((a, b) => {
     switch (sortOption) {
       case 'department':
         return (a.department || '').localeCompare(b.department || '');
-      case 'surname':
+      case 'surname': {
         const surnameA = a.name.trim().split(' ').pop() || '';
         const surnameB = b.name.trim().split(' ').pop() || '';
         return surnameA.localeCompare(surnameB);
+      }
       case 'name':
       default:
         return a.name.localeCompare(b.name);
     }
-  });
+  }), [filteredOfficials, sortOption]);
 
-  // Handlers
+  // Pagination — reset to page 1 whenever filters/sort change
+  useEffect(() => { setCurrentPage(1); }, [sortedOfficials]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedOfficials.length / PAGE_SIZE));
+  const pagedOfficials = useMemo(
+    () => sortedOfficials.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [sortedOfficials, currentPage]
+  );
+
+  // Handlers — select all across ALL filtered pages, not just the current page
   const toggleSelectAll = () => {
     if (selectedIds.length === sortedOfficials.length) {
       setSelectedIds([]);
@@ -157,11 +175,15 @@ export const OfficialList: React.FC<OfficialListProps> = ({
   };
 
   const handleBulkChangeDept = () => {
-    const newDept = window.prompt("Ingresa el nuevo departamento para los usuarios seleccionados:");
-    if (newDept !== null) {
-      onBulkUpdate(selectedIds, 'department', newDept);
+    setDeptModal({ open: true, value: '' });
+  };
+
+  const confirmBulkChangeDept = () => {
+    if (deptModal.value.trim() !== '') {
+      onBulkUpdate(selectedIds, 'department', deptModal.value.trim());
       setSelectedIds([]);
     }
+    setDeptModal({ open: false, value: '' });
   };
 
   const handleMouseEnterTooltip = (e: React.MouseEvent, official: Official) => {
@@ -398,7 +420,7 @@ export const OfficialList: React.FC<OfficialListProps> = ({
                   </td>
                 </tr>
               ) : (
-                sortedOfficials.map((official) => (
+                pagedOfficials.map((official) => (
                   <tr key={official.id} className={`transition-colors ${selectedIds.includes(official.id) ? 'bg-indigo-50/50 dark:bg-indigo-950/20' : 'hover:bg-slate-50 dark:hover:bg-dark-700/50'}`}>
                     <td className="px-3 py-3">
                       <button onClick={() => toggleSelectOne(official.id)} className="flex items-center text-slate-600 dark:text-slate-400 hover:text-indigo-600">
@@ -491,6 +513,90 @@ export const OfficialList: React.FC<OfficialListProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between bg-white dark:bg-dark-800 rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3 shadow-sm">
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            Mostrando <span className="font-semibold text-slate-700 dark:text-slate-300">{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, sortedOfficials.length)}</span> de <span className="font-semibold text-slate-700 dark:text-slate-300">{sortedOfficials.length}</span> funcionarios
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              title="Página anterior"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-xs font-medium text-slate-700 dark:text-slate-300 min-w-[60px] text-center">
+              {currentPage} / {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              title="Página siguiente"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal — Cambiar Departamento Masivo */}
+      {deptModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-dark-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md animate-in zoom-in-95">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 bg-indigo-100 dark:bg-indigo-950/50 rounded-xl flex items-center justify-center">
+                    <Building2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">Cambiar Departamento</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{selectedIds.length} funcionario(s) seleccionado(s)</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDeptModal({ open: false, value: '' })}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-dark-700 rounded-lg transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Nuevo departamento
+              </label>
+              <input
+                type="text"
+                value={deptModal.value}
+                onChange={(e) => setDeptModal(prev => ({ ...prev, value: e.target.value }))}
+                onKeyDown={(e) => { if (e.key === 'Enter') confirmBulkChangeDept(); if (e.key === 'Escape') setDeptModal({ open: false, value: '' }); }}
+                placeholder="Ej: Subdirección Académica"
+                autoFocus
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-dark-900 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+              />
+            </div>
+            <div className="flex gap-3 px-6 pb-6">
+              <button
+                onClick={() => setDeptModal({ open: false, value: '' })}
+                className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-dark-700 hover:bg-slate-200 dark:hover:bg-dark-600 rounded-xl transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmBulkChangeDept}
+                disabled={!deptModal.value.trim()}
+                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-colors shadow-sm"
+              >
+                Aplicar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Floating Tooltip (Rendered outside table to prevent overflow clipping) */}
       {activeTooltip && (

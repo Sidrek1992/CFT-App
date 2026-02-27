@@ -27,30 +27,51 @@ export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
 
 const PICKER_API_URL = 'https://apis.google.com/js/api.js';
 
+/** Maximum allowed file size in bytes (25 MB — typical Gmail attachment limit). */
+const MAX_FILE_BYTES = 25 * 1024 * 1024;
+
 let pickerApiLoaded = false;
 
+/**
+ * Injects the Google API script and resolves once the Picker library is ready.
+ *
+ * Improvement over the old implementation:
+ *  - Uses the script's own `onload` callback exclusively — no `setInterval` polling.
+ *  - If the script tag already exists (e.g. called twice), waits for `gapi.load`
+ *    via a one-shot `load` event listener on the same script element instead of
+ *    repeatedly checking a global variable.
+ */
 const loadPickerScript = (): Promise<void> => {
     if (pickerApiLoaded) return Promise.resolve();
+
     return new Promise((resolve, reject) => {
-        const existing = document.getElementById('google-picker-api');
-        if (existing) {
-            // Script tag already injected — wait for gapi to be ready
-            const wait = setInterval(() => {
-                if ((window as any).gapi) { clearInterval(wait); pickerApiLoaded = true; resolve(); }
-            }, 100);
-            return;
-        }
-        const script = document.createElement('script');
-        script.id = 'google-picker-api';
-        script.src = PICKER_API_URL;
-        script.async = true;
-        script.defer = true;
-        script.onload = () => {
+        const existing = document.getElementById('google-picker-api') as HTMLScriptElement | null;
+
+        const loadPickerLibrary = () => {
             (window as any).gapi.load('picker', () => {
                 pickerApiLoaded = true;
                 resolve();
             });
         };
+
+        if (existing) {
+            // Script tag is already in the DOM. If gapi is ready, use it directly;
+            // otherwise wait for its load event (fires once the script executes).
+            if ((window as any).gapi) {
+                loadPickerLibrary();
+            } else {
+                existing.addEventListener('load', loadPickerLibrary, { once: true });
+                existing.addEventListener('error', reject, { once: true });
+            }
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.id = 'google-picker-api';
+        script.src = PICKER_API_URL;
+        script.async = true;
+        script.defer = true;
+        script.onload = loadPickerLibrary;
         script.onerror = reject;
         document.head.appendChild(script);
     });
@@ -64,9 +85,28 @@ export interface DriveFile {
 }
 
 /**
+ * Fetches file metadata from Drive (name, mimeType, size) WITHOUT downloading
+ * the full content. Used to validate the file size before committing to a
+ * potentially large download.
+ */
+const fetchDriveFileMetadata = async (
+    fileId: string,
+    accessToken: string
+): Promise<{ name: string; mimeType: string; size?: number }> => {
+    const url = `https://www.googleapis.com/drive/v3/files/${fileId}?fields=name,mimeType,size`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(`Error al leer metadatos de Drive: ${err?.error?.message || res.statusText}`);
+    }
+    return res.json();
+};
+
+/**
  * Opens the Google Picker dialog and returns the selected file metadata.
- * After selection, downloads the file content via Drive API and wraps it
- * in a standard File object.
+ * After selection:
+ *  1. Fetches file metadata to validate the size (rejects if > 25 MB).
+ *  2. Downloads the file content via Drive API and wraps it in a File object.
  */
 export const openDrivePicker = (accessToken: string): Promise<File | null> => {
     const appId = import.meta.env.VITE_GOOGLE_APP_ID || '';
@@ -97,7 +137,18 @@ export const openDrivePicker = (accessToken: string): Promise<File | null> => {
                     if (!doc) { resolve(null); return; }
 
                     try {
-                        // Download the file content
+                        // 1. Validate file size BEFORE downloading
+                        const metadata = await fetchDriveFileMetadata(doc.id, accessToken);
+                        const sizeBytes = metadata.size ? Number(metadata.size) : undefined;
+
+                        if (sizeBytes !== undefined && sizeBytes > MAX_FILE_BYTES) {
+                            const sizeMB = (sizeBytes / 1024 / 1024).toFixed(1);
+                            throw new Error(
+                                `El archivo "${doc.name}" pesa ${sizeMB} MB y supera el límite de ${MAX_FILE_BYTES / 1024 / 1024} MB permitido para adjuntos.`
+                            );
+                        }
+
+                        // 2. Download the file content
                         const fileBlob = await downloadDriveFile(doc.id, accessToken, doc.mimeType);
                         const file = new File([fileBlob], doc.name, { type: doc.mimeType });
                         resolve(file);

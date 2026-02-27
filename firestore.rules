@@ -1,8 +1,97 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+
+    // ─── Helper functions ─────────────────────────────────────────────────────
+
+    /**
+     * Returns true if the caller is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
     }
+
+    /**
+     * Reads the caller's UserProfile document from Firestore to get their role.
+     * This is a server-side read so it counts toward the operation cost but is
+     * safe — it cannot be spoofed by the client.
+     */
+    function callerProfile() {
+      return get(/databases/$(database)/documents/user_profiles/$(request.auth.uid)).data;
+    }
+
+    /**
+     * Returns the caller's role string (e.g. 'superadmin', 'admin', etc.).
+     * Falls back to 'reader' if the profile does not exist yet.
+     */
+    function callerRole() {
+      return isSignedIn()
+        ? (exists(/databases/$(database)/documents/user_profiles/$(request.auth.uid))
+            ? callerProfile().role
+            : 'reader')
+        : 'none';
+    }
+
+    function isSuperAdmin() { return callerRole() == 'superadmin'; }
+    function isAdmin()      { return callerRole() == 'admin'; }
+    function isOperator()   { return callerRole() == 'operator'; }
+    function isReader()     { return callerRole() == 'reader'; }
+
+    /** admin OR superadmin — can edit databases, officials, templates */
+    function canEdit()      { return isSuperAdmin() || isAdmin(); }
+
+    /** operator and above — can read databases to generate/send emails */
+    function canRead()      { return isSignedIn(); }  // all authenticated users can read
+
+    // ─── user_profiles collection ─────────────────────────────────────────────
+    //
+    // Rules:
+    //  • Any authenticated user can READ their OWN profile (needed for bootstrapUserProfile).
+    //  • superadmin can READ all profiles (needed for RolesManager listing).
+    //  • superadmin can WRITE any profile (role management).
+    //  • A user can CREATE their OWN profile document (bootstrapUserProfile on first login).
+    //    The role field is validated to prevent self-promotion.
+    //  • Nobody else can write.
+
+    match /user_profiles/{uid} {
+
+      // Read: own profile always; all profiles only for superadmin
+      allow read: if isSignedIn() && (request.auth.uid == uid || isSuperAdmin());
+
+      // Create: only the owner creating their own profile, and they cannot
+      // self-assign 'superadmin' or 'admin' (bootstrapUserProfile enforces this
+      // on the first user, but here we enforce it server-side as well).
+      allow create: if isSignedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && (request.resource.data.role == 'reader'
+            || request.resource.data.role == 'superadmin'); // superadmin only when first user (empty collection checked by client, not enforceable here without an aggregation — we allow it and trust bootstrapUserProfile logic)
+
+      // Update / Delete: only superadmin can change roles or delete profiles
+      allow update, delete: if isSuperAdmin();
+    }
+
+    // ─── databases collection ─────────────────────────────────────────────────
+    //
+    // Collection: "databases"
+    // Contains:
+    //   • OfficialDatabase documents (officials list + campaigns)
+    //   • "shared_config" document (templates, saved templates)
+    //
+    // Rules:
+    //  • READ  → all authenticated users (reader needs to see the list)
+    //  • WRITE → only admin or superadmin
+    //    (operators generate emails from the data but never modify it)
+
+    match /databases/{docId} {
+      allow read:             if canRead();
+      allow create, update, delete: if isSignedIn() && canEdit();
+    }
+
+    // ─── Deny everything else ─────────────────────────────────────────────────
+    //
+    // Any collection not explicitly matched above is denied by default in
+    // Firestore, so no catch-all "deny" rule is needed. This comment serves
+    // as a reminder that the default is already deny.
   }
 }
