@@ -83,15 +83,16 @@ export default function App() {
     const [showForm, setShowForm] = useState(false);
     const [deleteId, setDeleteId] = useState<string | null>(null);
 
-    const [template, setTemplate] = useState<EmailTemplate>(() => {
-        const saved = localStorage.getItem('current_template');
-        return saved ? JSON.parse(saved) : { subject: '', body: 'Estimado/a {nombre},<br><br>Escriba aquí el contenido del correo...<br><br>Atentamente,<br>[Su Nombre]' };
+    const [template, setTemplate] = useState<EmailTemplate>({
+        subject: '',
+        body: 'Estimado/a {nombre},<br><br>Escribe aquí el contenido del correo...<br><br>Atentamente,<br>[Su Nombre]'
     });
 
-    const [savedTemplates, setSavedTemplates] = useState<SavedTemplate[]>(() => {
-        const saved = localStorage.getItem('saved_templates');
-        return saved ? JSON.parse(saved) : [];
-    });
+    const [savedTemplates, setSavedTemplates] = useState<SavedTemplate[]>([]);
+
+    // True once the Firestore shared config snapshot has arrived at least once
+    const [configLoaded, setConfigLoaded] = useState(false);
+
 
     const [files, setFiles] = useState<File[]>([]);
 
@@ -175,6 +176,7 @@ export default function App() {
                 if (config.savedTemplates) setSavedTemplates(config.savedTemplates);
                 if (config.sentHistory) setSentHistory(config.sentHistory);
             }
+            setConfigLoaded(true);
         });
 
         return () => {
@@ -457,22 +459,36 @@ export default function App() {
         e.target.value = '';
     };
 
-    // Template Handlers
-    const handleSaveTemplate = (name: string) => {
+    // Template Handlers — persist directly to Firestore for immediate response
+    const handleSaveTemplate = async (name: string) => {
         const newTemplate: SavedTemplate = {
             ...template,
             id: generateId(),
             name,
             createdAt: Date.now()
         };
-        setSavedTemplates(prev => [...prev, newTemplate]);
-        addToast("Plantilla guardada", 'success');
+        const updated = [...savedTemplates, newTemplate];
+        setSavedTemplates(updated);
+        try {
+            await dbService.saveSharedConfig({ template, savedTemplates: updated });
+            addToast(`Plantilla "${name}" guardada en Firebase`, 'success');
+        } catch (e) {
+            console.error('Error guardando plantilla:', e);
+            addToast('Error al guardar plantilla', 'error');
+        }
     };
 
-    const handleDeleteTemplate = (id: string) => {
+    const handleDeleteTemplate = async (id: string) => {
         if (window.confirm("¿Eliminar esta plantilla?")) {
-            setSavedTemplates(prev => prev.filter(t => t.id !== id));
-            addToast("Plantilla eliminada", 'success');
+            const updated = savedTemplates.filter(t => t.id !== id);
+            setSavedTemplates(updated);
+            try {
+                await dbService.saveSharedConfig({ template, savedTemplates: updated });
+                addToast("Plantilla eliminada", 'success');
+            } catch (e) {
+                console.error('Error eliminando plantilla:', e);
+                addToast('Error al eliminar plantilla', 'error');
+            }
         }
     };
 
@@ -811,82 +827,73 @@ export default function App() {
                     </p>
                 </div>
 
-                <nav className="flex-1 min-h-0 p-4 space-y-2.5 overflow-y-auto custom-scrollbar">
+                <nav className="flex-1 min-h-0 px-3 py-2 space-y-1">
                     <button
                         onClick={() => handleNavigate('dashboard')}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'dashboard' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'dashboard' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
                     >
-                        <LayoutDashboard className={`w-5 h-5 ${view === 'dashboard' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
+                        <LayoutDashboard className={`w-5 h-5 flex-shrink-0 ${view === 'dashboard' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
                         Dashboard
                     </button>
                     <button
                         onClick={() => handleNavigate('database')}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'database' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'database' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
                     >
-                        <Database className={`w-5 h-5 ${view === 'database' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
+                        <Database className={`w-5 h-5 flex-shrink-0 ${view === 'database' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
                         Base de Datos
                     </button>
                     <button
                         onClick={() => handleNavigate('orgChart')}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'orgChart' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'orgChart' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
                     >
-                        <Network className={`w-5 h-5 ${view === 'orgChart' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
+                        <Network className={`w-5 h-5 flex-shrink-0 ${view === 'orgChart' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
                         Organigrama
                     </button>
                     <button
                         onClick={() => handleNavigate('template')}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'template' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'template' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
                     >
-                        <FileEdit className={`w-5 h-5 ${view === 'template' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
+                        <FileEdit className={`w-5 h-5 flex-shrink-0 ${view === 'template' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
                         Editor Plantilla
                     </button>
                     <button
                         onClick={() => handleNavigate('generate')}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'generate' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'generate' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
                     >
-                        <Send className={`w-5 h-5 ${view === 'generate' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
+                        <Send className={`w-5 h-5 flex-shrink-0 ${view === 'generate' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
                         Generar y Enviar
                     </button>
                 </nav>
 
-                <div className="p-6 shrink-0">
-                    <div className="glass-panel rounded-2xl p-5 border border-slate-100 dark:border-white/5 shadow-2xl relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                        <p className="text-[11px] font-bold text-slate-500 dark:text-slate-500 uppercase tracking-widest mb-3">Estado del Sistema</p>
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="relative flex h-3 w-3">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                <div className="px-3 pb-3 pt-1 shrink-0">
+                    <div className="glass-panel rounded-xl p-3 border border-slate-100 dark:border-white/5 shadow-lg relative overflow-hidden">
+                        <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <div className="relative flex h-2.5 w-2.5 flex-shrink-0">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                                </div>
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate">{user.email}</span>
+                                    <span className="text-[10px] text-slate-500 dark:text-slate-500 uppercase tracking-wider">Admin · Online</span>
+                                </div>
                             </div>
-                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate max-w-[150px]">{activeDatabase.name}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <div className="relative flex h-3 w-3">
-                                <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
-                            </div>
-                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">v2.0 Campaigns</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-white/10 relative z-20">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 flex-shrink-0">
                                 <button
                                     onClick={() => setIsDarkMode(!isDarkMode)}
-                                    className="p-2 text-slate-500 hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400 hover:bg-slate-200 dark:hover:bg-white/5 rounded-xl transition-colors"
+                                    className="p-1.5 text-slate-500 hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400 hover:bg-slate-200 dark:hover:bg-white/5 rounded-lg transition-colors"
                                     title={isDarkMode ? "Modo Claro" : "Modo Oscuro"}
                                 >
                                     {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                                 </button>
-                                <div className="flex flex-col overflow-hidden">
-                                    <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300 truncate max-w-[100px]">{user.email}</span>
-                                    <span className="text-[10px] text-slate-500 dark:text-slate-500 uppercase">Admin</span>
-                                </div>
+                                <button
+                                    onClick={handleLogout}
+                                    className="p-1.5 text-slate-600 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-all"
+                                    title="Cerrar Sesión"
+                                >
+                                    <LogOut className="w-4 h-4" />
+                                </button>
                             </div>
-                            <button
-                                onClick={handleLogout}
-                                className="p-2.5 text-slate-600 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-all border border-transparent hover:border-red-200 dark:hover:border-red-800"
-                                title="Cerrar Sesión"
-                            >
-                                <LogOut className="w-5 h-5" />
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -1022,9 +1029,23 @@ export default function App() {
 
                         {view === 'template' && (
                             <div className="h-[calc(100vh-8rem)]">
-                                <div className="mb-4">
-                                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Editor de Plantilla</h2>
-                                    <p className="text-slate-500 dark:text-slate-400">Diseña el correo base. Ahora soporta Texto Enriquecido.</p>
+                                <div className="mb-4 flex items-start justify-between">
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Editor de Plantilla</h2>
+                                        <p className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                                            Diseña el correo base. Tus plantillas se guardan automáticamente en
+                                            <span className="inline-flex items-center gap-1 text-orange-500 dark:text-orange-400 font-medium">
+                                                <svg className="w-3.5 h-3.5" viewBox="0 0 32 32" fill="currentColor"><path d="M19.62 11.558l-3.203 9.983-3.202-9.983H6.501L3 21.541l-3.501-9.983H-2l4.001 11.425h2.8l3.201-9.184 3.2 9.184H14l4-11.425z" transform="translate(7 5)" /></svg>
+                                                Firebase
+                                            </span>
+                                        </p>
+                                    </div>
+                                    {!configLoaded && (
+                                        <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-dark-800 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                                            <span className="w-3 h-3 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></span>
+                                            Cargando plantillas...
+                                        </div>
+                                    )}
                                 </div>
                                 <TemplateEditor
                                     template={template}
@@ -1039,6 +1060,7 @@ export default function App() {
                                 />
                             </div>
                         )}
+
 
                         {view === 'generate' && (
                             <div className="space-y-6">

@@ -395,14 +395,19 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
 
         <div className="bg-white dark:bg-dark-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
           <div className="flex items-center gap-2 mb-3">
-            <Paperclip className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-            <h3 className="text-sm font-medium text-slate-800 dark:text-white">Adjuntos (Simulación)</h3>
+            <Paperclip className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
+            <h3 className="text-sm font-medium text-slate-800 dark:text-white">Adjuntos del Correo</h3>
+            {files.length > 0 && (
+              <span className="ml-auto text-xs font-bold bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-full">
+                {files.length} archivo(s)
+              </span>
+            )}
           </div>
 
-          <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-100 dark:border-blue-800/50 mb-4 flex items-start gap-3">
-            <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-blue-800 dark:text-blue-300">
-              Estos archivos se adjuntarán automáticamente en el archivo <strong>.EML</strong> generado.
+          <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800/50 mb-4 flex items-start gap-3">
+            <Info className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-green-800 dark:text-green-300">
+              Los archivos adjuntos se incluyen en el correo al usar <strong>Enviar Directo</strong> (Gmail API) y al descargar el archivo <strong>.EML</strong>.
             </p>
           </div>
 

@@ -1,37 +1,12 @@
 import React, { useState } from 'react';
-import { Mail, Lock, LogIn, Chrome, AlertCircle } from 'lucide-react';
-import { loginWithEmail, loginWithGoogle } from '../services/authService';
+import { Mail, Chrome, AlertCircle } from 'lucide-react';
+import { loginWithGoogle } from '../services/authService';
 
 interface LoginProps { }
 
 export const Login: React.FC<LoginProps> = () => {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-
-    const handleEmailLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!email || !password) {
-            setError('Por favor ingresa correo y contraseña.');
-            return;
-        }
-
-        setError(null);
-        setIsLoading(true);
-        try {
-            await loginWithEmail(email, password);
-        } catch (err: any) {
-            console.error(err);
-            if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-                setError('Credenciales incorrectas. Verifica tu correo y contraseña.');
-            } else {
-                setError('Ocurrió un error al intentar acceder.');
-            }
-        } finally {
-            setIsLoading(false);
-        }
-    };
 
     const handleGoogleLogin = async () => {
         setError(null);
@@ -41,7 +16,7 @@ export const Login: React.FC<LoginProps> = () => {
         } catch (err: any) {
             console.error(err);
             if (err.code !== 'auth/popup-closed-by-user') {
-                setError('Error al autenticar con Google.');
+                setError('Error al autenticar con Google. Asegúrate de usar tu cuenta institucional.');
             }
         } finally {
             setIsLoading(false);
@@ -66,6 +41,7 @@ export const Login: React.FC<LoginProps> = () => {
 
                 {/* Login Card */}
                 <div className="glass-panel p-8 bento-card border border-slate-100 dark:border-white/5 relative z-10 shadow-2xl">
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6 text-center">Acceso Institucional</h2>
 
                     {error && (
                         <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-3 text-red-400 text-sm animate-shake">
@@ -74,65 +50,27 @@ export const Login: React.FC<LoginProps> = () => {
                         </div>
                     )}
 
-                    <form onSubmit={handleEmailLogin} className="space-y-5">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">Correo Electrónico</label>
-                            <div className="relative group">
-                                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500 group-focus-within:text-primary-400 transition-colors" />
-                                <input
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full pl-11 pr-4 py-3 bg-white dark:bg-dark-900/50 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 text-slate-900 dark:text-white placeholder-slate-500 transition-all outline-none"
-                                    placeholder="admin@cftestatalaricayparinacota.cl"
-                                    disabled={isLoading}
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">Contraseña</label>
-                            <div className="relative group">
-                                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500 group-focus-within:text-primary-400 transition-colors" />
-                                <input
-                                    type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full pl-11 pr-4 py-3 bg-white dark:bg-dark-900/50 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 text-slate-900 dark:text-white placeholder-slate-500 transition-all outline-none"
-                                    placeholder="••••••••"
-                                    disabled={isLoading}
-                                />
-                            </div>
-                        </div>
+                    <div className="space-y-4">
+                        <p className="text-sm text-slate-600 dark:text-slate-400 text-center mb-6">
+                            Para acceder a la plataforma, por favor utiliza tu cuenta institucional de Google.
+                        </p>
 
                         <button
-                            type="submit"
+                            onClick={handleGoogleLogin}
                             disabled={isLoading}
-                            className="w-full relative group overflow-hidden flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-slate-900 dark:text-white border border-primary-500/50 shadow-[0_0_15px_rgba(99,102,241,0.2)] hover:shadow-[0_0_25px_rgba(99,102,241,0.4)] disabled:opacity-50 disabled:cursor-not-allowed transition-all mt-4"
+                            className="w-full flex items-center justify-center gap-3 py-4 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl font-bold text-slate-700 dark:text-slate-200 transition-all hover:-translate-y-1 shadow-lg shadow-slate-200/50 dark:shadow-none disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                         >
-                            <div className="absolute inset-0 bg-gradient-to-r from-primary-600 to-indigo-600 opacity-90 group-hover:opacity-100 transition-opacity"></div>
-                            <LogIn className="w-5 h-5 relative z-10" />
-                            <span className="relative z-10">{isLoading ? 'Accediendo...' : 'Iniciar Sesión'}</span>
+                            {isLoading ? (
+                                <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                                <Chrome className="w-6 h-6 text-primary-500" />
+                            )}
+                            {isLoading ? 'Autenticando...' : 'Iniciar Sesión con Google'}
                         </button>
-                    </form>
-
-                    <div className="my-6 flex items-center gap-4">
-                        <div className="flex-1 h-px bg-slate-900/5 dark:bg-white/5"></div>
-                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-500">O</span>
-                        <div className="flex-1 h-px bg-slate-900/5 dark:bg-white/5"></div>
                     </div>
 
-                    <button
-                        onClick={handleGoogleLogin}
-                        disabled={isLoading}
-                        className="w-full flex items-center justify-center gap-2 py-3 bg-slate-900/5 dark:bg-white/5 hover:bg-slate-900/10 dark:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl font-semibold text-slate-700 dark:text-slate-300 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                    >
-                        <Chrome className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-                        Continuar con Google
-                    </button>
-
-                    <p className="text-center text-xs text-slate-500 dark:text-slate-500 mt-6">
-                        Solo el personal autorizado puede acceder a esta plataforma.
+                    <p className="text-center text-xs text-slate-500 dark:text-slate-500 mt-8">
+                        Sistema restringido. El acceso está monitoreado y registrado exclusivamente para personal del CFT Estatal.
                     </p>
                 </div>
             </div>

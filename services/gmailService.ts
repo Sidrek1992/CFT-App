@@ -46,30 +46,46 @@ export const sendGmail = async (rawMessage: string) => {
 /**
  * Helper to build the raw MIME message string
  */
+/**
+ * Encode a subject line using RFC 2047 encoded-word so that accented
+ * characters (tildes, ñ, etc.) display correctly in Gmail.
+ */
+const encodeSubject = (subject: string): string => {
+    // Only encode if the subject contains non-ASCII characters
+    if (/[\u0080-\uFFFF]/.test(subject)) {
+        const utf8Bytes = new TextEncoder().encode(subject);
+        const base64 = btoa(String.fromCharCode(...utf8Bytes));
+        return `=?UTF-8?B?${base64}?=`;
+    }
+    return subject;
+};
+
 export const buildRawMessage = async (to: string, subject: string, bodyHTML: string, cc?: string, files: File[] = []) => {
     const boundary = `----=_NextPart_${Date.now()}`;
+    const encodedSubject = encodeSubject(subject);
 
     let message = `To: ${to}\n`;
     if (cc) message += `Cc: ${cc}\n`;
-    message += `Subject: ${subject}\n`;
+    message += `Subject: ${encodedSubject}\n`;
     message += `MIME-Version: 1.0\n`;
     message += `Content-Type: multipart/mixed; boundary="${boundary}"\n\n`;
 
     // HTML Part
     message += `--${boundary}\n`;
     message += `Content-Type: text/html; charset="utf-8"\n`;
-    message += `Content-Transfer-Encoding: 7bit\n\n`;
+    message += `Content-Transfer-Encoding: quoted-printable\n\n`;
     message += `<html><body style="font-family: sans-serif;">${bodyHTML}</body></html>\n\n`;
 
     // Attachments
     for (const file of files) {
         const base64 = await fileToBase64(file);
+        const safeFilename = encodeSubject(file.name); // RFC 2047 encode filename if needed
         message += `--${boundary}\n`;
-        message += `Content-Type: ${file.type || 'application/octet-stream'}; name="${file.name}"\n`;
-        message += `Content-Disposition: attachment; filename="${file.name}"\n`;
+        message += `Content-Type: ${file.type || 'application/octet-stream'}; name="${safeFilename}"\n`;
+        message += `Content-Disposition: attachment; filename="${safeFilename}"\n`;
         message += `Content-Transfer-Encoding: base64\n\n`;
 
-        // Break base64 into 76-character lines
+        // Break base64 into 76-character lines (RFC 2045)
         const chunks = base64.match(/.{1,76}/g) || [];
         message += chunks.join('\n') + `\n\n`;
     }
