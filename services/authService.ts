@@ -12,6 +12,8 @@ import {
 
 const googleProvider = new GoogleAuthProvider();
 googleProvider.addScope('https://www.googleapis.com/auth/gmail.send');
+googleProvider.addScope('https://www.googleapis.com/auth/gmail.readonly');
+googleProvider.addScope('https://www.googleapis.com/auth/gmail.modify');
 
 export const loginWithGoogle = async () => {
     try {
@@ -39,6 +41,8 @@ export const loginWithGoogle = async () => {
 export const reauthorizeWithGoogle = async (): Promise<string> => {
     const gmailProvider = new GoogleAuthProvider();
     gmailProvider.addScope('https://www.googleapis.com/auth/gmail.send');
+    gmailProvider.addScope('https://www.googleapis.com/auth/gmail.readonly');
+    gmailProvider.addScope('https://www.googleapis.com/auth/gmail.modify');
     // Force account selection so the user can pick the right account
     gmailProvider.setCustomParameters({ prompt: 'consent' });
 
