@@ -18,6 +18,7 @@ export interface Official {
   bossName: string;
   bossPosition: string;
   bossEmail: string;
+  profileImage?: string; // New field: Profile image URL
 }
 
 export interface EmailLog {
@@ -60,11 +61,11 @@ export interface EmailTemplate {
 export type TemplateCategory = 'Notificaciones' | 'Evaluaciones' | 'Recordatorios' | 'Convocatorias' | 'General';
 
 export const TEMPLATE_CATEGORIES: TemplateCategory[] = [
-    'Notificaciones',
-    'Evaluaciones',
-    'Recordatorios',
-    'Convocatorias',
-    'General',
+  'Notificaciones',
+  'Evaluaciones',
+  'Recordatorios',
+  'Convocatorias',
+  'General',
 ];
 
 export interface SavedTemplate extends EmailTemplate {
@@ -97,35 +98,35 @@ export type ViewState = 'dashboard' | 'database' | 'orgChart' | 'template' | 'ge
 export type UserRole = 'superadmin' | 'admin' | 'operator' | 'reader';
 
 export interface UserProfile {
-    uid: string;
-    email: string;
-    displayName: string;
-    photoURL?: string;
-    role: UserRole;
-    createdAt: number;
-    updatedAt: number;
-    createdBy?: string; // uid of the admin who assigned the role
+  uid: string;
+  email: string;
+  displayName: string;
+  photoURL?: string;
+  role: UserRole;
+  createdAt: number;
+  updatedAt: number;
+  createdBy?: string; // uid of the admin who assigned the role
 }
 
 export const ROLE_LABELS: Record<UserRole, string> = {
-    superadmin: 'Superadmin',
-    admin: 'Administrador',
-    operator: 'Operador',
-    reader: 'Lector',
+  superadmin: 'Superadmin',
+  admin: 'Administrador',
+  operator: 'Operador',
+  reader: 'Lector',
 };
 
 export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
-    superadmin: 'Acceso total. Gestiona roles y todos los módulos.',
-    admin: 'CRUD completo en base de datos, plantillas y campañas.',
-    operator: 'Puede generar y enviar correos. No puede editar la BD.',
-    reader: 'Solo lectura: dashboards, listas y registros de envío.',
+  superadmin: 'Acceso total. Gestiona roles y todos los módulos.',
+  admin: 'CRUD completo en base de datos, plantillas y campañas.',
+  operator: 'Puede generar y enviar correos. No puede editar la BD.',
+  reader: 'Solo lectura: dashboards, listas y registros de envío.',
 };
 
 export const ROLE_COLORS: Record<UserRole, string> = {
-    superadmin: 'bg-red-500/20 text-red-400 border-red-500/30',
-    admin: 'bg-primary-500/20 text-primary-400 border-primary-500/30',
-    operator: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-    reader: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
+  superadmin: 'bg-red-500/20 text-red-400 border-red-500/30',
+  admin: 'bg-primary-500/20 text-primary-400 border-primary-500/30',
+  operator: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  reader: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
 };
 
 export interface ToastNotification {
