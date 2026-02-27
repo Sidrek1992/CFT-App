@@ -331,7 +331,14 @@ export const OrgChart: React.FC<OrgChartProps> = ({ officials }) => {
         const parent = nodeMap.get(o.parentId)!;
         (parent.children ??= []).push(node);
       } else {
-        if (o.bossName) orphans++;
+        if (o.bossName) {
+          orphans++;
+          // DIAGNÓSTICO: mostrar qué bossName no matchea y contra qué nombres existe
+          const normBoss = normalize(o.bossName);
+          const knownNames = Array.from(nameToId.keys());
+          const closest = knownNames.filter(n => n.includes(normBoss) || normBoss.includes(n));
+          console.warn(`[OrgChart] Huérfano: "${o.name}" → bossName="${o.bossName}" (norm="${normBoss}") | Posibles coincidencias:`, closest);
+        }
         roots.push(node);
       }
     });
