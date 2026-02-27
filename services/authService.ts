@@ -29,27 +29,6 @@ export const loginWithGoogle = async () => {
     }
 };
 
-export const loginWithEmail = async (email: string, password: string) => {
-    try {
-        const result = await signInWithEmailAndPassword(auth, email, password);
-        return result.user;
-    } catch (error) {
-        console.error("Error signing in with Email", error);
-        throw error;
-    }
-};
-
-// Expose register for admin (but we will not show it in UI for everyone)
-export const registerUser = async (email: string, password: string) => {
-    try {
-        const result = await createUserWithEmailAndPassword(auth, email, password);
-        return result.user;
-    } catch (error) {
-        console.error("Error registering user", error);
-        throw error;
-    }
-};
-
 export const logout = async () => {
     try {
         await signOut(auth);
