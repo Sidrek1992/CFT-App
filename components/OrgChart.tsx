@@ -23,7 +23,7 @@ const COLORS = [
 ];
 
 const normalize = (text: string) =>
-  text.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  text.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
 
 // Helper to get color for a department
 function getDepartmentColor(department: string, map: Map<string, string>) {
@@ -575,10 +575,12 @@ export const OrgChart: React.FC<OrgChartProps> = ({ officials }) => {
             toggleExpandAll={toggleExpandAll}
             expandAllState={expandAll}
           />
-          <TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-full !h-full">
+          <TransformComponent wrapperClass="!w-full !h-full" contentClass="">
             <div
-              className="w-full h-full cursor-grab active:cursor-grabbing"
+              className="cursor-grab active:cursor-grabbing"
               style={{
+                width: bounds.width || '100%',
+                height: bounds.height || '100%',
                 background: 'radial-gradient(circle, var(--dot-color, #cbd5e1) 1.5px, transparent 1px)',
                 backgroundSize: '30px 30px',
               }}
