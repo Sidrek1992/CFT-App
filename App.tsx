@@ -849,8 +849,8 @@ export default function App() {
                             <Briefcase className="text-white w-6 h-6" />
                         </div>
                         <div>
-                            <h1 className="text-slate-900 dark:text-white font-extrabold text-xl tracking-tight">Gestor AI</h1>
-                            <p className="text-xs font-medium text-primary-600 dark:text-primary-400 uppercase tracking-widest mt-0.5">Premium</p>
+                            <h1 className="text-slate-900 dark:text-white font-extrabold text-xl tracking-tight">GDP Cloud</h1>
+                            <p className="text-xs font-medium text-primary-600 dark:text-primary-400 uppercase tracking-widest mt-0.5">Gestor Email</p>
                         </div>
                     </div>
                     <button

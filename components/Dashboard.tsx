@@ -160,7 +160,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <div className="absolute bottom-0 left-0 w-40 h-40 bg-indigo-500/20 rounded-full blur-[60px] -ml-10 -mb-10 group-hover:bg-indigo-500/30 transition-colors duration-700"></div>
                     <div className="relative z-10">
                         <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2 leading-tight">
-                            Panel de Control <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-indigo-400">Premium</span>
+                            GDP Cloud <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-indigo-400">Gestor Email</span>
                         </h2>
                         <p className="text-slate-600 dark:text-slate-400 text-sm max-w-lg mb-8">
                             Gestiona tu base de datos y campañas con una interfaz fluida. Has contactado al <strong className="text-primary-400">{progressPercent}%</strong> de tu registro actual.
