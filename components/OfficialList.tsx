@@ -18,6 +18,8 @@ interface OfficialListProps {
   onSortChange: (option: SortOption) => void;
   initialFilter?: FilterCriteria;
   onClearFilter: () => void;
+  /** Opens the Quick View drawer for a given official */
+  onQuickView?: (official: Official) => void;
 }
 
 // Helper for accent-insensitive search
@@ -39,7 +41,7 @@ const getFilterLabel = (type: string, value?: string) => {
 };
 
 export const OfficialList: React.FC<OfficialListProps> = ({
-  officials, onEdit, onDelete, onBulkDelete, onBulkUpdate, sortOption, onSortChange, initialFilter, onClearFilter
+  officials, onEdit, onDelete, onBulkDelete, onBulkUpdate, sortOption, onSortChange, initialFilter, onClearFilter, onQuickView
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState('Todos');
@@ -76,6 +78,11 @@ export const OfficialList: React.FC<OfficialListProps> = ({
         setSelectedBoss('Todos');
       } else if (['missingBoss', 'missingGender', 'invalidEmail'].includes(initialFilter.type)) {
         // When filtering by errors, reset standard filters to ensure errors are visible
+        setSelectedDept('Todos');
+        setSelectedBoss('Todos');
+      } else if (initialFilter.type === 'search' && initialFilter.value) {
+        // Pre-fill search box so the duplicate profile is immediately visible
+        setSearchTerm(initialFilter.value);
         setSelectedDept('Todos');
         setSelectedBoss('Todos');
       } else if (initialFilter.type === 'none') {
@@ -330,7 +337,7 @@ export const OfficialList: React.FC<OfficialListProps> = ({
       )}
 
       {/* Active Filter Banner */}
-      {initialFilter && initialFilter.type !== 'none' && (
+      {initialFilter && initialFilter.type !== 'none' && initialFilter.type !== 'search' && (
         <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center gap-2 text-amber-900 dark:text-amber-300">
             <Filter className="w-4 h-4 text-amber-600 dark:text-amber-400" />
@@ -445,9 +452,13 @@ export const OfficialList: React.FC<OfficialListProps> = ({
                 </tr>
               ) : (
                 pagedOfficials.map((official) => (
-                  <tr key={official.id} className={`transition-colors ${selectedIds.includes(official.id) ? 'bg-indigo-50/50 dark:bg-indigo-950/20' : 'hover:bg-slate-50 dark:hover:bg-dark-700/50'}`}>
+                  <tr
+                    key={official.id}
+                    onClick={() => onQuickView?.(official)}
+                    className={`transition-colors ${onQuickView ? 'cursor-pointer' : ''} ${selectedIds.includes(official.id) ? 'bg-indigo-50/50 dark:bg-indigo-950/20' : 'hover:bg-slate-50 dark:hover:bg-dark-700/50'}`}
+                  >
                     <td className="px-3 py-3">
-                      <button onClick={() => toggleSelectOne(official.id)} className="flex items-center text-slate-600 dark:text-slate-400 hover:text-indigo-600">
+                      <button onClick={(e) => { e.stopPropagation(); toggleSelectOne(official.id); }} className="flex items-center text-slate-600 dark:text-slate-400 hover:text-indigo-600">
                         {selectedIds.includes(official.id) ? (
                           <CheckSquare className="w-4 h-4 text-indigo-600" />
                         ) : (
@@ -495,11 +506,12 @@ export const OfficialList: React.FC<OfficialListProps> = ({
                       <span className="truncate block">{official.position}</span>
                     </td>
 
-                    {/* Clickable Email Column */}
+                     {/* Clickable Email Column */}
                     <td
                       className="px-3 py-3 text-sm max-w-[160px]"
                       onMouseEnter={(e) => handleMouseEnterTextTooltip(e, official.email)}
                       onMouseLeave={handleMouseLeaveTooltip}
+                      onClick={(e) => e.stopPropagation()}
                     >
                       {official.email ? (
                         <a
@@ -529,11 +541,22 @@ export const OfficialList: React.FC<OfficialListProps> = ({
 
                     <td className="px-3 py-3 text-right">
                       <div className="flex justify-end gap-1">
+                        {onQuickView && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onQuickView(official); }}
+                            className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-md transition-colors"
+                            title="Vista rápida"
+                          >
+                            <UserCircle2 className="w-3.5 h-3.5 pointer-events-none" />
+                          </button>
+                        )}
                         {onEdit && (
                           <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); onEdit(official); }}
                             className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-md transition-colors"
+                            title="Editar"
                           >
                             <Edit2 className="w-3.5 h-3.5 pointer-events-none" />
                           </button>
@@ -543,6 +566,7 @@ export const OfficialList: React.FC<OfficialListProps> = ({
                             type="button"
                             onClick={(e) => { e.stopPropagation(); onDelete(official.id); }}
                             className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition-colors"
+                            title="Eliminar"
                           >
                             <Trash2 className="w-3.5 h-3.5 pointer-events-none" />
                           </button>

@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useImperativeHandle, forwardRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Heading from '@tiptap/extension-heading';
@@ -14,6 +14,11 @@ interface EmailEditorProps {
     content: string;
     onChange: (content: string) => void;
     disabled?: boolean;
+}
+
+export interface EmailEditorHandle {
+    /** Insert text/HTML at the current cursor position inside Tiptap */
+    insertContent: (text: string) => void;
 }
 
 const MenuBar = ({ editor }: { editor: any }) => {
@@ -168,7 +173,8 @@ const MenuBar = ({ editor }: { editor: any }) => {
     );
 };
 
-export const EmailEditor: React.FC<EmailEditorProps> = ({ content, onChange, disabled = false }) => {
+export const EmailEditor = forwardRef<EmailEditorHandle, EmailEditorProps>(
+  ({ content, onChange, disabled = false }, ref) => {
     const editor = useEditor({
         extensions: [
             StarterKit.configure({
@@ -210,6 +216,14 @@ export const EmailEditor: React.FC<EmailEditorProps> = ({ content, onChange, dis
         }
     }, [content, editor]);
 
+    // Expose insertContent to parent components via ref
+    useImperativeHandle(ref, () => ({
+        insertContent: (text: string) => {
+            if (!editor) return;
+            editor.chain().focus().insertContent(text).run();
+        },
+    }), [editor]);
+
     return (
         <div
             className={`relative flex flex-col border border-slate-200 dark:border-white/10 rounded-xl bg-white dark:bg-dark-900/40 shadow-inner ${disabled ? 'opacity-80' : ''}`}
@@ -218,4 +232,5 @@ export const EmailEditor: React.FC<EmailEditorProps> = ({ content, onChange, dis
             <EditorContent editor={editor} />
         </div>
     );
-};
+  }
+);

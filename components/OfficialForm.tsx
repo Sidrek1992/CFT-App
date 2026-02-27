@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Official, Gender } from '../types';
 import { detectGenderAndTitle } from '../services/geminiService';
-import { Sparkles, User, Mail, Briefcase, Save, X, Building2, Crown, Eraser, BadgeCheck, UserCheck } from 'lucide-react';
+import { Sparkles, User, Mail, Briefcase, Save, X, Building2, Crown, Eraser, BadgeCheck, UserCheck, AlertTriangle, Eye } from 'lucide-react';
 import { Combobox } from './Combobox';
 
 interface OfficialFormProps {
@@ -9,9 +9,21 @@ interface OfficialFormProps {
   existingOfficials: Official[];
   onSave: (official: Omit<Official, 'id'>) => void;
   onCancel: () => void;
+  onViewProfile?: (official: Official) => void;
 }
 
-export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existingOfficials, onSave, onCancel }) => {
+// ─── Normalize helper (strips accents, lowercases, trims) ────────────────────
+const normalizeStr = (s: string) =>
+  s.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+// ─── Duplicate-match reasons ─────────────────────────────────────────────────
+type MatchReason = 'name' | 'email';
+interface DuplicateMatch {
+  official: Official;
+  reasons: MatchReason[];
+}
+
+export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existingOfficials, onSave, onCancel, onViewProfile }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [department, setDepartment] = useState('');
@@ -112,6 +124,48 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
     return [...new Set([...historicEmails, ...activeBossEmails])].filter(e => e && e.trim().length > 0).sort();
   }, [existingOfficials, registeredBosses]);
 
+  // ── Duplicate detection ────────────────────────────────────────────────────
+  // Runs in real-time as the user types; excludes the record being edited.
+  const duplicateMatch = useMemo<DuplicateMatch | null>(() => {
+    const normName  = normalizeStr(name);
+    const normEmail = normalizeStr(email);
+
+    // Need at least 3 chars in name OR a non-trivial email to start matching
+    const nameReady  = normName.length >= 3;
+    const emailReady = normEmail.includes('@') && normEmail.length > 5;
+
+    if (!nameReady && !emailReady) return null;
+
+    for (const o of existingOfficials) {
+      // Skip the official being edited
+      if (initialData && o.id === initialData.id) continue;
+
+      const reasons: MatchReason[] = [];
+
+      if (nameReady && normalizeStr(o.name) === normName) {
+        reasons.push('name');
+      }
+      if (emailReady && normalizeStr(o.email) === normEmail) {
+        reasons.push('email');
+      }
+
+      if (reasons.length > 0) return { official: o, reasons };
+    }
+    return null;
+  }, [name, email, existingOfficials, initialData]);
+
+  const [dismissedDuplicateId, setDismissedDuplicateId] = useState<string | null>(null);
+
+  // Reset dismissal whenever the matched duplicate changes
+  useEffect(() => {
+    if (duplicateMatch?.official.id !== dismissedDuplicateId) {
+      setDismissedDuplicateId(null);
+    }
+  }, [duplicateMatch?.official.id]);
+
+  const showDuplicateAlert =
+    duplicateMatch !== null && duplicateMatch.official.id !== dismissedDuplicateId;
+
   const handleAnalyzeName = async () => {
     if (!name) return;
     setIsAnalyzing(true);
@@ -210,6 +264,44 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
             </button>
         </div>
       </div>
+
+      {/* ── Duplicate Alert ── */}
+      {showDuplicateAlert && duplicateMatch && (
+        <div className="mb-4 flex items-start gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-700/60 rounded-xl animate-in fade-in slide-in-from-top-2 duration-300">
+          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+              Este funcionario ya parece existir
+            </p>
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+              <span className="font-medium">{duplicateMatch.official.name}</span>
+              {' '}({duplicateMatch.official.position || duplicateMatch.official.email})
+              {' · '}
+              {duplicateMatch.reasons.map(r => r === 'name' ? 'nombre coincide' : 'correo coincide').join(' y ')}
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {onViewProfile && (
+              <button
+                type="button"
+                onClick={() => onViewProfile(duplicateMatch.official)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 hover:bg-amber-200 dark:hover:bg-amber-800/60 rounded-lg transition-colors"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                Ver perfil
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setDismissedDuplicateId(duplicateMatch.official.id)}
+              className="p-1.5 text-amber-400 hover:text-amber-600 dark:hover:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-lg transition-colors"
+              title="Ignorar"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Personal Info Section */}

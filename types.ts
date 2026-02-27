@@ -138,6 +138,6 @@ export interface ToastNotification {
 export type SortOption = 'name' | 'surname' | 'department';
 
 export interface FilterCriteria {
-  type: 'none' | 'missingBoss' | 'missingGender' | 'invalidEmail' | 'department';
+  type: 'none' | 'missingBoss' | 'missingGender' | 'invalidEmail' | 'department' | 'search';
   value?: string;
 }

@@ -562,138 +562,134 @@ export const OrgChart: React.FC<OrgChartProps> = ({ officials }) => {
           centerOnInit={true}
           wheel={{ step: 0.1 }}
         >
-          {({ zoomIn, zoomOut, resetTransform }) => (
-            <>
-              <Controls
-                layout={layout} setLayout={setLayout}
-                onExportPDF={handleExportPDF} onExportPNG={handleExportPNG}
-                isExporting={isExporting}
-                toggleExpandAll={toggleExpandAll}
-                expandAllState={expandAll}
-              />
-              <TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-full !h-full">
-                <div
-                  className="w-full h-full cursor-grab active:cursor-grabbing"
-                  style={{
-                    background: 'radial-gradient(circle, var(--dot-color, #cbd5e1) 1.5px, transparent 1px)',
-                    backgroundSize: '30px 30px',
-                  }}
-                >
-                  <style>{`
-                    .dark .cursor-grab { --dot-color: #334155; }
-                    .cursor-grab { --dot-color: #cbd5e1; }
-                    @media print {
-                      body * { visibility: hidden; }
-                      #org-chart-print-area, #org-chart-print-area * { visibility: visible; }
-                      #org-chart-print-area { position: absolute; left: 0; top: 0; width: 100vw; height: 100vh; background: white !important; }
-                      .print-hide { display: none !important; }
-                    }
-                  `}</style>
+          <Controls
+            layout={layout} setLayout={setLayout}
+            onExportPDF={handleExportPDF} onExportPNG={handleExportPNG}
+            isExporting={isExporting}
+            toggleExpandAll={toggleExpandAll}
+            expandAllState={expandAll}
+          />
+          <TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-full !h-full">
+            <div
+              className="w-full h-full cursor-grab active:cursor-grabbing"
+              style={{
+                background: 'radial-gradient(circle, var(--dot-color, #cbd5e1) 1.5px, transparent 1px)',
+                backgroundSize: '30px 30px',
+              }}
+            >
+              <style>{`
+                .dark .cursor-grab { --dot-color: #334155; }
+                .cursor-grab { --dot-color: #cbd5e1; }
+                @media print {
+                  body * { visibility: hidden; }
+                  #org-chart-print-area, #org-chart-print-area * { visibility: visible; }
+                  #org-chart-print-area { position: absolute; left: 0; top: 0; width: 100vw; height: 100vh; background: white !important; }
+                  .print-hide { display: none !important; }
+                }
+              `}</style>
 
-                  <div
-                    id="org-chart-print-area"
-                    ref={chartRef}
-                    className="relative"
-                    style={{
-                      width: bounds.width,
-                      height: bounds.height,
-                      transform: `translate(${-bounds.minX}px, ${-bounds.minY}px)`,
-                      transformOrigin: '0 0'
-                    }}
-                  >
-                    {/* SVG Links */}
-                    <svg className="absolute inset-0 pointer-events-none w-full h-full overflow-visible">
-                      <AnimatePresence>
-                        {links.map((link: any) => {
-                          const id = `${link.source.data.id}-${link.target.data.id}`;
+              <div
+                id="org-chart-print-area"
+                ref={chartRef}
+                className="relative"
+                style={{
+                  width: bounds.width,
+                  height: bounds.height,
+                  transform: `translate(${-bounds.minX}px, ${-bounds.minY}px)`,
+                  transformOrigin: '0 0'
+                }}
+              >
+                {/* SVG Links */}
+                <svg className="absolute inset-0 pointer-events-none w-full h-full overflow-visible">
+                  <AnimatePresence>
+                    {links.map((link: any) => {
+                      const id = `${link.source.data.id}-${link.target.data.id}`;
 
-                          // Path generator based on layout
-                          let d = '';
-                          if (layout === 'vertical') {
-                            const sx = link.source.x;
-                            const sy = link.source.y + NODE_H / 2;
-                            const tx = link.target.x;
-                            const ty = link.target.y - NODE_H / 2;
-                            const midY = (sy + ty) / 2;
-                            d = `M ${sx} ${sy} C ${sx} ${midY}, ${tx} ${midY}, ${tx} ${ty}`;
-                          } else {
-                            const sx = link.source.y + NODE_W / 2;
-                            const sy = link.source.x;
-                            const tx = link.target.y - NODE_W / 2;
-                            const ty = link.target.x;
-                            const midX = (sx + tx) / 2;
-                            d = `M ${sx} ${sy} C ${midX} ${sy}, ${midX} ${ty}, ${tx} ${ty}`;
-                          }
+                      // Path generator based on layout
+                      let d = '';
+                      if (layout === 'vertical') {
+                        const sx = link.source.x;
+                        const sy = link.source.y + NODE_H / 2;
+                        const tx = link.target.x;
+                        const ty = link.target.y - NODE_H / 2;
+                        const midY = (sy + ty) / 2;
+                        d = `M ${sx} ${sy} C ${sx} ${midY}, ${tx} ${midY}, ${tx} ${ty}`;
+                      } else {
+                        const sx = link.source.y + NODE_W / 2;
+                        const sy = link.source.x;
+                        const tx = link.target.y - NODE_W / 2;
+                        const ty = link.target.x;
+                        const midX = (sx + tx) / 2;
+                        d = `M ${sx} ${sy} C ${midX} ${sy}, ${midX} ${ty}, ${tx} ${ty}`;
+                      }
 
-                          const isPathHighlighted = normQuery ? matchedPath.has(link.source.data.id) && matchedPath.has(link.target.data.id) : false;
-                          const isDimmed = normQuery && !isPathHighlighted;
+                      const isPathHighlighted = normQuery ? matchedPath.has(link.source.data.id) && matchedPath.has(link.target.data.id) : false;
+                      const isDimmed = normQuery && !isPathHighlighted;
 
-                          return (
-                            <motion.path
-                              key={id}
-                              initial={{ opacity: 0, pathLength: 0 }}
-                              animate={{ opacity: isDimmed ? 0.2 : 1, pathLength: 1, d }}
-                              exit={{ opacity: 0 }}
-                              transition={{ duration: 0.4, ease: "easeInOut" }}
-                              fill="none"
-                              stroke={isPathHighlighted ? '#818cf8' : 'currentColor'}
-                              strokeWidth={isPathHighlighted ? 3 : 2}
-                              className={`text-slate-300 dark:text-slate-600 transition-colors duration-300`}
-                            />
-                          );
-                        })}
-                      </AnimatePresence>
-                    </svg>
+                      return (
+                        <motion.path
+                          key={id}
+                          initial={{ opacity: 0, pathLength: 0 }}
+                          animate={{ opacity: isDimmed ? 0.2 : 1, pathLength: 1, d }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.4, ease: "easeInOut" }}
+                          fill="none"
+                          stroke={isPathHighlighted ? '#818cf8' : 'currentColor'}
+                          strokeWidth={isPathHighlighted ? 3 : 2}
+                          className={`text-slate-300 dark:text-slate-600 transition-colors duration-300`}
+                        />
+                      );
+                    })}
+                  </AnimatePresence>
+                </svg>
 
-                    {/* Nodes */}
-                    <AnimatePresence>
-                      {nodes.map((node: any) => {
-                        if (node.data.id === 'dummy_root') return null; // Hide dummy root
+                {/* Nodes */}
+                <AnimatePresence>
+                  {nodes.map((node: any) => {
+                    if (node.data.id === 'dummy_root') return null; // Hide dummy root
 
-                        const x = layout === 'vertical' ? node.x : node.y;
-                        const y = layout === 'vertical' ? node.y : node.x;
+                    const x = layout === 'vertical' ? node.x : node.y;
+                    const y = layout === 'vertical' ? node.y : node.x;
 
-                        const isHighlighted = normQuery ? matchedPath.has(node.data.id) : false;
-                        const isDimmed = normQuery ? !isHighlighted : false;
-                        const isSelected = selectedNode?.data.id === node.data.id;
-                        const isCollapsed = collapsedNodes.has(node.data.id);
-                        const deptColor = getDepartmentColor(node.data.department, deptColors);
+                    const isHighlighted = normQuery ? matchedPath.has(node.data.id) : false;
+                    const isDimmed = normQuery ? !isHighlighted : false;
+                    const isSelected = selectedNode?.data.id === node.data.id;
+                    const isCollapsed = collapsedNodes.has(node.data.id);
+                    const deptColor = getDepartmentColor(node.data.department, deptColors);
 
-                        return (
-                          <motion.div
-                            id={`node-${node.data.id}`}
-                            key={node.data.id}
-                            className="absolute"
-                            initial={{ opacity: 0, scale: 0.5, x: x - NODE_W / 2, y: y - NODE_H / 2 }}
-                            animate={{ opacity: 1, scale: 1, x: x - NODE_W / 2, y: y - NODE_H / 2 }}
-                            exit={{ opacity: 0, scale: 0.5 }}
-                            transition={{ duration: 0.4, ease: "easeOut" }}
-                            style={{
-                              width: NODE_W,
-                              height: NODE_H,
-                              zIndex: isSelected || isHighlighted ? 20 : 10
-                            }}
-                          >
-                            <NodeCard
-                              node={node}
-                              isHighlighted={isHighlighted}
-                              isDimmed={isDimmed}
-                              isSelected={isSelected}
-                              isCollapsed={isCollapsed}
-                              deptColor={deptColor}
-                              layout={layout}
-                              onClick={(n: any) => setSelectedNode(prev => prev?.data.id === n.data.id ? null : n)}
-                              onToggleCollapse={toggleCollapse}
-                            />
-                          </motion.div>
-                        )
-                      })}
-                    </AnimatePresence>
-                  </div>
-                </div>
-              </TransformComponent>
-            </>
-          )}
+                    return (
+                      <motion.div
+                        id={`node-${node.data.id}`}
+                        key={node.data.id}
+                        className="absolute"
+                        initial={{ opacity: 0, scale: 0.5, x: x - NODE_W / 2, y: y - NODE_H / 2 }}
+                        animate={{ opacity: 1, scale: 1, x: x - NODE_W / 2, y: y - NODE_H / 2 }}
+                        exit={{ opacity: 0, scale: 0.5 }}
+                        transition={{ duration: 0.4, ease: "easeOut" }}
+                        style={{
+                          width: NODE_W,
+                          height: NODE_H,
+                          zIndex: isSelected || isHighlighted ? 20 : 10
+                        }}
+                      >
+                        <NodeCard
+                          node={node}
+                          isHighlighted={isHighlighted}
+                          isDimmed={isDimmed}
+                          isSelected={isSelected}
+                          isCollapsed={isCollapsed}
+                          deptColor={deptColor}
+                          layout={layout}
+                          onClick={(n: any) => setSelectedNode(prev => prev?.data.id === n.data.id ? null : n)}
+                          onToggleCollapse={toggleCollapse}
+                        />
+                      </motion.div>
+                    )
+                  })}
+                </AnimatePresence>
+              </div>
+            </div>
+          </TransformComponent>
         </TransformWrapper>
       </div>
 

@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { EmailTemplate, Official, SavedTemplate, Gender, TemplateCategory, TEMPLATE_CATEGORIES } from '../types';
 import { generateTemplateWithAI } from '../services/geminiService';
-import { EmailEditor } from './EmailEditor';
+import { EmailEditor, EmailEditorHandle } from './EmailEditor';
 import { FileText, Paperclip, Info, Sparkles, Eye, Save, Bookmark, Trash2, Download, CloudUpload, Upload, FileJson, Search, Archive, ArchiveRestore, HardDrive, Loader2 } from 'lucide-react';
 import { openDrivePicker } from '../services/driveService';
 
@@ -52,6 +52,7 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
   const [showArchived, setShowArchived] = useState(false);
 
   const templateFileInputRef = useRef<HTMLInputElement>(null);
+  const emailEditorRef = useRef<EmailEditorHandle>(null);
 
   // Preview Logic
   const previewOfficial = officials[0];
@@ -108,16 +109,7 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
   }, [template]);
 
   const insertVariable = (variable: string) => {
-    // Basic insertion for RichText - appends to end if not focused or inserts at cursor
-    // Since we use contentEditable, explicit cursor tracking is complex. 
-    // We'll append it to the body for simplicity in this implementation, 
-    // or rely on the user copying it.
-    // Better approach: execCommand insertHTML
-    const editor = document.getElementById('body-editor');
-    if (editor) {
-      editor.focus();
-      document.execCommand('insertText', false, variable);
-    }
+    emailEditorRef.current?.insertContent(variable);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -426,6 +418,7 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
 
             <div className="relative">
               <EmailEditor
+                ref={emailEditorRef}
                 content={template.body}
                 onChange={(newHtml) => onChange({ ...template, body: newHtml })}
               />
