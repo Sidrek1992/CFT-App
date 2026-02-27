@@ -1,5 +1,37 @@
 
-import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useMemo, lazy, Suspense, Component, ErrorInfo } from 'react';
+
+// ─── Error Boundary for safe lazy component rendering ─────────────────────────
+class OrgChartErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean; error: Error | null }> {
+    constructor(props: { children: React.ReactNode }) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+    static getDerivedStateFromError(error: Error) {
+        return { hasError: true, error };
+    }
+    componentDidCatch(error: Error, info: ErrorInfo) {
+        console.error('[OrgChart] Runtime error:', error, info);
+    }
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="h-[calc(100vh-140px)] flex flex-col items-center justify-center bg-slate-50 dark:bg-dark-900/50 rounded-xl border border-slate-200 dark:border-slate-700 text-center p-8">
+                    <AlertTriangle className="w-12 h-12 text-amber-400 mb-4" />
+                    <p className="text-lg font-semibold text-slate-700 dark:text-slate-200">Error al cargar el Organigrama</p>
+                    <p className="text-sm text-slate-400 dark:text-slate-500 mt-1 mb-4">{this.state.error?.message ?? 'Error desconocido'}</p>
+                    <button
+                        onClick={() => this.setState({ hasError: false, error: null })}
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
+                    >
+                        Reintentar
+                    </button>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
 import { FileEdit, Send, Plus, Database, LayoutDashboard, Upload, Download, AlertTriangle, X, RefreshCw, SkipForward, Trash2, FileSpreadsheet, Menu, Briefcase, CheckCircle2, Settings, ChevronDown, FolderPlus, PenLine, FolderInput, FolderOutput, Network, LogOut, Moon, Sun, Inbox, Loader2, Shield } from 'lucide-react';
 import { Official, EmailTemplate, ViewState, ToastNotification, SavedTemplate, Gender, SortOption, FilterCriteria, OfficialDatabase, Campaign, EmailLog, UserProfile, UserRole, ROLE_LABELS, ROLE_COLORS } from './types';
 import { bootstrapUserProfile, subscribeToMyProfile, canEdit, canSendEmails, canManageRoles } from './services/rolesService';
@@ -7,6 +39,7 @@ import { useRBAC } from './hooks/useRBAC';
 import { ProtectedView } from './components/rbac/ProtectedView';
 import { OfficialForm } from './components/OfficialForm';
 import { OfficialList } from './components/OfficialList';
+import { OfficialDrawer } from './components/OfficialDrawer';
 import { ToastContainer } from './components/ToastContainer';
 import { dbService } from './services/dbService';
 import { subscribeToAuthChanges, logout, initAutoRefreshForUser } from './services/authService';
@@ -135,6 +168,7 @@ export default function App() {
     const [editingOfficial, setEditingOfficial] = useState<Official | null>(null);
     const [showForm, setShowForm] = useState(false);
     const [deleteId, setDeleteId] = useState<string | null>(null);
+    const [drawerOfficial, setDrawerOfficial] = useState<Official | null>(null);
 
     const [template, setTemplate] = useState<EmailTemplate>({
         subject: '',
@@ -242,13 +276,25 @@ export default function App() {
 
     useEffect(() => { localStorage.setItem('active_db_id', activeDbId); }, [activeDbId]);
 
-    // Persist shared configurations to Firestore with a debounce to prevent excessive writes
-    // Bug #9: sentHistory removed — it is now derived from campaign logs (derivedSentHistory)
+    // Always-fresh refs so the debounced auto-save never captures stale closures
+    const templateRef      = useRef(template);
+    const savedTemplatesRef = useRef(savedTemplates);
+    useEffect(() => { templateRef.current = template; },       [template]);
+    useEffect(() => { savedTemplatesRef.current = savedTemplates; }, [savedTemplates]);
+
+    // Persist shared configurations to Firestore with a debounce to prevent excessive writes.
+    // Uses refs instead of closure values so the write always uses the latest state,
+    // even if React batched several state updates before the timer fires.
     useEffect(() => {
         if (!user) return;
         const timer = setTimeout(() => {
-            dbService.saveSharedConfig({ template, savedTemplates });
-        }, 1000);
+            dbService.saveSharedConfig({
+                template: templateRef.current,
+                savedTemplates: savedTemplatesRef.current,
+            }).catch((err) => {
+                console.error('[auto-save] Error al guardar en Firestore:', err);
+            });
+        }, 1500);
         return () => clearTimeout(timer);
     }, [template, savedTemplates, user]);
 
@@ -1170,19 +1216,36 @@ export default function App() {
                                             existingOfficials={officials}
                                             onSave={handleSaveOfficial}
                                             onCancel={() => { setShowForm(false); setEditingOfficial(null); }}
+                                            onViewProfile={(official) => {
+                                                setShowForm(false);
+                                                setEditingOfficial(null);
+                                                setFilterCriteria({ type: 'search', value: official.name });
+                                            }}
                                         />
                                     ) : (
-                                        <OfficialList
-                                            officials={officials}
-                                            onEdit={rbac.canEditOff ? handleEditOfficial : undefined}
-                                            onDelete={rbac.canDeleteOff ? handleDeleteOfficial : undefined}
-                                            onBulkDelete={rbac.canDeleteOff ? handleBulkDelete : undefined}
-                                            onBulkUpdate={rbac.canEditOff ? handleBulkUpdate : undefined}
-                                            sortOption={sortOption}
-                                            onSortChange={setSortOption}
-                                            initialFilter={filterCriteria}
-                                            onClearFilter={handleClearFilter}
-                                        />
+                                        <>
+                                            <OfficialList
+                                                officials={officials}
+                                                onEdit={rbac.canEditOff ? handleEditOfficial : undefined}
+                                                onDelete={rbac.canDeleteOff ? handleDeleteOfficial : undefined}
+                                                onBulkDelete={rbac.canDeleteOff ? handleBulkDelete : undefined}
+                                                onBulkUpdate={rbac.canEditOff ? handleBulkUpdate : undefined}
+                                                sortOption={sortOption}
+                                                onSortChange={setSortOption}
+                                                initialFilter={filterCriteria}
+                                                onClearFilter={handleClearFilter}
+                                                onQuickView={(o) => setDrawerOfficial(o)}
+                                            />
+                                            <OfficialDrawer
+                                                official={drawerOfficial}
+                                                allOfficials={officials}
+                                                campaigns={campaigns}
+                                                onClose={() => setDrawerOfficial(null)}
+                                                onEdit={rbac.canEditOff ? (o) => { setDrawerOfficial(null); handleEditOfficial(o); } : undefined}
+                                                onDelete={rbac.canDeleteOff ? (id) => { setDrawerOfficial(null); handleDeleteOfficial(id); } : undefined}
+                                                onViewOfficial={(o) => setDrawerOfficial(o)}
+                                            />
+                                        </>
                                     )}
                                 </div>
                             </ProtectedView>
@@ -1197,9 +1260,11 @@ export default function App() {
                                             <p className="text-slate-500 dark:text-slate-400">Visualización jerárquica basada en las jefaturas de la base de datos.</p>
                                         </div>
                                     </div>
-                                    <Suspense fallback={<LazyLoader />}>
-                                        <OrgChart officials={officials} />
-                                    </Suspense>
+                                    <OrgChartErrorBoundary>
+                                        <Suspense fallback={<LazyLoader />}>
+                                            <OrgChart officials={officials} />
+                                        </Suspense>
+                                    </OrgChartErrorBoundary>
                                 </div>
                             </ProtectedView>
                         )}
