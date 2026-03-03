@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { Gender } from "../types";
+import { Gender, PdfAnalysisResult } from "../types";
 
 // Helper to get AI instance safely
 // Note: process.env.API_KEY is replaced at build time by Vite (see vite.config.ts define block)
@@ -22,8 +22,8 @@ interface GenderPrediction {
 export const detectGenderAndTitle = async (name: string): Promise<{ gender: Gender; title: string }> => {
   try {
     const ai = getAiClient();
-    const model = "gemini-2.5-flash";
-    
+    const model = "gemini-3-flash-preview";
+
     const response = await ai.models.generateContent({
       model: model,
       contents: `Analyze the name "${name}" for a Spanish-speaking corporate context. Determine the gender and the appropriate title (e.g., "Sr." or "Sra.").`,
@@ -49,7 +49,7 @@ export const detectGenderAndTitle = async (name: string): Promise<{ gender: Gend
 
     if (response.text) {
       const result = JSON.parse(response.text) as GenderPrediction;
-      
+
       let mappedGender = Gender.Unspecified;
       if (result.gender === "Male") mappedGender = Gender.Male;
       if (result.gender === "Female") mappedGender = Gender.Female;
@@ -71,7 +71,7 @@ export const detectGenderAndTitle = async (name: string): Promise<{ gender: Gend
 export const generateTemplateWithAI = async (instruction: string): Promise<{ subject: string; body: string }> => {
   try {
     const ai = getAiClient();
-    const model = "gemini-2.5-flash";
+    const model = "gemini-3-flash-preview";
     const systemInstruction = `You are an expert corporate communications assistant. 
     Your goal is to write a professional email template in Spanish based on the user's request.
     
@@ -122,16 +122,16 @@ export const generateTemplateWithAI = async (instruction: string): Promise<{ sub
  * Returns an array of ready-to-use reply strings in Spanish.
  */
 export const generateQuickReplies = async (
-    threadContext: string,
-    lastMessageFrom: string
+  threadContext: string,
+  lastMessageFrom: string
 ): Promise<string[]> => {
-    try {
-        const ai = getAiClient();
-        const model = 'gemini-2.5-flash';
+  try {
+    const ai = getAiClient();
+    const model = 'gemini-3-flash-preview';
 
-        const response = await ai.models.generateContent({
-            model,
-            contents: `Eres un asistente corporativo. Analiza el siguiente hilo de correo y genera exactamente 3 respuestas rápidas cortas y profesionales en español (máximo 2 oraciones cada una).
+    const response = await ai.models.generateContent({
+      model,
+      contents: `Eres un asistente corporativo. Analiza el siguiente hilo de correo y genera exactamente 3 respuestas rápidas cortas y profesionales en español (máximo 2 oraciones cada una).
             
 Último mensaje de: ${lastMessageFrom}
 Contexto del hilo:
@@ -140,37 +140,153 @@ ${threadContext.slice(0, 2000)}
 """
 
 Devuelve exactamente un JSON con la clave "replies" conteniendo un array de 3 strings.`,
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        replies: {
-                            type: Type.ARRAY,
-                            items: { type: Type.STRING },
-                            description: 'Array of exactly 3 short professional reply suggestions in Spanish'
-                        }
-                    },
-                    required: ['replies']
-                }
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            replies: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: 'Array of exactly 3 short professional reply suggestions in Spanish'
             }
-        });
-
-        if (response.text) {
-            const parsed = JSON.parse(response.text);
-            return parsed.replies?.slice(0, 3) || [];
+          },
+          required: ['replies']
         }
-        return [];
-    } catch (error) {
-        console.error('Error generating quick replies:', error);
-        return [];
+      }
+    });
+
+    if (response.text) {
+      const parsed = JSON.parse(response.text);
+      return parsed.replies?.slice(0, 3) || [];
     }
+    return [];
+  } catch (error) {
+    console.error('Error generating quick replies:', error);
+    return [];
+  }
+};
+
+/**
+ * Converts a File object to a base64 string (without the data: prefix).
+ */
+const fileToBase64Str = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      // Strip the data URL prefix: "data:<mime>;base64,"
+      resolve(result.split(',')[1] ?? '');
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+/**
+ * Analyzes a PDF file using Gemini multimodal vision.
+ * Specifically detects issues in attendance/hours reports (reportes de asistencia):
+ *  - Illegible or unreadable content
+ *  - Missing hours (horas no detectadas)
+ *  - High number of TOTAL HORAS FALTA entries
+ *  - General document inconsistencies
+ */
+export const analyzePdfWithAI = async (file: File): Promise<PdfAnalysisResult> => {
+  const ai = getAiClient();
+
+  // Use gemini-3-flash-preview for multimodal document analysis
+  const model = 'gemini-3-flash-preview';
+
+  const base64Data = await fileToBase64Str(file);
+  const mimeType = file.type || 'application/pdf';
+
+  const prompt = `Eres un auditor de documentos laborales en Chile. Analiza este documento (puede ser un reporte de asistencia, informe de horas u otro documento laboral institucional) y responde en JSON siguiendo el esquema indicado.
+
+Busca específicamente:
+1. Si el documento es legible (texto visible y reconocible).
+2. Si se pueden leer las horas trabajadas / horas del período (busca columnas de horas, totales, etc.).
+3. Cuántas incidencias de "TOTAL HORAS FALTA", "HORAS FALTA", "H. FALTA" o equivalentes aparecen y si los valores son inusualmente altos (más de 8 horas en un período es sospechoso).
+4. Otras inconsistencias: fechas inválidas, nombres en blanco, valores negativos, totales que no cuadran, firmas faltantes, páginas en blanco, etc.
+
+Nombre del archivo: "${file.name}"`;
+
+  const response = await ai.models.generateContent({
+    model,
+    contents: [
+      {
+        parts: [
+          {
+            inlineData: {
+              mimeType,
+              data: base64Data,
+            },
+          },
+          { text: prompt },
+        ],
+      },
+    ],
+    config: {
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          summary: {
+            type: Type.STRING,
+            description: 'Resumen breve (1-2 oraciones) del documento y su estado general.',
+          },
+          isLegible: {
+            type: Type.BOOLEAN,
+            description: 'true si el documento tiene texto legible, false si está en blanco o ilegible.',
+          },
+          horasDetected: {
+            type: Type.BOOLEAN,
+            description: 'true si se pueden leer horas en el documento.',
+          },
+          totalHorasFalta: {
+            type: Type.NUMBER,
+            description: 'Suma total de horas falta detectadas en el documento. null si no aplica.',
+          },
+          issues: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                severity: {
+                  type: Type.STRING,
+                  enum: ['error', 'warning', 'info'],
+                  description: 'error = crítico, warning = atención requerida, info = observación menor.',
+                },
+                description: {
+                  type: Type.STRING,
+                  description: 'Descripción clara de la inconsistencia o problema encontrado.',
+                },
+              },
+              required: ['severity', 'description'],
+            },
+            description: 'Lista de inconsistencias o problemas detectados. Vacío si el documento está correcto.',
+          },
+        },
+        required: ['summary', 'isLegible', 'horasDetected', 'issues'],
+      },
+    },
+  });
+
+  if (!response.text) throw new Error('El modelo no devolvió respuesta');
+
+  const parsed = JSON.parse(response.text);
+  return {
+    fileName: file.name,
+    summary: parsed.summary ?? '',
+    issues: parsed.issues ?? [],
+    horasDetected: parsed.horasDetected ?? false,
+    totalHorasFalta: parsed.totalHorasFalta ?? null,
+    isLegible: parsed.isLegible ?? true,
+  };
 };
 
 export const refineEmailWithAI = async (currentBody: string, instruction: string): Promise<string> => {
   try {
     const ai = getAiClient();
-    const model = "gemini-2.5-flash";
+    const model = "gemini-3-flash-preview";
     const response = await ai.models.generateContent({
       model: model,
       contents: `Original Email Body:

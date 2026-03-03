@@ -1,9 +1,13 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
-import { Official, EmailTemplate, Gender, Campaign, EmailLog } from '../types';
-import { refineEmailWithAI } from '../services/geminiService';
+import { Official, EmailTemplate, Gender, Campaign, EmailLog, PdfAnalysisResult, PdfIssue } from '../types';
+import { refineEmailWithAI, analyzePdfWithAI } from '../services/geminiService';
+
+// Re-export PDF types so consumers can import from the hook (backwards compat)
+export type { PdfAnalysisResult, PdfIssue };
 import { sendGmail, buildRawMessage, fileToBase64 } from '../services/gmailService';
 import { hasGmailToken, reauthorizeWithGoogle } from '../services/authService';
 import { buildTrackingPixel, isTrackingEnabled } from '../services/trackingService';
+import { openDrivePickerMultiple } from '../services/driveService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -24,6 +28,19 @@ export interface EditableEmail {
 export type GeneratorStep = 'select' | 'compose';
 
 export type BulkSendResult = { emailId: string; to: string; status: 'ok' | 'error'; error?: string };
+
+/** Result of one auto-assigned file */
+export interface AutoAssignEntry {
+  file: File;
+  officialName: string | null; // null = no match found
+  officialId: string | null;
+}
+
+export interface AutoAssignResult {
+  assigned: AutoAssignEntry[];   // matched at least one official
+  unmatched: File[];             // no official found
+}
+
 
 export interface BulkProgress {
   current: number;
@@ -245,6 +262,18 @@ export function useEmailGenerator({
 
   const attachmentRefs = useRef<Map<string, HTMLInputElement>>(new Map());
 
+  // ── Auto-assign state ─────────────────────────────────────────────────────
+  const [autoAssigning, setAutoAssigning] = useState(false);
+  const [autoAssignResult, setAutoAssignResult] = useState<AutoAssignResult | null>(null);
+
+  // ── PDF Analyzer state ────────────────────────────────────────────────────
+  const [analyzingPdfId, setAnalyzingPdfId] = useState<string | null>(null); // "emailId::fileIndex"
+  const [pdfAnalysisResult, setPdfAnalysisResult] = useState<PdfAnalysisResult | null>(null);
+
+  // ── Global CC toggles ─────────────────────────────────────────────────────
+  const [globalCcBoss, setGlobalCcBoss] = useState(false);
+  const [globalCcGestion, setGlobalCcGestion] = useState(false);
+
   // ── Bulk Send ─────────────────────────────────────────────────────────────
   const [bulkSending, setBulkSending] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<BulkProgress | null>(null);
@@ -390,6 +419,146 @@ export function useEmailGenerator({
         ? { ...prev, personalAttachments: prev.personalAttachments.filter((_, i) => i !== fileIndex) }
         : prev
     );
+  };
+
+  // ── Global CC handlers ────────────────────────────────────────────────────
+
+  /**
+   * When globalCcBoss is toggled ON, mark includeCc=true for all emails.
+   * When toggled OFF, restore only those that were explicitly set (reset all to false).
+   */
+  const toggleGlobalCcBoss = () => {
+    const newVal = !globalCcBoss;
+    setGlobalCcBoss(newVal);
+    setEditableEmails(prev => prev.map(e => ({ ...e, includeCc: newVal })));
+  };
+
+  /**
+   * When globalCcGestion is toggled ON, mark includeSubdirectora=true for all emails.
+   */
+  const toggleGlobalCcGestion = () => {
+    const newVal = !globalCcGestion;
+    setGlobalCcGestion(newVal);
+    setEditableEmails(prev => prev.map(e => ({ ...e, includeSubdirectora: newVal })));
+  };
+
+  // ── PDF Analyzer handler ──────────────────────────────────────────────────
+
+  const handleAnalyzePdf = async (emailId: string, fileIndex: number, file: File) => {
+    const key = `${emailId}::${fileIndex}`;
+    setAnalyzingPdfId(key);
+    try {
+      const result = await analyzePdfWithAI(file);
+      setPdfAnalysisResult(result);
+    } catch (err: any) {
+      onToast(`Error al analizar PDF: ${err.message}`, 'error');
+    } finally {
+      setAnalyzingPdfId(null);
+    }
+  };
+
+  // ── Auto-assign helpers ───────────────────────────────────────────────────
+
+  /**
+   * Given a filename and the list of editable emails, find the best matching
+   * email by checking whether the official's name (normalized) appears as a
+   * substring inside the normalized filename.
+   * Returns the matching EditableEmail or null.
+   */
+  const findBestMatch = (fileName: string): EditableEmail | null => {
+    const normalizedFile = normalizeText(fileName);
+    // Try longest-name match first to avoid false positives (e.g. "Ana" inside "Mariana")
+    const sorted = [...editableEmails].sort(
+      (a, b) => b.official.name.length - a.official.name.length
+    );
+    for (const email of sorted) {
+      const normalizedName = normalizeText(email.official.name);
+      if (normalizedFile.includes(normalizedName)) return email;
+      // Also try matching individual name parts (first name + last name separately)
+      const parts = normalizedName.split(/\s+/).filter(p => p.length > 2);
+      const allPartsMatch = parts.length >= 2 && parts.every(p => normalizedFile.includes(p));
+      if (allPartsMatch) return email;
+    }
+    return null;
+  };
+
+  /**
+   * Core auto-assign logic: takes an array of File objects, matches each one
+   * to an official by name, and appends the file to their personalAttachments.
+   */
+  const applyAutoAssign = (filesToAssign: File[]): AutoAssignResult => {
+    const assigned: AutoAssignEntry[] = [];
+    const unmatched: File[] = [];
+
+    // Group matches: one file may match multiple officials only if name appears
+    // in multiple filenames — but typically 1 file → 1 official.
+    const updates = new Map<string, File[]>(); // emailId → files to add
+
+    filesToAssign.forEach(file => {
+      const match = findBestMatch(file.name);
+      if (match) {
+        assigned.push({ file, officialName: match.official.name, officialId: match.id });
+        const existing = updates.get(match.id) ?? [];
+        updates.set(match.id, [...existing, file]);
+      } else {
+        unmatched.push(file);
+      }
+    });
+
+    if (updates.size > 0) {
+      setEditableEmails(prev =>
+        prev.map(e => {
+          const newFiles = updates.get(e.id);
+          if (!newFiles) return e;
+          return { ...e, personalAttachments: [...e.personalAttachments, ...newFiles] };
+        })
+      );
+    }
+
+    return { assigned, unmatched };
+  };
+
+  /** Auto-assign from local file system (input[type=file] multiple) */
+  const handleAutoAssignLocal = (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList);
+    const result = applyAutoAssign(files);
+    setAutoAssignResult(result);
+    const assignedCount = result.assigned.length;
+    const unmatchedCount = result.unmatched.length;
+    if (assignedCount > 0) {
+      onToast(
+        `${assignedCount} archivo(s) asignado(s) automáticamente.${unmatchedCount > 0 ? ` ${unmatchedCount} sin coincidencia.` : ''}`,
+        'success'
+      );
+    } else {
+      onToast('No se encontraron coincidencias por nombre. Revisa el reporte.', 'error');
+    }
+  };
+
+  /** Auto-assign from Google Drive (multiple picker) */
+  const handleAutoAssignDrive = async (accessToken: string) => {
+    setAutoAssigning(true);
+    try {
+      const files = await openDrivePickerMultiple(accessToken);
+      if (files.length === 0) return;
+      const result = applyAutoAssign(files);
+      setAutoAssignResult(result);
+      const assignedCount = result.assigned.length;
+      const unmatchedCount = result.unmatched.length;
+      if (assignedCount > 0) {
+        onToast(
+          `${assignedCount} archivo(s) de Drive asignado(s) automáticamente.${unmatchedCount > 0 ? ` ${unmatchedCount} sin coincidencia.` : ''}`,
+          'success'
+        );
+      } else {
+        onToast('No se encontraron coincidencias por nombre. Revisa el reporte.', 'error');
+      }
+    } catch (err: any) {
+      onToast(`Error al abrir Drive: ${err.message}`, 'error');
+    } finally {
+      setAutoAssigning(false);
+    }
   };
 
   // ── Remove from compose list ──────────────────────────────────────────────
@@ -651,5 +820,20 @@ export function useEmailGenerator({
     showBulkConfirm, setShowBulkConfirm,
     handleSendAll,
     cancelBulkSend,
+
+    // Auto-assign
+    autoAssigning,
+    autoAssignResult, setAutoAssignResult,
+    handleAutoAssignLocal,
+    handleAutoAssignDrive,
+
+    // Global CC
+    globalCcBoss, toggleGlobalCcBoss,
+    globalCcGestion, toggleGlobalCcGestion,
+
+    // PDF Analyzer
+    analyzingPdfId,
+    pdfAnalysisResult, setPdfAnalysisResult,
+    handleAnalyzePdf,
   };
 }

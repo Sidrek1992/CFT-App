@@ -103,6 +103,79 @@ const fetchDriveFileMetadata = async (
 };
 
 /**
+ * Opens the Google Picker dialog allowing the user to pick MULTIPLE files at once.
+ * Used for the "auto-assign" feature where files are matched by name to officials.
+ * Returns an array of File objects (may be empty if the user cancels).
+ */
+export const openDrivePickerMultiple = (accessToken: string): Promise<File[]> => {
+    const appId = import.meta.env.VITE_GOOGLE_APP_ID || '';
+
+    return new Promise(async (resolve, reject) => {
+        try {
+            await loadPickerScript();
+            const gapi = (window as any).gapi;
+            const google = (window as any).google;
+
+            if (!gapi || !google?.picker) {
+                throw new Error('Google Picker API no está disponible. Verifica la configuración en Google Cloud Console.');
+            }
+
+            const picker = new google.picker.PickerBuilder()
+                .addView(google.picker.ViewId.DOCS)
+                .addView(google.picker.ViewId.RECENTLY_PICKED)
+                .setOAuthToken(accessToken)
+                .setDeveloperKey(import.meta.env.VITE_FIREBASE_API_KEY || '')
+                .setAppId(appId)
+                .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+                .setCallback(async (data: any) => {
+                    if (data.action !== google.picker.Action.PICKED) {
+                        resolve([]);
+                        return;
+                    }
+
+                    const docs: any[] = data.docs ?? [];
+                    if (docs.length === 0) { resolve([]); return; }
+
+                    // Download all selected files in parallel
+                    const results = await Promise.allSettled(
+                        docs.map(async (doc) => {
+                            const metadata = await fetchDriveFileMetadata(doc.id, accessToken);
+                            const sizeBytes = metadata.size ? Number(metadata.size) : undefined;
+                            if (sizeBytes !== undefined && sizeBytes > MAX_FILE_BYTES) {
+                                const sizeMB = (sizeBytes / 1024 / 1024).toFixed(1);
+                                throw new Error(
+                                    `"${doc.name}" pesa ${sizeMB} MB y supera el límite de ${MAX_FILE_BYTES / 1024 / 1024} MB.`
+                                );
+                            }
+                            const blob = await downloadDriveFile(doc.id, accessToken, doc.mimeType);
+                            return new File([blob], doc.name, { type: doc.mimeType });
+                        })
+                    );
+
+                    const files: File[] = [];
+                    const errors: string[] = [];
+                    results.forEach(r => {
+                        if (r.status === 'fulfilled') files.push(r.value);
+                        else errors.push((r as PromiseRejectedResult).reason?.message ?? 'Error desconocido');
+                    });
+
+                    if (errors.length > 0) {
+                        // Resolve with whatever succeeded, but include error info via rejection
+                        reject(new Error(errors.join('\n')));
+                        return;
+                    }
+                    resolve(files);
+                })
+                .build();
+
+            picker.setVisible(true);
+        } catch (err) {
+            reject(err);
+        }
+    });
+};
+
+/**
  * Opens the Google Picker dialog and returns the selected file metadata.
  * After selection:
  *  1. Fetches file metadata to validate the size (rejects if > 25 MB).

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Official, EmailTemplate, Campaign, EmailLog } from '../types';
 import { useEmailGenerator } from '../hooks/useEmailGenerator';
+import { normalizeText } from '../hooks/useEmailGenerator';
 
 import { GmailAuthBanner } from './generator/GmailAuthBanner';
 import { CampaignSelector } from './generator/CampaignSelector';
@@ -50,6 +51,36 @@ export const Generator: React.FC<GeneratorProps> = ({
     onLogEmail,
     onToast,
   });
+
+  // Detect the email of the "Subdirectora de Gestión de Personas" from the DB.
+  // We look for an official whose name or position contains "gestion" + "personas"
+  // or matches "Maria Soledad Jarin" (normalized), and whose email is available.
+  const gestionPersonasEmail = useMemo(() => {
+    const target = officials.find(o => {
+      const name = normalizeText(o.name);
+      const pos  = normalizeText(o.position ?? '');
+      const dept = normalizeText(o.department ?? '');
+      const isGestionPersonas =
+        (pos.includes('gestion') && pos.includes('personas')) ||
+        (dept.includes('gestion') && dept.includes('personas')) ||
+        name.includes('soledad') ||
+        name.includes('jarin');
+      return isGestionPersonas && !!o.email;
+    });
+    return target?.email ?? g.subdirectoraEmail;
+  }, [officials, g.subdirectoraEmail]);
+
+  // Keep subdirectoraEmail in sync with the detected email when it hasn't been
+  // manually overridden by the user (only on first detection).
+  React.useEffect(() => {
+    if (gestionPersonasEmail && gestionPersonasEmail !== g.subdirectoraEmail) {
+      // Only auto-fill if still using the default placeholder
+      if (g.subdirectoraEmail === 'gestion.personas@cftestatalaricayparinacota.cl') {
+        g.setSubdirectoraEmail(gestionPersonasEmail);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gestionPersonasEmail]);
 
   // Empty-state guard
   if (officials.length === 0) {
@@ -202,6 +233,24 @@ export const Generator: React.FC<GeneratorProps> = ({
           onRemoveAttachment={g.handleRemovePersonalAttachment}
           onPageChange={g.setCurrentPage}
           onBulkSendClick={() => g.setShowBulkConfirm(true)}
+          autoAssigning={g.autoAssigning}
+          autoAssignResult={g.autoAssignResult}
+          onAutoAssignLocal={g.handleAutoAssignLocal}
+          onAutoAssignDrive={() => {
+            const token = sessionStorage.getItem('gmail_access_token') ?? '';
+            g.handleAutoAssignDrive(token);
+          }}
+          onClearAutoAssignResult={() => g.setAutoAssignResult(null)}
+          gmailTokenPresent={g.gmailTokenPresent}
+          globalCcBoss={g.globalCcBoss}
+          globalCcGestion={g.globalCcGestion}
+          onToggleGlobalCcBoss={g.toggleGlobalCcBoss}
+          onToggleGlobalCcGestion={g.toggleGlobalCcGestion}
+          gestionPersonasEmail={gestionPersonasEmail}
+          analyzingPdfId={g.analyzingPdfId}
+          pdfAnalysisResult={g.pdfAnalysisResult}
+          onAnalyzePdf={g.handleAnalyzePdf}
+          onClearPdfResult={() => g.setPdfAnalysisResult(null)}
         />
       )}
 

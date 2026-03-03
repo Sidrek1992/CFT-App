@@ -141,3 +141,19 @@ export interface FilterCriteria {
   type: 'none' | 'missingBoss' | 'missingGender' | 'invalidEmail' | 'department' | 'search';
   value?: string;
 }
+
+// ─── PDF Analysis ─────────────────────────────────────────────────────────────
+
+export interface PdfIssue {
+  severity: 'error' | 'warning' | 'info';
+  description: string;
+}
+
+export interface PdfAnalysisResult {
+  fileName: string;
+  summary: string;
+  issues: PdfIssue[];
+  horasDetected: boolean;
+  totalHorasFalta: number | null;
+  isLegible: boolean;
+}
