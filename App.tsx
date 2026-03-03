@@ -32,7 +32,7 @@ class OrgChartErrorBoundary extends Component<{ children: React.ReactNode }, { h
         return this.props.children;
     }
 }
-import { FileEdit, Send, Plus, Database, LayoutDashboard, Upload, Download, AlertTriangle, X, RefreshCw, SkipForward, Trash2, FileSpreadsheet, Menu, Briefcase, CheckCircle2, Settings, ChevronDown, FolderPlus, PenLine, FolderInput, FolderOutput, Network, LogOut, Moon, Sun, Inbox, Loader2, Shield, ScanSearch, Paperclip } from 'lucide-react';
+import { FileEdit, Send, Plus, Database, LayoutDashboard, Upload, Download, AlertTriangle, X, RefreshCw, SkipForward, Trash2, FileSpreadsheet, Menu, Briefcase, CheckCircle2, Settings, ChevronDown, FolderPlus, PenLine, FolderInput, FolderOutput, Network, LogOut, Moon, Sun, Inbox, Loader2, Shield, ScanSearch, Paperclip, Merge } from 'lucide-react';
 import { Official, EmailTemplate, ViewState, ToastNotification, SavedTemplate, Gender, SortOption, FilterCriteria, OfficialDatabase, Campaign, EmailLog, UserProfile, UserRole, ROLE_LABELS, ROLE_COLORS } from './types';
 import type { AssignedFile } from './components/DocAnalysisView';
 import { bootstrapUserProfile, subscribeToMyProfile, canEdit, canSendEmails, canManageRoles } from './services/rolesService';
@@ -41,6 +41,7 @@ import { ProtectedView } from './components/rbac/ProtectedView';
 import { OfficialForm } from './components/OfficialForm';
 import { OfficialList } from './components/OfficialList';
 import { OfficialDrawer } from './components/OfficialDrawer';
+import { ExcelAutoFillModal } from './components/ExcelAutoFillModal';
 import { ToastContainer } from './components/ToastContainer';
 import { dbService } from './services/dbService';
 import { subscribeToAuthChanges, logout, initAutoRefreshForUser, bootstrapGmailToken } from './services/authService';
@@ -238,6 +239,7 @@ export default function App() {
         newOfficials: Official[];
         duplicates: { existing: Official; incoming: Official }[];
     } | null>(null);
+    const [showAutoFillModal, setShowAutoFillModal] = useState(false);
 
     // List State (Persisted in App to survive view changes)
     const [sortOption, setSortOption] = useState<SortOption>('name');
@@ -683,7 +685,12 @@ export default function App() {
                         stament: row.Estamento || '',
                         bossName: row.Jefatura || '',
                         bossPosition: row.CargoJefatura || '',
-                        bossEmail: row.CorreoJefatura || ''
+                        bossEmail: row.CorreoJefatura || '',
+                        fechaIngreso: row['Fecha Ingreso'] || row['FechaIngreso'] || row.fechaIngreso || undefined,
+                        fechaTermino: row['Fecha Termino'] || row['Fecha Término'] || row['FechaTermino'] || row.fechaTermino || undefined,
+                        fechaCumpleanios: row['Cumpleaños'] || row['Cumpleanos'] || row['Fecha Cumpleaños'] || row['FechaCumpleanios'] || row.fechaCumpleanios || undefined,
+                        contactoEmergencia: row['Contacto Emergencia'] || row['ContactoEmergencia'] || row.contactoEmergencia || undefined,
+                        direccion: row['Dirección'] || row['Direccion'] || row.direccion || undefined,
                     };
                 });
 
@@ -782,7 +789,12 @@ export default function App() {
             Estamento: o.stament,
             Jefatura: o.bossName,
             CargoJefatura: o.bossPosition,
-            CorreoJefatura: o.bossEmail
+            CorreoJefatura: o.bossEmail,
+            'Fecha Ingreso': o.fechaIngreso || '',
+            'Fecha Término': o.fechaTermino || '',
+            'Cumpleaños': o.fechaCumpleanios || '',
+            'Contacto Emergencia': o.contactoEmergencia || '',
+            'Dirección': o.direccion || '',
         }));
 
         const XLSX = await import('xlsx');
@@ -1222,6 +1234,17 @@ export default function App() {
                                                         <span className="hidden sm:inline">Exportar</span>
                                                     </button>
                                                 )}
+                                                {/* Auto-fill from Excel — superadmin, admin only */}
+                                                {rbac.canImport && officials.length > 0 && (
+                                                    <button
+                                                        onClick={() => setShowAutoFillModal(true)}
+                                                        className="px-3 py-2 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/40 flex items-center gap-2 text-sm font-medium transition-colors"
+                                                        title="Rellenar campos vacíos desde un Excel"
+                                                    >
+                                                        <Merge className="w-4 h-4" />
+                                                        <span className="hidden sm:inline">Auto-rellenar</span>
+                                                    </button>
+                                                )}
                                                 {/* Add official — superadmin, admin only */}
                                                 {rbac.canAddOff && (
                                                     <button
@@ -1598,6 +1621,17 @@ export default function App() {
                     </div>
                 </div>
             )}
+
+            {/* Auto-Fill from Excel Modal */}
+            <ExcelAutoFillModal
+                isOpen={showAutoFillModal}
+                onClose={() => setShowAutoFillModal(false)}
+                officials={officials}
+                onMerge={async (merged) => {
+                    await updateActiveDbOfficials(() => merged);
+                }}
+                addToast={addToast}
+            />
         </div>
     );
 }
