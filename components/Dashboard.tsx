@@ -4,7 +4,8 @@ import {
     Users, Upload, UserPlus, Send, AlertTriangle, CheckCircle2,
     Download, Save, RefreshCw, FileSpreadsheet, Trash2, Mail,
     Briefcase, Activity, TrendingUp, Clock, MessageSquare,
-    Eye, Zap, BarChart2, Award, Target, MousePointerClick
+    Eye, Zap, BarChart2, Award, Target, MousePointerClick,
+    Cake, CalendarClock, FileWarning
 } from 'lucide-react';
 import {
     PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip,
@@ -233,6 +234,83 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 return { id: c.id, name: c.name, createdAt: c.createdAt, sent, opened, rate, methods };
             });
     }, [campaigns]);
+
+    // ── Birthday helpers ───────────────────────────────────────────────
+    const birthdayData = useMemo(() => {
+        const now = new Date();
+        const todayMD = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+        // Get the date 7 days from now
+        const weekLater = new Date(now);
+        weekLater.setDate(weekLater.getDate() + 7);
+
+        // End of current month
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+        const today: { name: string; department: string }[] = [];
+        const thisWeek: { name: string; department: string; dateLabel: string }[] = [];
+        const thisMonth: { name: string; department: string; dateLabel: string }[] = [];
+
+        officials.forEach(o => {
+            if (!o.fechaCumpleanios) return;
+            const d = new Date(o.fechaCumpleanios + 'T00:00:00');
+            if (isNaN(d.getTime())) return;
+            const md = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            const dateLabel = d.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+
+            if (md === todayMD) {
+                today.push({ name: o.name, department: o.department || '' });
+            }
+
+            // Check if birthday falls within this week (next 7 days)
+            const bdThisYear = new Date(now.getFullYear(), d.getMonth(), d.getDate());
+            if (bdThisYear < now) bdThisYear.setFullYear(bdThisYear.getFullYear()); // already passed today check above
+            if (bdThisYear > now && bdThisYear <= weekLater) {
+                thisWeek.push({ name: o.name, department: o.department || '', dateLabel });
+            }
+
+            // Rest of month (after this week but same month)
+            if (d.getMonth() === now.getMonth() && bdThisYear > weekLater && bdThisYear <= monthEnd) {
+                thisMonth.push({ name: o.name, department: o.department || '', dateLabel });
+            }
+        });
+
+        return { today, thisWeek, thisMonth };
+    }, [officials]);
+
+    // ── Contract expiration ─────────────────────────────────────────────
+    const contractExpirations = useMemo(() => {
+        const now = new Date();
+        const in30 = new Date(now);
+        in30.setDate(in30.getDate() + 30);
+        const in60 = new Date(now);
+        in60.setDate(in60.getDate() + 60);
+
+        const expired: { name: string; department: string; date: string }[] = [];
+        const within30: { name: string; department: string; date: string; daysLeft: number }[] = [];
+        const within60: { name: string; department: string; date: string; daysLeft: number }[] = [];
+
+        officials.forEach(o => {
+            if (!o.fechaTermino) return;
+            const d = new Date(o.fechaTermino + 'T00:00:00');
+            if (isNaN(d.getTime())) return;
+            const dateLabel = d.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' });
+            const diff = Math.ceil((d.getTime() - now.getTime()) / 86400000);
+
+            if (diff < 0) {
+                expired.push({ name: o.name, department: o.department || '', date: dateLabel });
+            } else if (diff <= 30) {
+                within30.push({ name: o.name, department: o.department || '', date: dateLabel, daysLeft: diff });
+            } else if (diff <= 60) {
+                within60.push({ name: o.name, department: o.department || '', date: dateLabel, daysLeft: diff });
+            }
+        });
+
+        within30.sort((a, b) => a.daysLeft - b.daysLeft);
+        within60.sort((a, b) => a.daysLeft - b.daysLeft);
+
+        return { expired, within30, within60 };
+    }, [officials]);
 
     const handleBackupImportClick = () => {
         if (backupInputRef.current) {
@@ -598,7 +676,125 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </div>
             </div>
 
-            {/* ── Row 5: Recent Campaigns Table ──────────────────────────────── */}
+            {/* ── Row 5: Birthdays + Contract Expirations ────────────────────── */}
+            {(birthdayData.today.length > 0 || birthdayData.thisWeek.length > 0 || birthdayData.thisMonth.length > 0 || contractExpirations.expired.length > 0 || contractExpirations.within30.length > 0 || contractExpirations.within60.length > 0) && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Birthday widget */}
+                    {(birthdayData.today.length > 0 || birthdayData.thisWeek.length > 0 || birthdayData.thisMonth.length > 0) && (
+                        <div className="glass-panel bento-card p-6 flex flex-col">
+                            <h3 className="font-bold text-slate-700 dark:text-slate-300 text-sm mb-4 flex items-center gap-2">
+                                <Cake className="w-4 h-4 text-pink-400" />
+                                Cumpleaños
+                            </h3>
+                            <div className="space-y-3 flex-1 overflow-y-auto max-h-64 pr-1 custom-scrollbar">
+                                {birthdayData.today.length > 0 && (
+                                    <div>
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-pink-500 mb-1.5">Hoy</p>
+                                        {birthdayData.today.map((b, i) => (
+                                            <div key={i} className="flex items-center gap-3 p-2.5 bg-pink-50 dark:bg-pink-950/30 border border-pink-200 dark:border-pink-800/50 rounded-lg mb-1.5">
+                                                <div className="w-8 h-8 bg-pink-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                                                    <Cake className="w-4 h-4 text-pink-500" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-semibold text-slate-800 dark:text-white">{b.name}</p>
+                                                    {b.department && <p className="text-[10px] text-slate-500 dark:text-slate-400">{b.department}</p>}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {birthdayData.thisWeek.length > 0 && (
+                                    <div>
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500 mb-1.5">Esta Semana</p>
+                                        {birthdayData.thisWeek.map((b, i) => (
+                                            <div key={i} className="flex items-center justify-between gap-2 p-2 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30 rounded-lg mb-1">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{b.name}</span>
+                                                    {b.department && <span className="text-[10px] text-slate-400 truncate hidden sm:inline">({b.department})</span>}
+                                                </div>
+                                                <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold flex-shrink-0">{b.dateLabel}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {birthdayData.thisMonth.length > 0 && (
+                                    <div>
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Este Mes</p>
+                                        {birthdayData.thisMonth.map((b, i) => (
+                                            <div key={i} className="flex items-center justify-between gap-2 p-2 rounded-lg mb-0.5">
+                                                <span className="text-sm text-slate-600 dark:text-slate-300 truncate">{b.name}</span>
+                                                <span className="text-xs text-slate-400 dark:text-slate-500 flex-shrink-0">{b.dateLabel}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Contract expiration widget */}
+                    {(contractExpirations.expired.length > 0 || contractExpirations.within30.length > 0 || contractExpirations.within60.length > 0) && (
+                        <div className="glass-panel bento-card p-6 flex flex-col">
+                            <h3 className="font-bold text-slate-700 dark:text-slate-300 text-sm mb-4 flex items-center gap-2">
+                                <CalendarClock className="w-4 h-4 text-orange-400" />
+                                Vencimiento de Contratos
+                            </h3>
+                            <div className="space-y-3 flex-1 overflow-y-auto max-h-64 pr-1 custom-scrollbar">
+                                {contractExpirations.expired.length > 0 && (
+                                    <div>
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-red-500 mb-1.5">Vencidos</p>
+                                        {contractExpirations.expired.map((c, i) => (
+                                            <div key={i} className="flex items-center justify-between gap-2 p-2.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 rounded-lg mb-1.5">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    <FileWarning className="w-4 h-4 text-red-500 flex-shrink-0" />
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">{c.name}</p>
+                                                        {c.department && <p className="text-[10px] text-slate-500 dark:text-slate-400">{c.department}</p>}
+                                                    </div>
+                                                </div>
+                                                <span className="text-xs text-red-600 dark:text-red-400 font-semibold flex-shrink-0">{c.date}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {contractExpirations.within30.length > 0 && (
+                                    <div>
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-orange-500 mb-1.5">Próximos 30 días</p>
+                                        {contractExpirations.within30.map((c, i) => (
+                                            <div key={i} className="flex items-center justify-between gap-2 p-2 bg-orange-50/50 dark:bg-orange-950/20 border border-orange-200/50 dark:border-orange-800/30 rounded-lg mb-1">
+                                                <div className="min-w-0">
+                                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate block">{c.name}</span>
+                                                    {c.department && <span className="text-[10px] text-slate-400">{c.department}</span>}
+                                                </div>
+                                                <div className="text-right flex-shrink-0">
+                                                    <p className="text-xs text-orange-600 dark:text-orange-400 font-semibold">{c.date}</p>
+                                                    <p className="text-[10px] text-orange-500">{c.daysLeft === 0 ? 'Hoy' : `${c.daysLeft}d`}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {contractExpirations.within60.length > 0 && (
+                                    <div>
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">30–60 días</p>
+                                        {contractExpirations.within60.map((c, i) => (
+                                            <div key={i} className="flex items-center justify-between gap-2 p-2 rounded-lg mb-0.5">
+                                                <span className="text-sm text-slate-600 dark:text-slate-300 truncate">{c.name}</span>
+                                                <div className="text-right flex-shrink-0">
+                                                    <span className="text-xs text-slate-400 dark:text-slate-500">{c.date}</span>
+                                                    <p className="text-[10px] text-slate-400">{c.daysLeft}d</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ── Row 6: Recent Campaigns Table ──────────────────────────────── */}
             {recentCampaigns.length > 0 && (
                 <div className="glass-panel bento-card p-6">
                     <h3 className="font-bold text-slate-700 dark:text-slate-300 text-sm mb-4 flex items-center gap-2">

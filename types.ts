@@ -19,6 +19,11 @@ export interface Official {
   bossPosition: string;
   bossEmail: string;
   profileImage?: string; // New field: Profile image URL
+  fechaIngreso?: string;       // ISO date – fecha de ingreso al CFT
+  fechaTermino?: string;       // ISO date – vencimiento de contrato
+  fechaCumpleanios?: string;   // ISO date – solo importa día/mes
+  contactoEmergencia?: string; // Nombre + teléfono contacto de emergencia
+  direccion?: string;          // Dirección particular del funcionario
 }
 
 export interface EmailLog {

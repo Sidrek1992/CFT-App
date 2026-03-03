@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Official, Gender } from '../types';
 import { detectGenderAndTitle } from '../services/geminiService';
-import { Sparkles, User, Mail, Briefcase, Save, X, Building2, Crown, Eraser, BadgeCheck, UserCheck, AlertTriangle, Eye } from 'lucide-react';
+import { Sparkles, User, Mail, Briefcase, Save, X, Building2, Crown, Eraser, BadgeCheck, UserCheck, AlertTriangle, Eye, CalendarDays, Phone, MapPin } from 'lucide-react';
 import { Combobox } from './Combobox';
 
 interface OfficialFormProps {
@@ -35,6 +35,11 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
   const [bossEmail, setBossEmail] = useState('');
   const [gender, setGender] = useState<Gender>(Gender.Unspecified);
   const [title, setTitle] = useState('Sr./Sra.');
+  const [fechaIngreso, setFechaIngreso] = useState('');
+  const [fechaTermino, setFechaTermino] = useState('');
+  const [fechaCumpleanios, setFechaCumpleanios] = useState('');
+  const [contactoEmergencia, setContactoEmergencia] = useState('');
+  const [direccion, setDireccion] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Load data: If editing, load initialData. If new, try to load Draft from localStorage.
@@ -51,6 +56,11 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
       setBossEmail(initialData.bossEmail);
       setGender(initialData.gender);
       setTitle(initialData.title);
+      setFechaIngreso(initialData.fechaIngreso || '');
+      setFechaTermino(initialData.fechaTermino || '');
+      setFechaCumpleanios(initialData.fechaCumpleanios || '');
+      setContactoEmergencia(initialData.contactoEmergencia || '');
+      setDireccion(initialData.direccion || '');
     } else {
       // Logic for recovering Draft
       const draft = localStorage.getItem('officialFormDraft');
@@ -68,6 +78,11 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
           setBossEmail(parsed.bossEmail || '');
           setGender(parsed.gender || Gender.Unspecified);
           setTitle(parsed.title || 'Sr./Sra.');
+          setFechaIngreso(parsed.fechaIngreso || '');
+          setFechaTermino(parsed.fechaTermino || '');
+          setFechaCumpleanios(parsed.fechaCumpleanios || '');
+          setContactoEmergencia(parsed.contactoEmergencia || '');
+          setDireccion(parsed.direccion || '');
         } catch (e) {
           console.error("Error loading draft", e);
         }
@@ -89,11 +104,16 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
         bossPosition,
         bossEmail,
         gender,
-        title
+        title,
+        fechaIngreso,
+        fechaTermino,
+        fechaCumpleanios,
+        contactoEmergencia,
+        direccion,
       };
       localStorage.setItem('officialFormDraft', JSON.stringify(draft));
     }
-  }, [name, email, department, position, stament, isBoss, bossName, bossPosition, bossEmail, gender, title, initialData]);
+  }, [name, email, department, position, stament, isBoss, bossName, bossPosition, bossEmail, gender, title, fechaIngreso, fechaTermino, fechaCumpleanios, contactoEmergencia, direccion, initialData]);
 
   // Derive unique lists for autocomplete
   const registeredBosses = useMemo(() => existingOfficials.filter(o => o.isBoss), [existingOfficials]);
@@ -205,6 +225,11 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
       setBossEmail('');
       setGender(Gender.Unspecified);
       setTitle('Sr./Sra.');
+      setFechaIngreso('');
+      setFechaTermino('');
+      setFechaCumpleanios('');
+      setContactoEmergencia('');
+      setDireccion('');
       localStorage.removeItem('officialFormDraft');
     }
   };
@@ -222,7 +247,12 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
       bossPosition,
       bossEmail,
       gender,
-      title
+      title,
+      fechaIngreso: fechaIngreso || undefined,
+      fechaTermino: fechaTermino || undefined,
+      fechaCumpleanios: fechaCumpleanios || undefined,
+      contactoEmergencia: contactoEmergencia || undefined,
+      direccion: direccion || undefined,
     });
     
     // Clear draft on successful save
@@ -419,6 +449,73 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
               placeholder="Ej. Profesional"
               icon={<BadgeCheck className="h-4 w-4 text-slate-400 dark:text-slate-500" />}
             />
+          </div>
+        </div>
+
+        {/* Datos Adicionales Section */}
+        <div className="bg-slate-50 dark:bg-dark-900/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+          <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            Datos Adicionales
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Fecha Ingreso</label>
+              <input
+                type="date"
+                value={fechaIngreso}
+                onChange={(e) => setFechaIngreso(e.target.value)}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Fecha Término Contrato</label>
+              <input
+                type="date"
+                value={fechaTermino}
+                onChange={(e) => setFechaTermino(e.target.value)}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Fecha Cumpleaños</label>
+              <input
+                type="date"
+                value={fechaCumpleanios}
+                onChange={(e) => setFechaCumpleanios(e.target.value)}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Contacto de Emergencia</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Phone className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                </div>
+                <input
+                  type="text"
+                  value={contactoEmergencia}
+                  onChange={(e) => setContactoEmergencia(e.target.value)}
+                  className={inputWithIconCls}
+                  placeholder="Nombre – +56 9 1234 5678"
+                />
+              </div>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Dirección</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <MapPin className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                </div>
+                <input
+                  type="text"
+                  value={direccion}
+                  onChange={(e) => setDireccion(e.target.value)}
+                  className={inputWithIconCls}
+                  placeholder="Av. Ejemplo 1234, Arica"
+                />
+              </div>
+            </div>
           </div>
         </div>
 

@@ -403,6 +403,8 @@ export const InboxView: React.FC<InboxViewProps> = ({ campaigns, onToast, savedT
     const [filter, setFilter] = useState<'all' | 'unread' | 'archived'>('all');
     const [archivedIds, setArchivedIds] = useState<Set<string>>(getArchivedIds);
 
+    const [onlyReplies, setOnlyReplies] = useState(true);
+
     // Collect all unique emails from campaign logs
     const contactEmails = React.useMemo(() => {
         const emails = new Set<string>();
@@ -410,6 +412,15 @@ export const InboxView: React.FC<InboxViewProps> = ({ campaigns, onToast, savedT
             if (l.recipientEmail) emails.add(l.recipientEmail);
         }));
         return Array.from(emails);
+    }, [campaigns]);
+
+    // Collect campaign subjects (normalized) for reply matching
+    const campaignSubjects = React.useMemo(() => {
+        const subjects = new Set<string>();
+        campaigns.forEach(c => {
+            if (c.subject) subjects.add(c.subject.toLowerCase().trim());
+        });
+        return subjects;
     }, [campaigns]);
 
     const loadInbox = useCallback(async () => {
@@ -485,10 +496,23 @@ export const InboxView: React.FC<InboxViewProps> = ({ campaigns, onToast, savedT
 
     const handleReplySent = () => { loadInbox(); };
 
+    // Strip Re:/Fwd: prefixes for subject matching
+    const normalizeSubject = (s: string) =>
+        s.replace(/^(re|fwd|rv|reenv):\s*/gi, '').toLowerCase().trim();
+
     const filteredThreads = threads.filter(t => {
         const isArchived = archivedIds.has(t.threadId);
         if (filter === 'archived') return isArchived;
         if (isArchived) return false; // hide archived from 'all' and 'unread'
+
+        // Reply filter: thread must have >1 message OR subject matches a campaign subject
+        if (onlyReplies) {
+            const isReply = t.messageCount > 1;
+            const subjectNorm = normalizeSubject(t.subject);
+            const matchesCampaign = campaignSubjects.has(subjectNorm);
+            if (!isReply && !matchesCampaign) return false;
+        }
+
         const matchesSearch =
             !search ||
             t.subject.toLowerCase().includes(search.toLowerCase()) ||
@@ -557,7 +581,21 @@ export const InboxView: React.FC<InboxViewProps> = ({ campaigns, onToast, savedT
                     </button>
                 </div>
 
-                {/* Filter tabs */}
+                {/* Reply filter toggle + Filter tabs */}
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setOnlyReplies(!onlyReplies)}
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition-all flex-shrink-0 ${
+                            onlyReplies
+                                ? 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800'
+                                : 'bg-white dark:bg-dark-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                        }`}
+                        title={onlyReplies ? 'Mostrando solo respuestas a correos de la app' : 'Mostrando todos los correos de contactos'}
+                    >
+                        <Reply className="w-3 h-3" />
+                        {onlyReplies ? 'Solo Respuestas' : 'Todos'}
+                    </button>
+                </div>
                 <div className="flex bg-slate-100 dark:bg-dark-900 p-1 rounded-lg border border-slate-200 dark:border-slate-800 gap-0.5">
                     {(['all', 'unread', 'archived'] as const).map(f => (
                         <button
