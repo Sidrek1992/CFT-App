@@ -32,8 +32,9 @@ class OrgChartErrorBoundary extends Component<{ children: React.ReactNode }, { h
         return this.props.children;
     }
 }
-import { FileEdit, Send, Plus, Database, LayoutDashboard, Upload, Download, AlertTriangle, X, RefreshCw, SkipForward, Trash2, FileSpreadsheet, Menu, Briefcase, CheckCircle2, Settings, ChevronDown, FolderPlus, PenLine, FolderInput, FolderOutput, Network, LogOut, Moon, Sun, Inbox, Loader2, Shield } from 'lucide-react';
+import { FileEdit, Send, Plus, Database, LayoutDashboard, Upload, Download, AlertTriangle, X, RefreshCw, SkipForward, Trash2, FileSpreadsheet, Menu, Briefcase, CheckCircle2, Settings, ChevronDown, FolderPlus, PenLine, FolderInput, FolderOutput, Network, LogOut, Moon, Sun, Inbox, Loader2, Shield, ScanSearch, Paperclip } from 'lucide-react';
 import { Official, EmailTemplate, ViewState, ToastNotification, SavedTemplate, Gender, SortOption, FilterCriteria, OfficialDatabase, Campaign, EmailLog, UserProfile, UserRole, ROLE_LABELS, ROLE_COLORS } from './types';
+import type { AssignedFile } from './components/DocAnalysisView';
 import { bootstrapUserProfile, subscribeToMyProfile, canEdit, canSendEmails, canManageRoles } from './services/rolesService';
 import { useRBAC } from './hooks/useRBAC';
 import { ProtectedView } from './components/rbac/ProtectedView';
@@ -49,12 +50,13 @@ import { User } from 'firebase/auth';
 
 // ─── Lazy-loaded heavy components ────────────────────────────────────────────
 // These chunks are only downloaded when the user navigates to those sections.
-const TemplateEditor = lazy(() => import('./components/TemplateEditor').then(m => ({ default: m.TemplateEditor })));
-const Generator      = lazy(() => import('./components/Generator').then(m => ({ default: m.Generator })));
-const Dashboard      = lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })));
-const OrgChart       = lazy(() => import('./components/OrgChart').then(m => ({ default: m.OrgChart })));
-const InboxView      = lazy(() => import('./components/InboxView').then(m => ({ default: m.InboxView })));
-const RolesManager   = lazy(() => import('./components/RolesManager').then(m => ({ default: m.RolesManager })));
+const TemplateEditor  = lazy(() => import('./components/TemplateEditor').then(m => ({ default: m.TemplateEditor })));
+const Generator       = lazy(() => import('./components/Generator').then(m => ({ default: m.Generator })));
+const Dashboard       = lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })));
+const OrgChart        = lazy(() => import('./components/OrgChart').then(m => ({ default: m.OrgChart })));
+const InboxView       = lazy(() => import('./components/InboxView').then(m => ({ default: m.InboxView })));
+const RolesManager    = lazy(() => import('./components/RolesManager').then(m => ({ default: m.RolesManager })));
+const DocAnalysisView = lazy(() => import('./components/DocAnalysisView').then(m => ({ default: m.DocAnalysisView })));
 
 // Shared loading skeleton shown while a lazy chunk is downloading
 const LazyLoader: React.FC = () => (
@@ -187,6 +189,9 @@ export default function App() {
 
 
     const [files, setFiles] = useState<File[]>([]);
+
+    // Files already auto-assigned to officials in the Generator — shared with DocAnalysisView
+    const [assignedFiles, setAssignedFiles] = useState<AssignedFile[]>([]);
 
     // Bug #9: sentHistory is now derived from all campaign logs of the active DB
     // This ensures it stays in sync across users and sessions without a separate local copy
@@ -1045,6 +1050,22 @@ export default function App() {
                         </button>
                     )}
 
+                    {/* Doc Analysis — superadmin, admin, operator */}
+                    {rbac.canView('docAnalysis') && (
+                        <button
+                            onClick={() => handleNavigate('docAnalysis')}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'docAnalysis' ? 'bg-violet-600 text-white shadow-[0_0_20px_rgba(139,92,246,0.3)] border border-violet-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
+                        >
+                            <ScanSearch className={`w-5 h-5 flex-shrink-0 ${view === 'docAnalysis' ? 'text-violet-100' : 'text-slate-600 dark:text-slate-400'}`} />
+                            <span className="flex-1 text-left">Análisis de Docs</span>
+                            {assignedFiles.length > 0 && (
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${view === 'docAnalysis' ? 'bg-white/20 text-white' : 'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300'}`}>
+                                    {assignedFiles.length}
+                                </span>
+                            )}
+                        </button>
+                    )}
+
                     {/* Inbox — superadmin, admin, operator */}
                     {rbac.canView('inbox') && (
                         <button
@@ -1333,6 +1354,7 @@ export default function App() {
                                             onCampaignCreate={handleCampaignCreate}
                                             onLogEmail={handleLogEmail}
                                             onToast={(msg, type) => addToast(msg, type)}
+                                            onAssignedFilesChange={setAssignedFiles}
                                         />
                                     </Suspense>
                                 </div>
@@ -1371,6 +1393,36 @@ export default function App() {
                                         </Suspense>
                                     </div>
                                 )}
+                            </ProtectedView>
+                        )}
+
+                        {view === 'docAnalysis' && (
+                            <ProtectedView allowed={rbac.canView('docAnalysis')} role={userRole} resource="Análisis de Documentos">
+                                <div className="space-y-6">
+                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                        <div>
+                                            <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                                <ScanSearch className="w-6 h-6 text-violet-500" />
+                                                Análisis de Documentos
+                                            </h2>
+                                            <p className="text-slate-500 dark:text-slate-400">
+                                                Archivos PDF asignados en el Generador · Análisis IA de inconsistencias
+                                            </p>
+                                        </div>
+                                        {assignedFiles.length > 0 && (
+                                            <span className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 rounded-lg text-xs font-semibold border border-violet-200 dark:border-violet-800">
+                                                <Paperclip className="w-3.5 h-3.5" />
+                                                {assignedFiles.length} archivo{assignedFiles.length !== 1 ? 's' : ''} disponible{assignedFiles.length !== 1 ? 's' : ''}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <Suspense fallback={<LazyLoader />}>
+                                        <DocAnalysisView
+                                            assignedFiles={assignedFiles}
+                                            onToast={(msg, type) => addToast(msg, type)}
+                                        />
+                                    </Suspense>
+                                </div>
                             </ProtectedView>
                         )}
                     </div>

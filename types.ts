@@ -85,7 +85,7 @@ export interface GeneratedEmail {
   attachments: File[];
 }
 
-export type ViewState = 'dashboard' | 'database' | 'orgChart' | 'template' | 'generate' | 'inbox' | 'roles';
+export type ViewState = 'dashboard' | 'database' | 'orgChart' | 'template' | 'generate' | 'inbox' | 'roles' | 'docAnalysis';
 
 // ─── User Roles ────────────────────────────────────────────────────────────────
 /**

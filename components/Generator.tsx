@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { Official, EmailTemplate, Campaign, EmailLog } from '../types';
 import { useEmailGenerator } from '../hooks/useEmailGenerator';
 import { normalizeText } from '../hooks/useEmailGenerator';
+import type { AssignedFile } from './DocAnalysisView';
 
 import { GmailAuthBanner } from './generator/GmailAuthBanner';
 import { CampaignSelector } from './generator/CampaignSelector';
@@ -27,6 +28,8 @@ interface GeneratorProps {
     logId?: string
   ) => void;
   onToast: (msg: string, type: 'success' | 'error') => void;
+  /** Called whenever the set of per-official assigned files changes, so DocAnalysisView can stay in sync. */
+  onAssignedFilesChange?: (files: AssignedFile[]) => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -40,6 +43,7 @@ export const Generator: React.FC<GeneratorProps> = ({
   onCampaignCreate,
   onLogEmail,
   onToast,
+  onAssignedFilesChange,
 }) => {
   const g = useEmailGenerator({
     officials,
@@ -81,6 +85,23 @@ export const Generator: React.FC<GeneratorProps> = ({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gestionPersonasEmail]);
+
+  // Sync assigned personal attachments upward so DocAnalysisView can read them
+  useEffect(() => {
+    if (!onAssignedFilesChange) return;
+    const collected: AssignedFile[] = [];
+    g.editableEmails.forEach(email => {
+      email.personalAttachments.forEach((file, idx) => {
+        collected.push({
+          officialId: email.official.id,
+          officialName: email.official.name,
+          file,
+          fileIndex: idx,
+        });
+      });
+    });
+    onAssignedFilesChange(collected);
+  }, [g.editableEmails, onAssignedFilesChange]);
 
   // Empty-state guard
   if (officials.length === 0) {
