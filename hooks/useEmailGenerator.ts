@@ -460,26 +460,61 @@ export function useEmailGenerator({
   // ── Auto-assign helpers ───────────────────────────────────────────────────
 
   /**
-   * Given a filename and the list of editable emails, find the best matching
-   * email by checking whether the official's name (normalized) appears as a
-   * substring inside the normalized filename.
-   * Returns the matching EditableEmail or null.
+   * Scores how well a filename matches an official's name.
+   *
+   * Strategy (in order of priority):
+   *  1. Full name substring match  → score 100
+   *  2. First name + at least one apellido present in file → score 50 + 10 per extra word matched
+   *  3. First name only present → score 10 (too weak, used as last resort)
+   *
+   * File format example:  "RAS FEBRERO 2026 - MAXIMILIANO GUZMAN.pdf"
+   * Official name:        "Maximiliano Andrés Guzmán Ahumada"
+   * → parts in file: "maximiliano" ✓, "andres" ✗, "guzman" ✓, "ahumada" ✗
+   * → first name match + 1 apellido  → score 60  (wins)
+   */
+  const scoreMatch = (fileName: string, official: Official): number => {
+    const normalizedFile = normalizeText(fileName);
+    const normalizedName = normalizeText(official.name);
+
+    // Priority 1: full name is a substring of the filename
+    if (normalizedFile.includes(normalizedName)) return 100;
+
+    const nameParts = normalizedName.split(/\s+/).filter(p => p.length > 2);
+    if (nameParts.length === 0) return 0;
+
+    // Words present in the filename (split on non-letter chars to avoid partial hits)
+    const fileWords = normalizedFile.split(/[^a-z]+/).filter(w => w.length > 2);
+
+    const firstName = nameParts[0];
+    const hasFirstName = fileWords.includes(firstName);
+    if (!hasFirstName) return 0; // First name must always be present
+
+    // Count how many name parts (beyond the first) also appear in the file
+    const restParts = nameParts.slice(1);
+    const matchedRest = restParts.filter(p => fileWords.includes(p));
+
+    if (matchedRest.length === 0) return 10; // Only first name matched — weak
+    return 50 + matchedRest.length * 10;     // First name + N apellidos
+  };
+
+  /**
+   * Given a filename, returns the best-matching EditableEmail or null.
+   * A minimum score of 50 is required (first name + at least one apellido).
    */
   const findBestMatch = (fileName: string): EditableEmail | null => {
-    const normalizedFile = normalizeText(fileName);
-    // Try longest-name match first to avoid false positives (e.g. "Ana" inside "Mariana")
-    const sorted = [...editableEmails].sort(
-      (a, b) => b.official.name.length - a.official.name.length
-    );
-    for (const email of sorted) {
-      const normalizedName = normalizeText(email.official.name);
-      if (normalizedFile.includes(normalizedName)) return email;
-      // Also try matching individual name parts (first name + last name separately)
-      const parts = normalizedName.split(/\s+/).filter(p => p.length > 2);
-      const allPartsMatch = parts.length >= 2 && parts.every(p => normalizedFile.includes(p));
-      if (allPartsMatch) return email;
+    const MIN_SCORE = 50;
+    let best: EditableEmail | null = null;
+    let bestScore = 0;
+
+    for (const email of editableEmails) {
+      const score = scoreMatch(fileName, email.official);
+      if (score > bestScore) {
+        bestScore = score;
+        best = email;
+      }
     }
-    return null;
+
+    return bestScore >= MIN_SCORE ? best : null;
   };
 
   /**
