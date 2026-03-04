@@ -123,14 +123,6 @@ const UserProfileSection = ({ userProfile, userName, isDarkMode, setIsDarkMode, 
                             Ajustes
                         </div>
                         <div className="flex items-center gap-1">
-                            <NotificationCenter />
-                            <button
-                                onClick={() => setIsDarkMode(!isDarkMode)}
-                                className="p-1.5 text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors"
-                                title={isDarkMode ? "Modo Claro" : "Modo Oscuro"}
-                            >
-                                {isDarkMode ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-                            </button>
                             <button
                                 onClick={handleLogout}
                                 className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-all"
@@ -996,13 +988,16 @@ export default function App() {
                             <p className="text-xs font-medium text-primary-600 dark:text-primary-400 uppercase tracking-widest mt-0.5">Gestor Email</p>
                         </div>
                     </div>
-                    <button
-                        onClick={() => setIsDarkMode(!isDarkMode)}
-                        className="p-2 text-slate-500 hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400 hover:bg-slate-200 dark:hover:bg-white/5 rounded-xl transition-colors"
-                        title={isDarkMode ? "Cambiar a Modo Claro" : "Cambiar a Modo Oscuro"}
-                    >
-                        {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <NotificationCenter />
+                        <button
+                            onClick={() => setIsDarkMode(!isDarkMode)}
+                            className="p-2 text-slate-500 hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400 hover:bg-slate-200 dark:hover:bg-white/5 rounded-xl transition-colors"
+                            title={isDarkMode ? "Cambiar a Modo Claro" : "Cambiar a Modo Oscuro"}
+                        >
+                            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                        </button>
+                    </div>
                 </div>
 
                 {/* Database Switcher */}
