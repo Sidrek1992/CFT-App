@@ -88,6 +88,72 @@ const parseGender = (val: any): Gender => {
     return Gender.Unspecified;
 };
 
+/** Conjunto de campos que son fechas ISO (YYYY-MM-DD) */
+const DATE_FIELDS = new Set<keyof Official>(['fechaIngreso', 'fechaTermino', 'fechaCumpleanios']);
+
+/**
+ * Convierte cualquier valor de fecha proveniente de Excel a string ISO YYYY-MM-DD.
+ * Maneja:
+ *  - Objetos Date (cuando XLSX parsea con cellDates:true)
+ *  - Números seriales de Excel (días desde 1900-01-01)
+ *  - Strings en formatos: DD/MM/YYYY, DD-MM-YYYY, MM/DD/YYYY, YYYY-MM-DD, YYYY/MM/DD
+ */
+function parseExcelDate(val: any): string {
+    if (!val && val !== 0) return '';
+
+    // Ya es un objeto Date (XLSX con cellDates:true)
+    if (val instanceof Date) {
+        if (isNaN(val.getTime())) return '';
+        const y = val.getFullYear();
+        const m = String(val.getMonth() + 1).padStart(2, '0');
+        const d = String(val.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    // Número serial de Excel (float o int)
+    if (typeof val === 'number') {
+        // Excel epoch: 1 = 1900-01-01, pero tiene bug del año 1900 (cuenta día 60 como 29/02/1900)
+        const excelEpoch = new Date(1899, 11, 31); // 1899-12-31
+        const ms = excelEpoch.getTime() + (val - (val >= 60 ? 1 : 0)) * 86400000;
+        const d = new Date(ms);
+        if (isNaN(d.getTime())) return '';
+        const y = d.getFullYear();
+        const mo = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${mo}-${day}`;
+    }
+
+    // String: intentar varios formatos
+    const s = String(val).trim();
+    if (!s) return '';
+
+    // Formato YYYY-MM-DD o YYYY/MM/DD (ya es ISO)
+    const isoMatch = s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+    if (isoMatch) {
+        const [, y, m, d] = isoMatch;
+        return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    }
+
+    // Formato DD/MM/YYYY o DD-MM-YYYY (más común en Chile)
+    const clMatch = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+    if (clMatch) {
+        const [, d, m, y] = clMatch;
+        // Heurística: si el primer número > 12, es día; si ambos <= 12, asumimos DD/MM (estándar Chile)
+        return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    }
+
+    // Intentar parseo nativo como último recurso
+    const parsed = new Date(s);
+    if (!isNaN(parsed.getTime())) {
+        const y = parsed.getFullYear();
+        const mo = String(parsed.getMonth() + 1).padStart(2, '0');
+        const day = String(parsed.getDate()).padStart(2, '0');
+        return `${y}-${mo}-${day}`;
+    }
+
+    return '';
+}
+
 /**
  * Fuzzy name matching: returns true if two name strings are "close enough"
  * using normalized token-set comparison (order-independent full-name match).
@@ -149,9 +215,9 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
         try {
             const buffer = await file.arrayBuffer();
             const XLSX = await import('xlsx');
-            const wb = XLSX.read(buffer, { type: 'array' });
+            const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
             const ws = wb.Sheets[wb.SheetNames[0]];
-            const data: Record<string, any>[] = XLSX.utils.sheet_to_json(ws);
+            const data: Record<string, any>[] = XLSX.utils.sheet_to_json(ws, { raw: false, dateNF: 'yyyy-mm-dd' });
 
             if (data.length === 0) {
                 addToast('El archivo Excel está vacío', 'error');
@@ -260,8 +326,15 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
 
                 const isEmpty = currentVal === undefined || currentVal === null || String(currentVal).trim() === '';
                 if (isEmpty) {
-                    let newValue = String(excelVal).trim();
-                    if (fieldKey === 'gender') newValue = parseGender(excelVal);
+                    let newValue: string;
+                    if (fieldKey === 'gender') {
+                        newValue = parseGender(excelVal);
+                    } else if (DATE_FIELDS.has(fieldKey)) {
+                        newValue = parseExcelDate(excelVal);
+                    } else {
+                        newValue = String(excelVal).trim();
+                    }
+                    if (!newValue) return; // no guardar valor vacío/inválido
                     fieldsToFill.push({
                         field: fieldKey,
                         label: fieldDef?.label || fieldKey,
