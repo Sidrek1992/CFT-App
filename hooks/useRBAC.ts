@@ -66,7 +66,7 @@ export function useRBAC(role: UserRole): RBACContext {
 
     const canMutateView = (view: string): boolean => {
         const perm = VIEW_PERMISSIONS[view];
-        return perm?.canMutate ? perm.canMutate(role) : true;
+        return perm?.canMutate ? perm.canMutate(role) : false;
     };
 
     return {

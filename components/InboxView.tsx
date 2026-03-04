@@ -17,6 +17,7 @@ import {
 import { hasGmailToken, reauthorizeWithGoogle } from '../services/authService';
 import { Campaign, SavedTemplate } from '../types';
 import { generateQuickReplies } from '../services/geminiService';
+import DOMPurify from 'dompurify';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface InboxViewProps {
@@ -60,6 +61,9 @@ const extractDisplayName = (str: string): string => {
     return match ? match[1].trim().replace(/"/g, '') : str.trim();
 };
 
+const sanitizeHtml = (html: string): string =>
+    DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
+
 // ─── Reply Editor (enhanced with templates + AI) ──────────────────────────────
 interface ReplyEditorProps {
     thread: ParsedThread;
@@ -89,11 +93,12 @@ const ReplyEditor: React.FC<ReplyEditorProps> = ({ thread, onSent, onToast, save
         if (!body.trim()) { onToast('Escribe una respuesta primero.', 'error'); return; }
         const lastMsg = thread.messages[thread.messages.length - 1];
         const replyTo = extractEmail(lastMsg.from);
+        const quotedBodyHtml = sanitizeHtml(lastMsg.bodyHtml);
         const htmlBody = `<p style="margin:0">${body.replace(/\n/g, '<br>')}</p>
       <br/><hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0"/>
       <p style="color:#9ca3af;font-size:12px">El ${new Date(lastMsg.date).toLocaleString('es-CL')}, ${lastMsg.from} escribió:</p>
       <blockquote style="margin:0 0 0 8px;padding-left:12px;border-left:3px solid #d1d5db;color:#6b7280;font-size:13px">
-        ${lastMsg.bodyHtml}
+        ${quotedBodyHtml}
       </blockquote>`;
 
         setSending(true);
@@ -350,7 +355,7 @@ const ThreadDetail: React.FC<ThreadDetailProps> = ({ thread, onBack, onToast, on
                                     <div
                                         className="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 [&_a]:text-indigo-600 [&_blockquote]:border-l-4 [&_blockquote]:border-slate-300 [&_blockquote]:pl-3 [&_blockquote]:text-slate-500"
                                         style={{ fontSize: '13px', lineHeight: '1.6' }}
-                                        dangerouslySetInnerHTML={{ __html: msg.bodyHtml }}
+                                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.bodyHtml) }}
                                     />
                                 </div>
                             )}

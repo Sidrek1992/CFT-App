@@ -40,6 +40,9 @@ service cloud.firestore {
     /** admin OR superadmin — can edit databases, officials, templates */
     function canEdit()      { return isSuperAdmin() || isAdmin(); }
 
+    /** operator and above — can send/log emails */
+    function canSend()      { return isSuperAdmin() || isAdmin() || isOperator(); }
+
     /** operator and above — can read databases to generate/send emails */
     function canRead()      { return isSignedIn(); }  // all authenticated users can read
 
@@ -58,14 +61,12 @@ service cloud.firestore {
       // Read: own profile always; all profiles only for superadmin
       allow read: if isSignedIn() && (request.auth.uid == uid || isSuperAdmin());
 
-      // Create: only the owner creating their own profile, and they cannot
-      // self-assign 'superadmin' or 'admin' (bootstrapUserProfile enforces this
-      // on the first user, but here we enforce it server-side as well).
+      // Create: only the owner creating their own profile as reader.
+      // This blocks all self-promotion to superadmin/admin/operator.
       allow create: if isSignedIn()
         && request.auth.uid == uid
         && request.resource.data.uid == uid
-        && (request.resource.data.role == 'reader'
-            || request.resource.data.role == 'superadmin'); // superadmin only when first user (empty collection checked by client, not enforceable here without an aggregation — we allow it and trust bootstrapUserProfile logic)
+        && request.resource.data.role == 'reader';
 
       // Update / Delete: only superadmin can change roles or delete profiles
       allow update, delete: if isSuperAdmin();
@@ -86,6 +87,17 @@ service cloud.firestore {
     match /databases/{docId} {
       allow read:             if canRead();
       allow create, update, delete: if isSignedIn() && canEdit();
+
+      match /campaigns/{campaignId} {
+        allow read: if canRead();
+        allow create, update, delete: if isSignedIn() && canEdit();
+
+        match /logs/{logId} {
+          allow read: if canRead();
+          allow create, update: if isSignedIn() && canSend();
+          allow delete: if isSignedIn() && canEdit();
+        }
+      }
     }
 
     // ─── Deny everything else ─────────────────────────────────────────────────

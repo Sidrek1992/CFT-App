@@ -14,7 +14,6 @@ import { DRIVE_SCOPE } from './driveService';
 const GMAIL_SCOPES = [
     'https://www.googleapis.com/auth/gmail.send',
     'https://www.googleapis.com/auth/gmail.readonly',
-    'https://www.googleapis.com/auth/gmail.modify',
     DRIVE_SCOPE, // Google Drive readonly — for file picker
 ];
 

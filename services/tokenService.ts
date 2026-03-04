@@ -45,11 +45,22 @@ const MIN_REAUTH_INTERVAL_MS = 45 * 60 * 1000; // 45 minutes
 
 export interface StoredTokenMeta {
     uid: string;
-    accessTokenHash: string; // first 8 chars for verification
+    accessTokenHash: string; // SHA-256 hash (hex)
     expiresAt: number;       // unix ms
     updatedAt: number;
     email: string;
 }
+
+const sha256Hex = async (input: string): Promise<string> => {
+    if (typeof crypto === 'undefined' || !crypto.subtle) {
+        return 'unavailable';
+    }
+    const bytes = new TextEncoder().encode(input);
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(digest))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+};
 
 /**
  * Records token metadata in Firestore so other tabs/devices know the token
@@ -61,10 +72,11 @@ export const persistTokenMeta = async (uid: string, accessToken: string, email: 
     sessionStorage.setItem(TOKEN_LAST_REFRESH_KEY, String(Date.now()));
 
     try {
+        const accessTokenHash = await sha256Hex(accessToken);
         const ref = doc(db, TOKEN_COLLECTION, uid);
         const meta: StoredTokenMeta = {
             uid,
-            accessTokenHash: accessToken.substring(0, 8),
+            accessTokenHash,
             expiresAt,
             updatedAt: Date.now(),
             email,

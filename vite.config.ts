@@ -1,19 +1,14 @@
 import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, '.', '');
+export default defineConfig(() => {
     return {
       server: {
         port: 3000,
         host: '0.0.0.0',
       },
       plugins: [react()],
-      define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-      },
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
@@ -37,8 +32,6 @@ export default defineConfig(({ mode }) => {
               'vendor-recharts': ['recharts'],
               // Excel — only loaded on import/export actions
               'vendor-xlsx': ['xlsx'],
-              // AI SDK
-              'vendor-gemini': ['@google/genai'],
               // Lucide icons (tree-shaken but still sizeable)
               'vendor-lucide': ['lucide-react'],
             },

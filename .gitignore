@@ -12,6 +12,17 @@ dist
 dist-ssr
 *.local
 
+# Secrets and credentials
+.env
+.env.*
+!.env.example
+createAdmin.ts
+createAdmin.js
+
+# Firebase functions build artifacts
+functions/node_modules/
+functions/lib/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

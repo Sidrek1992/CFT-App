@@ -649,7 +649,7 @@ export function useEmailGenerator({
       const allFiles = [...files, ...email.personalAttachments];
       const logId = crypto.randomUUID();
       const trackingPixel = isTrackingEnabled()
-        ? buildTrackingPixel(logId, activeCampaignId, databaseId)
+        ? await buildTrackingPixel(logId, activeCampaignId, databaseId)
         : undefined;
 
       const raw = await buildRawMessage(to, email.subject, email.body, cc, allFiles, trackingPixel);
@@ -698,7 +698,7 @@ export function useEmailGenerator({
         const allFiles = [...files, ...email.personalAttachments];
         const logId = crypto.randomUUID();
         const trackingPixel = isTrackingEnabled()
-          ? buildTrackingPixel(logId, activeCampaignId, databaseId)
+          ? await buildTrackingPixel(logId, activeCampaignId, databaseId)
           : undefined;
         const raw = await buildRawMessage(to, email.subject, email.body, cc, allFiles, trackingPixel);
         await sendGmail(raw);

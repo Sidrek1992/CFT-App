@@ -3,7 +3,7 @@ import {
     query, orderBy, limit, startAfter, DocumentSnapshot, getDoc,
 } from "firebase/firestore";
 import { db } from "./firebaseService";
-import { OfficialDatabase } from "../types";
+import { Campaign, EmailLog, OfficialDatabase } from "../types";
 
 export const DB_PAGE_SIZE = 50;
 
@@ -87,6 +87,28 @@ export const dbService = {
     async saveSharedConfig(data: any) {
         const docRef = doc(db, DB_COLLECTION, SHARED_DOC_ID);
         await setDoc(docRef, data, { merge: true });
+    },
+
+    // Persist campaign metadata in subcollection for scalable log tracking
+    async saveCampaignMeta(databaseId: string, campaign: Campaign) {
+        const campaignRef = doc(db, DB_COLLECTION, databaseId, 'campaigns', campaign.id);
+        await setDoc(
+            campaignRef,
+            {
+                id: campaign.id,
+                name: campaign.name,
+                subject: campaign.subject,
+                createdAt: campaign.createdAt,
+                status: campaign.status,
+            },
+            { merge: true }
+        );
+    },
+
+    // Persist one email log in subcollection to avoid fat-document writes
+    async saveCampaignLog(databaseId: string, campaignId: string, log: EmailLog) {
+        const logRef = doc(db, DB_COLLECTION, databaseId, 'campaigns', campaignId, 'logs', log.id);
+        await setDoc(logRef, log, { merge: true });
     },
 
     // Subscribe to Shared Config

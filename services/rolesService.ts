@@ -19,16 +19,15 @@ import {
     collection,
     doc,
     getDoc,
-    setDoc,
     onSnapshot,
     query,
     updateDoc,
-    getDocs,
     orderBy,
 } from 'firebase/firestore';
 import { db } from './firebaseService';
 import { UserProfile, UserRole } from '../types';
 import { User } from 'firebase/auth';
+import { callProtectedFunction } from './cloudFunctionService';
 
 const PROFILES_COLLECTION = 'user_profiles';
 
@@ -36,10 +35,14 @@ const PROFILES_COLLECTION = 'user_profiles';
 
 /**
  * Ensures a UserProfile exists for the given Firebase user.
- * - If no profiles exist yet → first user becomes superadmin.
+ * - Atomic bootstrap is delegated to a Cloud Function.
  * - If the user already has a profile → returns it unchanged.
  * - If the user is new (no profile) → creates with role 'reader' by default.
  */
+interface BootstrapUserProfileResponse {
+    profile: UserProfile;
+}
+
 export const bootstrapUserProfile = async (user: User): Promise<UserProfile> => {
     const profileRef = doc(db, PROFILES_COLLECTION, user.uid);
     const existing = await getDoc(profileRef);
@@ -48,22 +51,14 @@ export const bootstrapUserProfile = async (user: User): Promise<UserProfile> => 
         return existing.data() as UserProfile;
     }
 
-    // Check if any profiles exist at all
-    const allProfiles = await getDocs(collection(db, PROFILES_COLLECTION));
-    const isFirstUser = allProfiles.empty;
+    await callProtectedFunction<BootstrapUserProfileResponse>('bootstrapUserProfile', {});
 
-    const profile: UserProfile = {
-        uid: user.uid,
-        email: user.email || '',
-        displayName: user.displayName || user.email?.split('@')[0] || 'Usuario',
-        photoURL: user.photoURL || undefined,
-        role: isFirstUser ? 'superadmin' : 'reader',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-    };
+    const created = await getDoc(profileRef);
+    if (!created.exists()) {
+        throw new Error('No se pudo bootstrapear el perfil de usuario.');
+    }
 
-    await setDoc(profileRef, profile);
-    return profile;
+    return created.data() as UserProfile;
 };
 
 // ─── Read ─────────────────────────────────────────────────────────────────────

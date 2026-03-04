@@ -87,11 +87,7 @@ const parseGender = (val: any): Gender => {
     return Gender.Unspecified;
 };
 
-const INITIAL_OFFICIALS_DATA: Official[] = [
-    { id: generateId(), name: "David Alejandro Alarcón Sandoval", gender: Gender.Male, title: "Sr.", position: "Coordinador", department: "Subdirección Académica", stament: "Técnico", email: "d.alarcon@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" },
-    { id: generateId(), name: "Natalia Carolina Álvarez Rojas", gender: Gender.Female, title: "Sra.", position: "Coordinador", department: "Subdirección Académica", stament: "Técnico", email: "n.alvarez@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" },
-    { id: generateId(), name: "Carlos Alberto Araos Uribe", gender: Gender.Male, title: "Sr.", position: "Rector", department: "Rectoría", stament: "Directivo", email: "rector@cftestatalaricayparinacota.cl", bossName: "", bossPosition: "", bossEmail: "" }
-];
+const INITIAL_OFFICIALS_DATA: Official[] = [];
 
 export default function App() {
     // --- AUTH STATE ---
@@ -335,38 +331,6 @@ export default function App() {
         }
     };
 
-    // ─── Migration helper — exposed on window for one-time use from dev console ─
-    // Usage: await window.__migrateFixBossName('Carlos Araos Uribe', 'Carlos Alberto Araos Uribe')
-    useEffect(() => {
-        (window as any).__migrateFixBossName = async (oldName: string, newName: string) => {
-            console.log(`\n🔍 Buscando "${oldName}" en ${databases.length} base(s)...`);
-            let totalFixed = 0;
-            for (const database of databases) {
-                let modified = false;
-                const updatedOfficials = database.officials.map(o => {
-                    let changed = false;
-                    const updated = { ...o };
-                    if (o.bossName === oldName) { updated.bossName = newName; changed = true; }
-                    if (o.name === oldName) { updated.name = newName; changed = true; }
-                    if (changed) {
-                        console.log(`  ✅ [${database.name}] ${o.name}: bossName "${oldName}" → "${newName}"`);
-                        totalFixed++;
-                        modified = true;
-                    }
-                    return updated;
-                });
-                if (modified) {
-                    await dbService.saveDatabase({ ...database, officials: updatedOfficials });
-                    console.log(`  💾 Base "${database.name}" guardada.`);
-                }
-            }
-            console.log(`\n📊 ${totalFixed} campo(s) corregido(s). Recarga la app si no ves los cambios.`);
-            return totalFixed;
-        };
-        return () => { delete (window as any).__migrateFixBossName; };
-    }, [databases]);
-
-
     const updateActiveDbOfficials = async (newOfficials: Official[] | ((prev: Official[]) => Official[])) => {
         await updateActiveDb(db => ({
             ...db,
@@ -390,7 +354,13 @@ export default function App() {
         updateActiveDb(db => ({
             ...db,
             campaigns: [...(db.campaigns || []), newCampaign]
-        }));
+        })).catch((err) => {
+            console.warn('[App] No se pudo persistir la campaña en el documento principal:', err);
+        });
+
+        dbService.saveCampaignMeta(activeDbId, newCampaign).catch((err) => {
+            console.warn('[App] No se pudo persistir metadata de campaña en subcolección:', err);
+        });
 
         return newCampaign;
     };
@@ -412,7 +382,15 @@ export default function App() {
                     ? { ...c, logs: [...c.logs, newLog] }
                     : c
             )
-        }));
+        })).catch((err) => {
+            console.warn('[App] No se pudo persistir log en documento principal:', err);
+        });
+
+        dbService
+            .saveCampaignLog(logData.databaseId || activeDbId, campaignId, newLog)
+            .catch((err) => {
+                console.warn('[App] No se pudo persistir log en subcolección:', err);
+            });
     };
 
     // View Handlers
