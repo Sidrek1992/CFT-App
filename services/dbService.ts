@@ -11,11 +11,31 @@ const DB_COLLECTION = "databases";
 const SHARED_DOC_ID = "shared_config";
 const USER_TEMPLATES_COLLECTION = "user_templates";
 
+/**
+ * Firestore does NOT accept fields with `undefined` values — it throws
+ * "Function setDoc() called with invalid data. Unsupported field value: undefined".
+ * This helper recursively strips every key whose value is `undefined` so the
+ * document is always clean before it is written to Firestore.
+ */
+function sanitizeForFirestore<T>(obj: T): T {
+    if (Array.isArray(obj)) {
+        return obj.map(sanitizeForFirestore) as unknown as T;
+    }
+    if (obj !== null && typeof obj === 'object') {
+        return Object.fromEntries(
+            Object.entries(obj as Record<string, unknown>)
+                .filter(([, v]) => v !== undefined)
+                .map(([k, v]) => [k, sanitizeForFirestore(v)])
+        ) as T;
+    }
+    return obj;
+}
+
 export const dbService = {
     // Save or Update a full database object
     async saveDatabase(database: OfficialDatabase) {
         const dbRef = doc(db, DB_COLLECTION, database.id);
-        await setDoc(dbRef, database);
+        await setDoc(dbRef, sanitizeForFirestore(database));
     },
 
     // Delete a database document from Firestore

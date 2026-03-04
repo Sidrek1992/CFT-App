@@ -426,16 +426,20 @@ export default function App() {
         setFilterCriteria({ type: 'none' });
     };
 
-    const handleSaveOfficial = (data: Omit<Official, 'id'>) => {
-        if (editingOfficial) {
-            updateActiveDbOfficials(prev => prev.map(o => o.id === editingOfficial.id ? { ...data, id: editingOfficial.id } : o));
-            addToast("Funcionario actualizado correctamente", 'success');
-        } else {
-            updateActiveDbOfficials(prev => [...prev, { ...data, id: generateId() }]);
-            addToast("Funcionario creado correctamente", 'success');
+    const handleSaveOfficial = async (data: Omit<Official, 'id'>) => {
+        try {
+            if (editingOfficial) {
+                await updateActiveDbOfficials(prev => prev.map(o => o.id === editingOfficial.id ? { ...data, id: editingOfficial.id } : o));
+                addToast("Funcionario actualizado correctamente", 'success');
+            } else {
+                await updateActiveDbOfficials(prev => [...prev, { ...data, id: generateId() }]);
+                addToast("Funcionario creado correctamente", 'success');
+            }
+            setShowForm(false);
+            setEditingOfficial(null);
+        } catch {
+            // Error toast is already shown by updateActiveDb — keep form open
         }
-        setShowForm(false);
-        setEditingOfficial(null);
     };
 
     const handleDeleteOfficial = (id: string) => {
