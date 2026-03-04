@@ -165,7 +165,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     // ── Health checks ───────────────────────────────────────────────────────
     const missingBossCount = officials.filter(o => !o.bossName).length;
+    const missingBossUsers = officials.filter(o => !o.bossName).slice(0, 3).map(buildFullName);
     const invalidEmailCount = officials.filter(o => !o.email.includes('@')).length;
+    const invalidEmailUsers = officials.filter(o => !o.email.includes('@')).slice(0, 3).map(buildFullName);
+    const unspecifiedUsers = officials.filter(o => o.gender === Gender.Unspecified).slice(0, 3).map(buildFullName);
     const isHealthy = missingBossCount === 0 && unspecifiedCount === 0 && invalidEmailCount === 0 && totalOfficials > 0;
 
     // ── Flatten all logs ────────────────────────────────────────────────────
@@ -681,29 +684,62 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
                             {missingBossCount > 0 && (
                                 <div onClick={() => onNavigate('database', { type: 'missingBoss' })}
-                                    className="flex items-center gap-3 p-3 bg-orange-500/10 border border-orange-500/20 rounded-xl cursor-pointer hover:bg-orange-500/20 transition-colors group">
-                                    <div className="w-9 h-9 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
-                                        <AlertTriangle className="w-4 h-4 text-orange-400" />
+                                    className="flex flex-col gap-2 p-3 bg-orange-500/10 border border-orange-500/20 rounded-xl cursor-pointer hover:bg-orange-500/20 transition-colors group">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
+                                            <AlertTriangle className="w-4 h-4 text-orange-400" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-900 dark:text-white">{missingBossCount} Sin Jefatura</p>
+                                            <p className="text-xs text-orange-400/80">Requerido para el organigrama.</p>
+                                        </div>
                                     </div>
-                                    <div><p className="text-sm font-bold text-slate-900 dark:text-white">{missingBossCount} Sin Jefatura</p><p className="text-xs text-orange-400/80">Requerido para copias.</p></div>
+                                    <div className="mt-1 pl-11 flex flex-wrap gap-1">
+                                        {missingBossUsers.map(u => (
+                                            <span key={u} className="text-[10px] bg-white/50 dark:bg-dark-950/30 text-orange-600 dark:text-orange-300 px-1.5 py-0.5 rounded border border-orange-500/10 truncate max-w-[120px]">{u}</span>
+                                        ))}
+                                        {missingBossCount > 3 && <span className="text-[10px] text-orange-500/70 py-0.5">+{missingBossCount - 3} más</span>}
+                                    </div>
                                 </div>
                             )}
                             {unspecifiedCount > 0 && (
                                 <div onClick={() => onNavigate('database', { type: 'missingGender' })}
-                                    className="flex items-center gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl cursor-pointer hover:bg-amber-500/20 transition-colors group">
-                                    <div className="w-9 h-9 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-                                        <AlertTriangle className="w-4 h-4 text-amber-400" />
+                                    className="flex flex-col gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl cursor-pointer hover:bg-amber-500/20 transition-colors group">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                                            <AlertTriangle className="w-4 h-4 text-amber-400" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-900 dark:text-white">{unspecifiedCount} Sin Género</p>
+                                            <p className="text-xs text-amber-400/80">Recomendado para plantillas.</p>
+                                        </div>
                                     </div>
-                                    <div><p className="text-sm font-bold text-slate-900 dark:text-white">{unspecifiedCount} Sin Género</p><p className="text-xs text-amber-400/80">Click para revisar.</p></div>
+                                    <div className="mt-1 pl-11 flex flex-wrap gap-1">
+                                        {unspecifiedUsers.map(u => (
+                                            <span key={u} className="text-[10px] bg-white/50 dark:bg-dark-950/30 text-amber-600 dark:text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/10 truncate max-w-[120px]">{u}</span>
+                                        ))}
+                                        {unspecifiedCount > 3 && <span className="text-[10px] text-amber-500/70 py-0.5">+{unspecifiedCount - 3} más</span>}
+                                    </div>
                                 </div>
                             )}
                             {invalidEmailCount > 0 && (
                                 <div onClick={() => onNavigate('database', { type: 'invalidEmail' })}
-                                    className="flex items-center gap-3 p-3 bg-red-500/10 border border-red-500/20 rounded-xl cursor-pointer hover:bg-red-500/20 transition-colors group">
-                                    <div className="w-9 h-9 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
-                                        <Mail className="w-4 h-4 text-red-400" />
+                                    className="flex flex-col gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl cursor-pointer hover:bg-red-500/20 transition-colors group">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                                            <Mail className="w-4 h-4 text-red-400" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-900 dark:text-white">{invalidEmailCount} Correos Inválidos</p>
+                                            <p className="text-xs text-red-400/80">Formato incorrecto.</p>
+                                        </div>
                                     </div>
-                                    <div><p className="text-sm font-bold text-slate-900 dark:text-white">{invalidEmailCount} Correos Inválidos</p><p className="text-xs text-red-400/80">Formato incorrecto.</p></div>
+                                    <div className="mt-1 pl-11 flex flex-wrap gap-1">
+                                        {invalidEmailUsers.map(u => (
+                                            <span key={u} className="text-[10px] bg-white/50 dark:bg-dark-950/30 text-red-600 dark:text-red-300 px-1.5 py-0.5 rounded border border-red-500/10 truncate max-w-[120px]">{u}</span>
+                                        ))}
+                                        {invalidEmailCount > 3 && <span className="text-[10px] text-red-500/70 py-0.5">+{invalidEmailCount - 3} más</span>}
+                                    </div>
                                 </div>
                             )}
                         </div>

@@ -91,23 +91,28 @@ const parseGender = (val: any): Gender => {
 
 const INITIAL_OFFICIALS_DATA: Official[] = [];
 
-const UserProfileSection = ({ userProfile, isDarkMode, setIsDarkMode, handleLogout }: any) => {
+const UserProfileSection = ({ userProfile, userName, isDarkMode, setIsDarkMode, handleLogout }: any) => {
     return (
         <div className="px-3 pb-3 shrink-0">
-            <div className="glass-panel rounded-xl p-3 border border-slate-100 dark:border-white/5 shadow-lg relative overflow-hidden bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-900 dark:to-slate-800/80">
+            <div className="glass-panel rounded-xl p-3 border border-slate-100 dark:border-white/5 shadow-lg relative bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-900 dark:to-slate-800/80">
                 <div className="flex flex-col gap-3">
                     {/* Top Row: Role and Online Status */}
                     <div className="flex flex-col relative gap-2 pt-1">
-                        <div className="flex items-center justify-between">
-                            <span className={`text-[10px] uppercase tracking-wider font-extrabold px-2 py-1 rounded-lg border shadow-sm ${userProfile ? ROLE_COLORS[userProfile.role] : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                                {userProfile ? ROLE_LABELS[userProfile.role] : 'Cargando...'}
-                            </span>
-                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 shadow-sm">
-                                <span className="relative flex h-2 w-2">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                        <div className="flex flex-col gap-1.5">
+                            <h3 className="text-xs font-bold text-slate-800 dark:text-white truncate">
+                                {userName || 'Cargando...'}
+                            </h3>
+                            <div className="flex items-center justify-between">
+                                <span className={`text-[9px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded-md border shadow-sm ${userProfile ? ROLE_COLORS[userProfile.role] : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                                    {userProfile ? ROLE_LABELS[userProfile.role] : 'Cargando...'}
                                 </span>
-                                <span className="text-[9px] uppercase tracking-wider font-bold text-emerald-600 dark:text-emerald-400">ONLINE</span>
+                                <div className="flex items-center gap-1.5 px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 shadow-sm">
+                                    <span className="relative flex h-1.5 w-1.5">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                                    </span>
+                                    <span className="text-[8px] uppercase tracking-wider font-bold text-emerald-600 dark:text-emerald-400">ONLINE</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1192,6 +1197,7 @@ export default function App() {
 
                 <UserProfileSection
                     userProfile={userProfile}
+                    userName={userProfile?.displayName || user?.email || 'Usuario'}
                     isDarkMode={isDarkMode}
                     setIsDarkMode={setIsDarkMode}
                     handleLogout={handleLogout}
