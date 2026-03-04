@@ -5,44 +5,52 @@ import { Official, Gender, buildFullName } from '../types';
 // ─── Field definitions for auto-mapping ──────────────────────────────────────
 
 interface FieldDef {
-    key: keyof Official;
+    key: keyof Official | '__nombresCompletos__';
     label: string;
     aliases: string[]; // lowercase, normalized (no accents)
+    /** Si es true, esta columna se divide en primerNombre/segundoNombre/tercerNombre */
+    splitIntoNameParts?: boolean;
 }
 
 const FIELD_DEFS: FieldDef[] = [
-    // Nombre desglosado
+    // ── Campo especial: columna "Nombres" del Excel → divide en partes ──────────
+    // Detecta columnas tipo "Nombres", "Nombres Propios", etc. y las separa automáticamente
+    {
+        key: '__nombresCompletos__', label: 'Nombres (dividir en partes)', splitIntoNameParts: true,
+        aliases: ['nombres', 'nombres propios', 'nombre propio', 'first names', 'given names']
+    },
+    // ── Nombre desglosado ────────────────────────────────────────────────────
     { key: 'primerNombre', label: 'Primer Nombre', aliases: ['primer nombre', 'primernombre', '1er nombre', 'nombre1', 'p. nombre'] },
     { key: 'segundoNombre', label: 'Segundo Nombre', aliases: ['segundo nombre', 'segundonombre', '2do nombre', 'nombre2'] },
     { key: 'tercerNombre', label: 'Tercer Nombre', aliases: ['tercer nombre', 'tercernombre', '3er nombre', 'nombre3'] },
-    { key: 'primerApellido', label: 'Primer Apellido', aliases: ['primer apellido', 'primerapellido', 'apellido1', 'apellido paterno', 'p. apellido'] },
-    { key: 'segundoApellido', label: 'Segundo Apellido', aliases: ['segundo apellido', 'segundoapellido', 'apellido2', 'apellido materno'] },
-    // Nombre completo (fallback / retrocompatibilidad)
-    { key: 'name', label: 'Nombre Completo', aliases: ['nombre', 'name', 'nombres', 'nombre completo', 'full name'] },
-    // Contacto
+    { key: 'primerApellido', label: 'Apellido Paterno', aliases: ['primer apellido', 'primerapellido', 'apellido1', 'apellido paterno', 'p. apellido', 'apellido paterno (1)'] },
+    { key: 'segundoApellido', label: 'Apellido Materno', aliases: ['segundo apellido', 'segundoapellido', 'apellido2', 'apellido materno', 'apellido materno (2)'] },
+    // ── Nombre completo (fallback / retrocompatibilidad) ─────────────────────
+    { key: 'name', label: 'Nombre Completo', aliases: ['nombre', 'name', 'nombre completo', 'full name'] },
+    // ── Contacto ─────────────────────────────────────────────────────────────
     { key: 'email', label: 'Correo', aliases: ['correo', 'email', 'e-mail', 'correo electronico', 'mail'] },
     { key: 'telefono', label: 'Teléfono', aliases: ['telefono', 'teléfono', 'phone', 'fono', 'cel', 'celular', 'movil', 'móvil'] },
-    // Personales
+    // ── Personales ───────────────────────────────────────────────────────────
     { key: 'gender', label: 'Género', aliases: ['genero', 'género', 'gender', 'sexo', 'sex'] },
     { key: 'title', label: 'Título', aliases: ['titulo', 'título', 'title', 'tratamiento'] },
     { key: 'estadoCivil', label: 'Estado Civil', aliases: ['estado civil', 'estadocivil', 'civil', 'estado_civil'] },
     { key: 'hijos', label: 'N° Hijos', aliases: ['hijos', 'hijos a cargo', 'numero hijos', 'n hijos', 'nro hijos'] },
-    // Laborales
+    // ── Laborales ────────────────────────────────────────────────────────────
     { key: 'department', label: 'Departamento', aliases: ['departamento', 'department', 'depto', 'area', 'unidad'] },
     { key: 'position', label: 'Cargo', aliases: ['cargo', 'position', 'puesto', 'rol'] },
     { key: 'stament', label: 'Estamento', aliases: ['estamento', 'stament', 'estamento funcionario'] },
     { key: 'tipoContrato', label: 'Tipo Contrato', aliases: ['tipo contrato', 'tipocontrato', 'contrato', 'tipo de contrato', 'modalidad contrato'] },
     { key: 'profesion', label: 'Profesión', aliases: ['profesion', 'profesión', 'titulo profesional', 'título profesional', 'carrera'] },
     { key: 'postGrado', label: 'Postgrado', aliases: ['postgrado', 'post grado', 'magister', 'magíster', 'doctorado', 'diplomado'] },
-    // Jefatura
+    // ── Jefatura ─────────────────────────────────────────────────────────────
     { key: 'bossName', label: 'Jefatura', aliases: ['jefatura', 'jefe', 'boss', 'bossname', 'nombre jefe', 'jefe directo'] },
     { key: 'bossPosition', label: 'Cargo Jefatura', aliases: ['cargojefatura', 'cargo jefatura', 'bossposition', 'cargo jefe'] },
     { key: 'bossEmail', label: 'Correo Jefatura', aliases: ['correojefatura', 'correo jefatura', 'bossemail', 'email jefe'] },
-    // Fechas
+    // ── Fechas ───────────────────────────────────────────────────────────────
     { key: 'fechaIngreso', label: 'Fecha Ingreso', aliases: ['fecha ingreso', 'fechaingreso', 'ingreso', 'fecha de ingreso', 'start date'] },
     { key: 'fechaTermino', label: 'Fecha Término', aliases: ['fecha termino', 'fecha término', 'fechatermino', 'termino', 'vencimiento', 'end date', 'fecha vencimiento'] },
     { key: 'fechaCumpleanios', label: 'Cumpleaños', aliases: ['cumpleanos', 'cumpleaños', 'fecha cumpleanos', 'fecha cumpleaños', 'fechacumpleanios', 'birthday'] },
-    // Otros
+    // ── Otros ─────────────────────────────────────────────────────────────────
     { key: 'contactoEmergencia', label: 'Contacto Emergencia', aliases: ['contacto emergencia', 'contactoemergencia', 'emergencia', 'emergency contact'] },
     { key: 'direccion', label: 'Dirección', aliases: ['direccion', 'dirección', 'domicilio', 'address', 'direccion particular'] },
 ];
@@ -52,14 +60,24 @@ const FIELD_DEFS: FieldDef[] = [
 const normalize = (s: string) =>
     s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
-function autoMapColumns(excelHeaders: string[]): Record<string, keyof Official | ''> {
-    const mapping: Record<string, keyof Official | ''> = {};
+function autoMapColumns(excelHeaders: string[]): Record<string, keyof Official | '__nombresCompletos__' | ''> {
+    const mapping: Record<string, keyof Official | '__nombresCompletos__' | ''> = {};
     excelHeaders.forEach(header => {
         const norm = normalize(header);
         const match = FIELD_DEFS.find(f => f.aliases.includes(norm));
-        mapping[header] = match ? match.key : '';
+        mapping[header] = match ? (match.key as any) : '';
     });
     return mapping;
+}
+
+/** Divide una cadena de nombres propios en hasta 3 partes: primer, segundo, tercer nombre */
+function splitNombresPropios(value: string): { primerNombre: string; segundoNombre: string; tercerNombre: string } {
+    const parts = value.trim().split(/\s+/).filter(Boolean);
+    return {
+        primerNombre: parts[0] ?? '',
+        segundoNombre: parts[1] ?? '',
+        tercerNombre: parts.slice(2).join(' '), // todo lo que quede va al tercero
+    };
 }
 
 const parseGender = (val: any): Gender => {
@@ -104,6 +122,9 @@ interface Props {
     addToast: (msg: string, type: 'success' | 'error' | 'info') => void;
 }
 
+// Tipo extendido para incluir el campo virtual de nombres
+type OfficialFieldOrVirtual = keyof Official | '__nombresCompletos__' | '';
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials, onMerge, addToast }) => {
@@ -112,7 +133,7 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
     const [fileName, setFileName] = useState('');
     const [excelData, setExcelData] = useState<Record<string, any>[]>([]);
     const [excelHeaders, setExcelHeaders] = useState<string[]>([]);
-    const [columnMapping, setColumnMapping] = useState<Record<string, keyof Official | ''>>({});
+    const [columnMapping, setColumnMapping] = useState<Record<string, OfficialFieldOrVirtual>>({});
     const [matches, setMatches] = useState<MatchResult[]>([]);
     const [unmatchedCount, setUnmatchedCount] = useState(0);
     const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
@@ -149,19 +170,23 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
         e.target.value = '';
     }, [addToast]);
 
-    // ── Step 2: Process mapping → preview ────────────────────────────────
+    // ── Step 2: Process mapping → preview ────────────────────────────
     const processMapping = useCallback(() => {
-        const activeMapping = Object.entries(columnMapping).filter((entry): entry is [string, keyof Official] => entry[1] !== '');
+        // Separar el campo virtual __nombresCompletos__ de los campos reales
+        const nombresCompletosCol = Object.entries(columnMapping).find(([, v]) => v === '__nombresCompletos__')?.[0];
+        const activeMapping = Object.entries(columnMapping).filter(
+            (entry): entry is [string, keyof Official] => entry[1] !== '' && entry[1] !== '__nombresCompletos__'
+        );
 
-        // Columns that can identify a person
+        // Columnas identificadoras de persona
         const nameCol = activeMapping.find(([, v]) => v === 'name')?.[0];
         const primerNombreCol = activeMapping.find(([, v]) => v === 'primerNombre')?.[0];
         const primerApellidoCol = activeMapping.find(([, v]) => v === 'primerApellido')?.[0];
         const emailCol = activeMapping.find(([, v]) => v === 'email')?.[0];
 
-        const hasIdentifier = nameCol || (primerNombreCol && primerApellidoCol) || emailCol;
+        const hasIdentifier = nameCol || nombresCompletosCol || (primerNombreCol && primerApellidoCol) || emailCol;
         if (!hasIdentifier) {
-            addToast('Debes mapear al menos Correo, Nombre Completo o Primer Nombre + Primer Apellido para identificar funcionarios', 'error');
+            addToast('Debes mapear al menos Correo, Nombre Completo, Nombres o Primer Nombre + Apellido para identificar funcionarios', 'error');
             return;
         }
 
@@ -171,11 +196,18 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
         excelData.forEach(row => {
             const rowEmail = emailCol ? String(row[emailCol] ?? '').trim().toLowerCase() : '';
 
-            // Build candidate full-name from excel row
+            // ── Construir nombre candidato para matching ──────────────────────
             let rowName = nameCol ? String(row[nameCol] ?? '').trim() : '';
+
+            // Si viene de columna "Nombres" (campo virtual), usar el valor completo para matching
+            if (!rowName && nombresCompletosCol) {
+                rowName = String(row[nombresCompletosCol] ?? '').trim();
+            }
+
+            // Si vienen columnas individuales de nombre, armar el nombre completo
             if (!rowName && primerNombreCol) {
                 rowName = [
-                    primerNombreCol ? String(row[primerNombreCol] ?? '') : '',
+                    String(row[primerNombreCol] ?? ''),
                     activeMapping.find(([, v]) => v === 'segundoNombre')?.[0] ? String(row[activeMapping.find(([, v]) => v === 'segundoNombre')![0]] ?? '') : '',
                     activeMapping.find(([, v]) => v === 'tercerNombre')?.[0] ? String(row[activeMapping.find(([, v]) => v === 'tercerNombre')![0]] ?? '') : '',
                     primerApellidoCol ? String(row[primerApellidoCol] ?? '') : '',
@@ -183,7 +215,17 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
                 ].filter(s => s.trim()).join(' ').trim();
             }
 
-            // Match by email first (exact), then by full name (fuzzy)
+            // ── Añadir apellidos al nombre para matching si viene de nombresCompletos ──
+            // Ej: nombresCompletos="Juan Carlos" + primerApellido="Pérez" → rowName para matching = "Juan Carlos Pérez"
+            if (nombresCompletosCol && primerApellidoCol && row[primerApellidoCol]) {
+                const apellidos = [
+                    String(row[primerApellidoCol] ?? ''),
+                    activeMapping.find(([, v]) => v === 'segundoApellido')?.[0] ? String(row[activeMapping.find(([, v]) => v === 'segundoApellido')![0]] ?? '') : '',
+                ].filter(s => s.trim()).join(' ');
+                rowName = [rowName, apellidos].filter(Boolean).join(' ').trim();
+            }
+
+            // ── Match por email (exacto) → luego por nombre (fuzzy) ───────────
             let official: Official | undefined;
 
             if (rowEmail && rowEmail.includes('@')) {
@@ -191,9 +233,7 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
             }
 
             if (!official && rowName) {
-                // Exact match against built full name
                 official = officials.find(o => normalize(buildFullName(o)) === normalize(rowName));
-                // Fuzzy fallback
                 if (!official) {
                     official = officials.find(o => namesMatch(buildFullName(o), rowName));
                 }
@@ -204,12 +244,13 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
                 return;
             }
 
-            // Determine fields to fill (empty in official, has value in excel)
+            // ── Determinar campos a rellenar (vacíos en BD, con valor en Excel) ──
             const fieldsToFill: MatchResult['fieldsToFill'] = [];
 
+            // Campos regulares (excluir campos de identidad/nombre que se manejan aparte)
+            const IDENTITY_SKIP = new Set(['name', 'email', 'primerNombre', 'segundoNombre', 'tercerNombre', 'primerApellido', 'segundoApellido']);
             activeMapping.forEach(([excelCol, fieldKey]) => {
-                // Skip identity/name fields used for matching
-                if (['name', 'email', 'primerNombre', 'segundoNombre', 'tercerNombre', 'primerApellido', 'segundoApellido'].includes(fieldKey)) return;
+                if (IDENTITY_SKIP.has(fieldKey)) return;
 
                 const excelVal = row[excelCol];
                 if (excelVal === undefined || excelVal === null || String(excelVal).trim() === '') return;
@@ -230,12 +271,36 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
                 }
             });
 
-            // Build name parts if individual columns are mapped (even if official already has name)
+            // ── Partes del nombre ────────────────────────────────────────────────
+            // 1) Columna "Nombres" virtual → SIEMPRE dividir en primer/segundo/tercer nombre
+            if (nombresCompletosCol && row[nombresCompletosCol]) {
+                const rawNombres = String(row[nombresCompletosCol]).trim();
+                const split = splitNombresPropios(rawNombres);
+
+                ([
+                    { field: 'primerNombre', label: 'Primer Nombre', value: split.primerNombre },
+                    { field: 'segundoNombre', label: 'Segundo Nombre', value: split.segundoNombre },
+                    { field: 'tercerNombre', label: 'Tercer Nombre', value: split.tercerNombre },
+                ] as const).forEach(({ field, label, value }) => {
+                    if (!value) return;
+                    const current = (official as any)[field];
+                    if (!current || String(current).trim() === '') {
+                        fieldsToFill.push({
+                            field: field as keyof Official,
+                            label,
+                            oldValue: String(current ?? ''),
+                            newValue: value,
+                        });
+                    }
+                });
+            }
+
+            // 2) Columnas individuales de nombre (primerNombre, primerApellido, etc.)
             const nameParts: Partial<Official> = {};
             if (primerNombreCol && row[primerNombreCol]) { nameParts.primerNombre = String(row[primerNombreCol]).trim(); }
-            ['segundoNombre', 'tercerNombre', 'primerApellido', 'segundoApellido'].forEach(key => {
+            (['segundoNombre', 'tercerNombre', 'primerApellido', 'segundoApellido'] as const).forEach(key => {
                 const col = activeMapping.find(([, v]) => v === key)?.[0];
-                if (col && row[col]) (nameParts as any)[key] = String(row[col]).trim();
+                if (col && row[col]) nameParts[key] = String(row[col]).trim();
             });
             Object.entries(nameParts).forEach(([k, v]) => {
                 if (!v) return;
@@ -377,6 +442,7 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
                             <div className="text-xs text-slate-400 dark:text-slate-500 mt-4 max-w-sm text-center leading-relaxed space-y-1">
                                 <p>Solo se rellenarán campos <strong>vacíos</strong> de funcionarios que ya existen.</p>
                                 <p>La coincidencia se hace por <strong>correo</strong>, luego por <strong>nombre completo</strong> (tolerante a variaciones).</p>
+                                <p>Si tu Excel tiene una columna <strong>"Nombres"</strong> con primer, segundo y tercer nombre juntos, asígnala a <strong>✂ Nombres (dividir en partes)</strong> para separarlos automáticamente.</p>
                             </div>
                         </div>
                     )}
@@ -401,12 +467,14 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
                                         <ArrowRight className="w-4 h-4 text-slate-300 dark:text-slate-600 flex-shrink-0" />
                                         <select
                                             value={columnMapping[header] || ''}
-                                            onChange={e => setColumnMapping(prev => ({ ...prev, [header]: e.target.value as keyof Official | '' }))}
+                                            onChange={e => setColumnMapping(prev => ({ ...prev, [header]: e.target.value as OfficialFieldOrVirtual }))}
                                             className="flex-1 text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1.5 bg-white dark:bg-dark-800 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                                         >
                                             <option value="">— Ignorar —</option>
                                             {FIELD_DEFS.map(f => (
-                                                <option key={f.key} value={f.key}>{f.label}</option>
+                                                <option key={String(f.key)} value={String(f.key)}>
+                                                    {f.splitIntoNameParts ? '✂ ' : ''}{f.label}
+                                                </option>
                                             ))}
                                         </select>
                                         {columnMapping[header] && (
