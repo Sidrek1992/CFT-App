@@ -91,45 +91,13 @@ const parseGender = (val: any): Gender => {
 
 const INITIAL_OFFICIALS_DATA: Official[] = [];
 
-const UserProfileSection = ({ user, userProfile, isDarkMode, setIsDarkMode, handleLogout }: any) => {
-    const [currentTime, setCurrentTime] = useState(new Date());
-
-    useEffect(() => {
-        const timer = setInterval(() => setCurrentTime(new Date()), 60000); // 1 minuto
-        return () => clearInterval(timer);
-    }, []);
-
-    const currentHour = currentTime.getHours();
-    let greeting = 'Buenos días';
-    if (currentHour >= 12 && currentHour < 20) {
-        greeting = 'Buenas tardes';
-    } else if (currentHour >= 20 || currentHour < 6) {
-        greeting = 'Buenas noches';
-    }
-
-    const timeString = currentTime.toLocaleTimeString('es-CL', {
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-
-    const userName = userProfile?.displayName || user?.email || 'Usuario';
-
+const UserProfileSection = ({ userProfile, isDarkMode, setIsDarkMode, handleLogout }: any) => {
     return (
-        <div className="px-3 pb-3 pt-1 shrink-0">
+        <div className="px-3 pb-3 shrink-0">
             <div className="glass-panel rounded-xl p-3 border border-slate-100 dark:border-white/5 shadow-lg relative overflow-hidden bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-900 dark:to-slate-800/80">
-                <div className="flex flex-col gap-2">
-                    {/* Top Row: Greeting and Name */}
-                    <div className="flex flex-col min-w-0">
-                        <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500">
-                            {greeting},
-                        </span>
-                        <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate mt-0.5">
-                            {userName}
-                        </span>
-                    </div>
-
-                    {/* Middle Row: Role and Online Status */}
-                    <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-3">
+                    {/* Top Row: Role and Online Status */}
+                    <div className="flex items-center justify-between">
                         <span className={`text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-md border ${userProfile ? ROLE_COLORS[userProfile.role] : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
                             {userProfile ? ROLE_LABELS[userProfile.role] : 'Cargando...'}
                         </span>
@@ -142,10 +110,10 @@ const UserProfileSection = ({ user, userProfile, isDarkMode, setIsDarkMode, hand
                         </span>
                     </div>
 
-                    {/* Bottom Row: Time and Actions */}
-                    <div className="flex items-center justify-between pt-2 mt-1 border-t border-slate-100 dark:border-white/5">
-                        <div className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400">
-                            {timeString}
+                    {/* Bottom Row: Actions */}
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-white/5">
+                        <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+                            Ajustes
                         </div>
                         <div className="flex items-center gap-1">
                             <NotificationCenter />
@@ -1221,7 +1189,6 @@ export default function App() {
                 </nav>
 
                 <UserProfileSection
-                    user={user}
                     userProfile={userProfile}
                     isDarkMode={isDarkMode}
                     setIsDarkMode={setIsDarkMode}
@@ -1285,6 +1252,7 @@ export default function App() {
                                         onExportBackup={handleExportBackup}
                                         onImportBackup={handleImportBackup}
                                         onClearDatabase={handleClearDatabaseRequest}
+                                        userName={userProfile?.displayName || user?.email || 'Usuario'}
                                     />
                                 </Suspense>
                             </ProtectedView>

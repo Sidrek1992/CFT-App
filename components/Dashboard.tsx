@@ -25,6 +25,7 @@ interface DashboardProps {
     onExportBackup: () => void;
     onImportBackup: (file: File) => void;
     onClearDatabase: () => void;
+    userName?: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -121,10 +122,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
     onExportBackup,
     onImportBackup,
     onClearDatabase,
+    userName,
 }) => {
     const totalOfficials = officials.length;
     const backupInputRef = useRef<HTMLInputElement>(null);
     const [timelineDays, setTimelineDays] = useState<7 | 30 | 90>(30);
+
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 60000); // 1 minuto
+        return () => clearInterval(timer);
+    }, []);
+
+    const currentHour = currentTime.getHours();
+    let greeting = 'Buenos días';
+    if (currentHour >= 12 && currentHour < 20) {
+        greeting = 'Buenas tardes';
+    } else if (currentHour >= 20 || currentHour < 6) {
+        greeting = 'Buenas noches';
+    }
+
+    const timeString = currentTime.toLocaleTimeString('es-CL', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 
     // ── Basic progress ──────────────────────────────────────────────────────
     const sentCount = officials.filter(o => sentHistory.includes(o.id)).length;
@@ -346,13 +368,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <div className="glass-panel bento-card lg:col-span-3 p-8 flex flex-col justify-between relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/20 rounded-full blur-[80px] -mr-20 -mt-20 group-hover:bg-primary-500/30 transition-colors duration-700" />
                     <div className="absolute bottom-0 left-0 w-40 h-40 bg-indigo-500/20 rounded-full blur-[60px] -ml-10 -mb-10 group-hover:bg-indigo-500/30 transition-colors duration-700" />
-                    <div className="relative z-10">
-                        <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2 leading-tight">
-                            GDP Cloud <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-indigo-400">Gestor Email</span>
-                        </h2>
-                        <p className="text-slate-600 dark:text-slate-400 text-sm max-w-lg mb-8">
-                            Gestiona tu base de datos y campañas con una interfaz fluida. Has contactado al <strong className="text-primary-400">{progressPercent}%</strong> de tu registro actual.
-                        </p>
+                    <div className="relative z-10 flex flex-col md:flex-row md:items-start justify-between gap-4">
+                        <div>
+                            <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2 leading-tight">
+                                {greeting}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-500 to-indigo-500">{userName || 'Usuario'}</span>
+                            </h2>
+                            <p className="text-slate-600 dark:text-slate-400 text-sm max-w-lg mb-8">
+                                Gestiona tu base de datos y campañas con una interfaz fluida. Has contactado al <strong className="text-primary-400">{progressPercent}%</strong> de tu registro actual.
+                            </p>
+                        </div>
+                        <div className="text-right">
+                            <span className="text-2xl font-mono font-bold text-slate-800 dark:text-slate-200">
+                                {timeString}
+                            </span>
+                        </div>
                     </div>
                     <div className="relative z-10 mt-auto">
                         <div className="flex justify-between items-end mb-3">
@@ -880,8 +909,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                             <div className="flex gap-1 flex-wrap">
                                                 {c.methods.map(m => (
                                                     <span key={m} className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${m === 'gmail_api' ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300' :
-                                                            m === 'eml' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' :
-                                                                'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
+                                                        m === 'eml' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' :
+                                                            'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
                                                         }`}>
                                                         {methodLabel[m] ?? m}
                                                     </span>
