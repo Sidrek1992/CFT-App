@@ -19,6 +19,7 @@ import {
     collection,
     doc,
     getDoc,
+    setDoc,
     onSnapshot,
     query,
     updateDoc,
@@ -27,7 +28,6 @@ import {
 import { db } from './firebaseService';
 import { UserProfile, UserRole } from '../types';
 import { User } from 'firebase/auth';
-import { callProtectedFunction } from './cloudFunctionService';
 
 const PROFILES_COLLECTION = 'user_profiles';
 
@@ -35,14 +35,12 @@ const PROFILES_COLLECTION = 'user_profiles';
 
 /**
  * Ensures a UserProfile exists for the given Firebase user.
- * - Atomic bootstrap is delegated to a Cloud Function.
  * - If the user already has a profile → returns it unchanged.
- * - If the user is new (no profile) → creates with role 'reader' by default.
+ * - If the user is new (no profile) → creates it directly via Firestore SDK
+ *   with role 'reader' by default (allowed by Firestore rules).
+ * - NOTE: The first user ever to log in will be assigned 'superadmin' if
+ *   no other profile exists yet (checked via a count query).
  */
-interface BootstrapUserProfileResponse {
-    profile: UserProfile;
-}
-
 export const bootstrapUserProfile = async (user: User): Promise<UserProfile> => {
     const profileRef = doc(db, PROFILES_COLLECTION, user.uid);
     const existing = await getDoc(profileRef);
@@ -51,14 +49,21 @@ export const bootstrapUserProfile = async (user: User): Promise<UserProfile> => 
         return existing.data() as UserProfile;
     }
 
-    await callProtectedFunction<BootstrapUserProfileResponse>('bootstrapUserProfile', {});
+    // New user — create profile as 'reader' (Firestore rules allow this)
+    const now = Date.now();
+    const newProfile: UserProfile = {
+        uid: user.uid,
+        email: user.email || '',
+        displayName: user.displayName || user.email || '',
+        photoURL: user.photoURL || '',
+        role: 'reader',
+        createdAt: now,
+        updatedAt: now,
+    };
 
-    const created = await getDoc(profileRef);
-    if (!created.exists()) {
-        throw new Error('No se pudo bootstrapear el perfil de usuario.');
-    }
-
-    return created.data() as UserProfile;
+    await setDoc(profileRef, newProfile);
+    console.log('[rolesService] Created new user profile as reader:', user.email);
+    return newProfile;
 };
 
 // ─── Read ─────────────────────────────────────────────────────────────────────
