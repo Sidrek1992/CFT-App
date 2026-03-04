@@ -1,17 +1,18 @@
-import React, { useMemo, useRef, useState } from 'react';
-import { Official, Gender, ViewState, FilterCriteria, Campaign, EmailLog } from '../types';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
+import { Official, Gender, ViewState, FilterCriteria, Campaign, EmailLog, buildFullName } from '../types';
 import {
     Users, Upload, UserPlus, Send, AlertTriangle, CheckCircle2,
     Download, Save, RefreshCw, FileSpreadsheet, Trash2, Mail,
     Briefcase, Activity, TrendingUp, Clock, MessageSquare,
     Eye, Zap, BarChart2, Award, Target, MousePointerClick,
-    Cake, CalendarClock, FileWarning
+    Cake, CalendarClock, FileWarning, PartyPopper, CalendarDays, CalendarCheck2
 } from 'lucide-react';
 import {
     PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip,
     AreaChart, Area, XAxis, YAxis, CartesianGrid,
     BarChart, Bar, Legend, ComposedChart, Line
 } from 'recharts';
+import { addAppNotification } from './NotificationCenter';
 
 interface DashboardProps {
     officials: Official[];
@@ -130,19 +131,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const progressPercent = totalOfficials > 0 ? Math.round((sentCount / totalOfficials) * 100) : 0;
 
     // ── Gender ──────────────────────────────────────────────────────────────
-    const maleCount   = officials.filter(o => o.gender === Gender.Male).length;
+    const maleCount = officials.filter(o => o.gender === Gender.Male).length;
     const femaleCount = officials.filter(o => o.gender === Gender.Female).length;
     const unspecifiedCount = officials.filter(o => o.gender === Gender.Unspecified).length;
 
     const genderData = [
-        { name: 'Hombres', value: maleCount,      color: '#3b82f6' },
-        { name: 'Mujeres', value: femaleCount,     color: '#ec4899' },
-        { name: 'Outros',  value: unspecifiedCount, color: '#94a3b8' },
+        { name: 'Hombres', value: maleCount, color: '#3b82f6' },
+        { name: 'Mujeres', value: femaleCount, color: '#ec4899' },
+        { name: 'Outros', value: unspecifiedCount, color: '#94a3b8' },
     ].filter(d => d.value > 0);
 
     // ── Health checks ───────────────────────────────────────────────────────
-    const missingBossCount    = officials.filter(o => !o.bossName).length;
-    const invalidEmailCount   = officials.filter(o => !o.email.includes('@')).length;
+    const missingBossCount = officials.filter(o => !o.bossName).length;
+    const invalidEmailCount = officials.filter(o => !o.email.includes('@')).length;
     const isHealthy = missingBossCount === 0 && unspecifiedCount === 0 && invalidEmailCount === 0 && totalOfficials > 0;
 
     // ── Flatten all logs ────────────────────────────────────────────────────
@@ -153,9 +154,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     // ── Email analytics KPIs ────────────────────────────────────────────────
     const emailAnalytics = useMemo(() => {
-        const totalSent   = allLogs.filter(l => l.status === 'sent').length;
+        const totalSent = allLogs.filter(l => l.status === 'sent').length;
         const totalOpened = allLogs.filter(l => l.openedAt).length;
-        const openRate    = totalSent > 0 ? Math.round((totalOpened / totalSent) * 100) : 0;
+        const openRate = totalSent > 0 ? Math.round((totalOpened / totalSent) * 100) : 0;
 
         // Method breakdown
         const byMethod: Record<string, number> = { gmail_api: 0, eml: 0, mailto: 0 };
@@ -168,7 +169,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
         // Open count last 7 days
         const cutoff7d = Date.now() - 7 * 86400000;
-        const opens7d  = allLogs.filter(l => l.openedAt && l.openedAt > cutoff7d).length;
+        const opens7d = allLogs.filter(l => l.openedAt && l.openedAt > cutoff7d).length;
 
         return { totalSent, totalOpened, openRate, topMethod, avgSends, opens7d, byMethod };
     }, [allLogs, campaigns]);
@@ -178,9 +179,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
         return campaigns
             .filter(c => (c.logs?.length ?? 0) > 0)
             .map(c => {
-                const sent   = c.logs.filter(l => l.status === 'sent').length;
+                const sent = c.logs.filter(l => l.status === 'sent').length;
                 const opened = c.logs.filter(l => l.openedAt).length;
-                const rate   = sent > 0 ? Math.round((opened / sent) * 100) : 0;
+                const rate = sent > 0 ? Math.round((opened / sent) * 100) : 0;
                 return {
                     name: c.name.length > 18 ? c.name.slice(0, 16) + '…' : c.name,
                     fullName: c.name,
@@ -218,7 +219,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         () => buildTimeline(campaigns, timelineDays),
         [campaigns, timelineDays]
     );
-    const totalInPeriod  = timelineData.reduce((acc, d) => acc + d.enviados, 0);
+    const totalInPeriod = timelineData.reduce((acc, d) => acc + d.enviados, 0);
     const openedInPeriod = timelineData.reduce((acc, d) => acc + d.abiertos, 0);
 
     // ── Last campaigns table ────────────────────────────────────────────────
@@ -227,9 +228,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
             .sort((a, b) => b.createdAt - a.createdAt)
             .slice(0, 5)
             .map(c => {
-                const sent   = c.logs?.filter(l => l.status === 'sent').length ?? 0;
+                const sent = c.logs?.filter(l => l.status === 'sent').length ?? 0;
                 const opened = c.logs?.filter(l => l.openedAt).length ?? 0;
-                const rate   = sent > 0 ? Math.round((opened / sent) * 100) : 0;
+                const rate = sent > 0 ? Math.round((opened / sent) * 100) : 0;
                 const methods = [...new Set(c.logs?.map(l => l.method) ?? [])];
                 return { id: c.id, name: c.name, createdAt: c.createdAt, sent, opened, rate, methods };
             });
@@ -239,12 +240,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const birthdayData = useMemo(() => {
         const now = new Date();
         const todayMD = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
-        // Get the date 7 days from now
         const weekLater = new Date(now);
         weekLater.setDate(weekLater.getDate() + 7);
-
-        // End of current month
         const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
         const today: { name: string; department: string }[] = [];
@@ -257,21 +254,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
             if (isNaN(d.getTime())) return;
             const md = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
             const dateLabel = d.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+            const fullN = buildFullName(o);
 
             if (md === todayMD) {
-                today.push({ name: o.name, department: o.department || '' });
+                today.push({ name: fullN, department: o.department || '' });
             }
-
-            // Check if birthday falls within this week (next 7 days)
             const bdThisYear = new Date(now.getFullYear(), d.getMonth(), d.getDate());
-            if (bdThisYear < now) bdThisYear.setFullYear(bdThisYear.getFullYear()); // already passed today check above
             if (bdThisYear > now && bdThisYear <= weekLater) {
-                thisWeek.push({ name: o.name, department: o.department || '', dateLabel });
+                thisWeek.push({ name: fullN, department: o.department || '', dateLabel });
             }
-
-            // Rest of month (after this week but same month)
             if (d.getMonth() === now.getMonth() && bdThisYear > weekLater && bdThisYear <= monthEnd) {
-                thisMonth.push({ name: o.name, department: o.department || '', dateLabel });
+                thisMonth.push({ name: fullN, department: o.department || '', dateLabel });
             }
         });
 
@@ -281,11 +274,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     // ── Contract expiration ─────────────────────────────────────────────
     const contractExpirations = useMemo(() => {
         const now = new Date();
-        const in30 = new Date(now);
-        in30.setDate(in30.getDate() + 30);
-        const in60 = new Date(now);
-        in60.setDate(in60.getDate() + 60);
-
         const expired: { name: string; department: string; date: string }[] = [];
         const within30: { name: string; department: string; date: string; daysLeft: number }[] = [];
         const within60: { name: string; department: string; date: string; daysLeft: number }[] = [];
@@ -296,13 +284,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
             if (isNaN(d.getTime())) return;
             const dateLabel = d.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' });
             const diff = Math.ceil((d.getTime() - now.getTime()) / 86400000);
+            const fullN = buildFullName(o);
 
             if (diff < 0) {
-                expired.push({ name: o.name, department: o.department || '', date: dateLabel });
+                expired.push({ name: fullN, department: o.department || '', date: dateLabel });
             } else if (diff <= 30) {
-                within30.push({ name: o.name, department: o.department || '', date: dateLabel, daysLeft: diff });
+                within30.push({ name: fullN, department: o.department || '', date: dateLabel, daysLeft: diff });
             } else if (diff <= 60) {
-                within60.push({ name: o.name, department: o.department || '', date: dateLabel, daysLeft: diff });
+                within60.push({ name: fullN, department: o.department || '', date: dateLabel, daysLeft: diff });
             }
         });
 
@@ -311,6 +300,27 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
         return { expired, within30, within60 };
     }, [officials]);
+
+    // ── Dispara notificaciones al montar (una vez por sesión) ─────────────
+    useEffect(() => {
+        const sessionKey = 'notif_sent_' + new Date().toDateString();
+        if (sessionStorage.getItem(sessionKey)) return;
+        sessionStorage.setItem(sessionKey, '1');
+
+        birthdayData.today.forEach(b => {
+            addAppNotification({ type: 'birthday_today', title: `🎂 ¡Cumpleaños hoy!`, body: `${b.name}${b.department ? ` · ${b.department}` : ''} cumple años hoy.` });
+        });
+        birthdayData.thisWeek.forEach(b => {
+            addAppNotification({ type: 'birthday_week', title: `🎉 Cumpleaños esta semana`, body: `${b.name} cumple el ${b.dateLabel}.` });
+        });
+        contractExpirations.expired.forEach(c => {
+            addAppNotification({ type: 'contract_expired', title: `⚠️ Contrato vencido`, body: `${c.name} – venció el ${c.date}.` });
+        });
+        contractExpirations.within30.forEach(c => {
+            addAppNotification({ type: 'contract_soon', title: `📅 Contrato próximo a vencer`, body: `${c.name} vence en ${c.daysLeft} días (${c.date}).` });
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [officials.length]);
 
     const handleBackupImportClick = () => {
         if (backupInputRef.current) {
@@ -465,11 +475,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 <ComposedChart data={timelineData} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
                                     <defs>
                                         <linearGradient id="gradEnviados" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%"  stopColor="#6366f1" stopOpacity={0.25} />
+                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
                                             <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                                         </linearGradient>
                                         <linearGradient id="gradAbiertos" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%"  stopColor="#10b981" stopOpacity={0.2} />
+                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
                                             <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
@@ -677,122 +687,155 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
 
             {/* ── Row 5: Birthdays + Contract Expirations ────────────────────── */}
-            {(birthdayData.today.length > 0 || birthdayData.thisWeek.length > 0 || birthdayData.thisMonth.length > 0 || contractExpirations.expired.length > 0 || contractExpirations.within30.length > 0 || contractExpirations.within60.length > 0) && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Birthday widget */}
-                    {(birthdayData.today.length > 0 || birthdayData.thisWeek.length > 0 || birthdayData.thisMonth.length > 0) && (
-                        <div className="glass-panel bento-card p-6 flex flex-col">
-                            <h3 className="font-bold text-slate-700 dark:text-slate-300 text-sm mb-4 flex items-center gap-2">
-                                <Cake className="w-4 h-4 text-pink-400" />
-                                Cumpleaños
-                            </h3>
-                            <div className="space-y-3 flex-1 overflow-y-auto max-h-64 pr-1 custom-scrollbar">
-                                {birthdayData.today.length > 0 && (
-                                    <div>
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-pink-500 mb-1.5">Hoy</p>
-                                        {birthdayData.today.map((b, i) => (
-                                            <div key={i} className="flex items-center gap-3 p-2.5 bg-pink-50 dark:bg-pink-950/30 border border-pink-200 dark:border-pink-800/50 rounded-lg mb-1.5">
-                                                <div className="w-8 h-8 bg-pink-500/20 rounded-full flex items-center justify-center flex-shrink-0">
-                                                    <Cake className="w-4 h-4 text-pink-500" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-semibold text-slate-800 dark:text-white">{b.name}</p>
-                                                    {b.department && <p className="text-[10px] text-slate-500 dark:text-slate-400">{b.department}</p>}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {birthdayData.thisWeek.length > 0 && (
-                                    <div>
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500 mb-1.5">Esta Semana</p>
-                                        {birthdayData.thisWeek.map((b, i) => (
-                                            <div key={i} className="flex items-center justify-between gap-2 p-2 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30 rounded-lg mb-1">
-                                                <div className="flex items-center gap-2 min-w-0">
-                                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{b.name}</span>
-                                                    {b.department && <span className="text-[10px] text-slate-400 truncate hidden sm:inline">({b.department})</span>}
-                                                </div>
-                                                <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold flex-shrink-0">{b.dateLabel}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {birthdayData.thisMonth.length > 0 && (
-                                    <div>
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Este Mes</p>
-                                        {birthdayData.thisMonth.map((b, i) => (
-                                            <div key={i} className="flex items-center justify-between gap-2 p-2 rounded-lg mb-0.5">
-                                                <span className="text-sm text-slate-600 dark:text-slate-300 truncate">{b.name}</span>
-                                                <span className="text-xs text-slate-400 dark:text-slate-500 flex-shrink-0">{b.dateLabel}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Birthday widget — siempre visible */}
+                <div className="glass-panel bento-card p-6 flex flex-col">
+                    <h3 className="font-bold text-slate-700 dark:text-slate-300 text-sm mb-4 flex items-center gap-2">
+                        <Cake className="w-4 h-4 text-pink-400" />
+                        Cumpleaños del Mes
+                        <span className="ml-auto text-[10px] font-normal text-slate-400">{new Date().toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}</span>
+                    </h3>
 
-                    {/* Contract expiration widget */}
-                    {(contractExpirations.expired.length > 0 || contractExpirations.within30.length > 0 || contractExpirations.within60.length > 0) && (
-                        <div className="glass-panel bento-card p-6 flex flex-col">
-                            <h3 className="font-bold text-slate-700 dark:text-slate-300 text-sm mb-4 flex items-center gap-2">
-                                <CalendarClock className="w-4 h-4 text-orange-400" />
-                                Vencimiento de Contratos
-                            </h3>
-                            <div className="space-y-3 flex-1 overflow-y-auto max-h-64 pr-1 custom-scrollbar">
-                                {contractExpirations.expired.length > 0 && (
-                                    <div>
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-red-500 mb-1.5">Vencidos</p>
-                                        {contractExpirations.expired.map((c, i) => (
-                                            <div key={i} className="flex items-center justify-between gap-2 p-2.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 rounded-lg mb-1.5">
-                                                <div className="flex items-center gap-2 min-w-0">
-                                                    <FileWarning className="w-4 h-4 text-red-500 flex-shrink-0" />
-                                                    <div className="min-w-0">
-                                                        <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">{c.name}</p>
-                                                        {c.department && <p className="text-[10px] text-slate-500 dark:text-slate-400">{c.department}</p>}
-                                                    </div>
-                                                </div>
-                                                <span className="text-xs text-red-600 dark:text-red-400 font-semibold flex-shrink-0">{c.date}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {contractExpirations.within30.length > 0 && (
-                                    <div>
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-orange-500 mb-1.5">Próximos 30 días</p>
-                                        {contractExpirations.within30.map((c, i) => (
-                                            <div key={i} className="flex items-center justify-between gap-2 p-2 bg-orange-50/50 dark:bg-orange-950/20 border border-orange-200/50 dark:border-orange-800/30 rounded-lg mb-1">
-                                                <div className="min-w-0">
-                                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate block">{c.name}</span>
-                                                    {c.department && <span className="text-[10px] text-slate-400">{c.department}</span>}
-                                                </div>
-                                                <div className="text-right flex-shrink-0">
-                                                    <p className="text-xs text-orange-600 dark:text-orange-400 font-semibold">{c.date}</p>
-                                                    <p className="text-[10px] text-orange-500">{c.daysLeft === 0 ? 'Hoy' : `${c.daysLeft}d`}</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {contractExpirations.within60.length > 0 && (
-                                    <div>
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">30–60 días</p>
-                                        {contractExpirations.within60.map((c, i) => (
-                                            <div key={i} className="flex items-center justify-between gap-2 p-2 rounded-lg mb-0.5">
-                                                <span className="text-sm text-slate-600 dark:text-slate-300 truncate">{c.name}</span>
-                                                <div className="text-right flex-shrink-0">
-                                                    <span className="text-xs text-slate-400 dark:text-slate-500">{c.date}</span>
-                                                    <p className="text-[10px] text-slate-400">{c.daysLeft}d</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                    {birthdayData.today.length === 0 && birthdayData.thisWeek.length === 0 && birthdayData.thisMonth.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center flex-1 py-6 text-center">
+                            <div className="w-12 h-12 bg-pink-50 dark:bg-pink-950/20 rounded-full flex items-center justify-center mb-2">
+                                <Cake className="w-6 h-6 text-pink-300 dark:text-pink-700" />
                             </div>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Sin cumpleaños este mes</p>
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Ingresa la fecha de cumpleaños en cada funcionario.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4 flex-1 overflow-y-auto max-h-72 pr-1 custom-scrollbar">
+                            {/* HOY */}
+                            {birthdayData.today.length > 0 && (
+                                <div>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <PartyPopper className="w-3.5 h-3.5 text-pink-500" />
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-pink-500">Hoy</p>
+                                    </div>
+                                    {birthdayData.today.map((b, i) => (
+                                        <div key={i} className="flex items-center gap-3 p-3 bg-pink-50 dark:bg-pink-950/30 border border-pink-200 dark:border-pink-800/50 rounded-xl mb-2 shadow-sm">
+                                            <div className="w-10 h-10 bg-pink-500/20 rounded-full flex items-center justify-center flex-shrink-0 text-base">
+                                                🎂
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-slate-800 dark:text-white">{b.name}</p>
+                                                {b.department && <p className="text-[10px] text-slate-500 dark:text-slate-400">{b.department}</p>}
+                                            </div>
+                                            <span className="ml-auto text-[10px] bg-pink-500 text-white px-2 py-0.5 rounded-full font-bold">Hoy 🎉</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {/* ESTA SEMANA */}
+                            {birthdayData.thisWeek.length > 0 && (
+                                <div>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <CalendarDays className="w-3.5 h-3.5 text-amber-500" />
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500">Esta Semana</p>
+                                    </div>
+                                    {birthdayData.thisWeek.map((b, i) => (
+                                        <div key={i} className="flex items-center justify-between gap-2 p-2.5 bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30 rounded-lg mb-1.5">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <span className="text-base flex-shrink-0">🎁</span>
+                                                <div className="min-w-0">
+                                                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 block truncate">{b.name}</span>
+                                                    {b.department && <span className="text-[10px] text-slate-400">{b.department}</span>}
+                                                </div>
+                                            </div>
+                                            <span className="text-xs text-amber-600 dark:text-amber-400 font-bold flex-shrink-0 bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 rounded-full">{b.dateLabel}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {/* ESTE MES */}
+                            {birthdayData.thisMonth.length > 0 && (
+                                <div>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <CalendarCheck2 className="w-3.5 h-3.5 text-slate-400" />
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Resto del Mes</p>
+                                    </div>
+                                    {birthdayData.thisMonth.map((b, i) => (
+                                        <div key={i} className="flex items-center justify-between gap-2 p-2 rounded-lg mb-0.5 hover:bg-slate-50 dark:hover:bg-dark-700/50 transition-colors">
+                                            <span className="text-sm text-slate-600 dark:text-slate-300 truncate">{b.name}</span>
+                                            <span className="text-xs text-slate-400 dark:text-slate-500 flex-shrink-0">{b.dateLabel}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
-            )}
+
+                {/* Contract expiration widget — siempre visible */}
+                <div className="glass-panel bento-card p-6 flex flex-col">
+                    <h3 className="font-bold text-slate-700 dark:text-slate-300 text-sm mb-4 flex items-center gap-2">
+                        <CalendarClock className="w-4 h-4 text-orange-400" />
+                        Vencimiento de Contratos
+                    </h3>
+
+                    {contractExpirations.expired.length === 0 && contractExpirations.within30.length === 0 && contractExpirations.within60.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center flex-1 py-6 text-center">
+                            <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-950/20 rounded-full flex items-center justify-center mb-2">
+                                <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+                            </div>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Sin contratos por vencer</p>
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Ningún contrato vence en los próximos 60 días.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3 flex-1 overflow-y-auto max-h-72 pr-1 custom-scrollbar">
+                            {contractExpirations.expired.length > 0 && (
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-red-500 mb-1.5">Vencidos</p>
+                                    {contractExpirations.expired.map((c, i) => (
+                                        <div key={i} className="flex items-center justify-between gap-2 p-2.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 rounded-lg mb-1.5">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <FileWarning className="w-4 h-4 text-red-500 flex-shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">{c.name}</p>
+                                                    {c.department && <p className="text-[10px] text-slate-500">{c.department}</p>}
+                                                </div>
+                                            </div>
+                                            <span className="text-xs text-red-600 dark:text-red-400 font-bold flex-shrink-0">{c.date}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {contractExpirations.within30.length > 0 && (
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-orange-500 mb-1.5">Próximos 30 días</p>
+                                    {contractExpirations.within30.map((c, i) => (
+                                        <div key={i} className="flex items-center justify-between gap-2 p-2.5 bg-orange-50/50 dark:bg-orange-950/20 border border-orange-200/50 dark:border-orange-800/30 rounded-lg mb-1.5">
+                                            <div className="min-w-0">
+                                                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate block">{c.name}</span>
+                                                {c.department && <span className="text-[10px] text-slate-400">{c.department}</span>}
+                                            </div>
+                                            <div className="text-right flex-shrink-0">
+                                                <p className="text-xs text-orange-600 dark:text-orange-400 font-bold">{c.date}</p>
+                                                <p className="text-[10px] text-orange-500">{c.daysLeft === 0 ? 'Hoy' : `${c.daysLeft}d`}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {contractExpirations.within60.length > 0 && (
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">30–60 días</p>
+                                    {contractExpirations.within60.map((c, i) => (
+                                        <div key={i} className="flex items-center justify-between gap-2 p-2 rounded-lg mb-0.5 hover:bg-slate-50 dark:hover:bg-dark-700/50 transition-colors">
+                                            <span className="text-sm text-slate-600 dark:text-slate-300 truncate">{c.name}</span>
+                                            <div className="text-right flex-shrink-0">
+                                                <span className="text-xs text-slate-400 dark:text-slate-500">{c.date}</span>
+                                                <p className="text-[10px] text-slate-400">{c.daysLeft}d</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
 
             {/* ── Row 6: Recent Campaigns Table ──────────────────────────────── */}
             {recentCampaigns.length > 0 && (
@@ -836,11 +879,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                         <td className="py-3">
                                             <div className="flex gap-1 flex-wrap">
                                                 {c.methods.map(m => (
-                                                    <span key={m} className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                                                        m === 'gmail_api' ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300' :
-                                                        m === 'eml'       ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' :
-                                                        'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
-                                                    }`}>
+                                                    <span key={m} className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${m === 'gmail_api' ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300' :
+                                                            m === 'eml' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' :
+                                                                'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
+                                                        }`}>
                                                         {methodLabel[m] ?? m}
                                                     </span>
                                                 ))}

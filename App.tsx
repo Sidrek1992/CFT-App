@@ -43,6 +43,7 @@ import { OfficialList } from './components/OfficialList';
 import { OfficialDrawer } from './components/OfficialDrawer';
 import { ExcelAutoFillModal } from './components/ExcelAutoFillModal';
 import { ToastContainer } from './components/ToastContainer';
+import { NotificationCenter } from './components/NotificationCenter';
 import { dbService } from './services/dbService';
 import { subscribeToAuthChanges, logout, initAutoRefreshForUser, bootstrapGmailToken } from './services/authService';
 import { clearTokenState } from './services/tokenService';
@@ -1134,6 +1135,7 @@ export default function App() {
                                 </div>
                             </div>
                             <div className="flex items-center gap-1 flex-shrink-0">
+                                <NotificationCenter />
                                 <button
                                     onClick={() => setIsDarkMode(!isDarkMode)}
                                     className="p-1.5 text-slate-500 hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400 hover:bg-slate-200 dark:hover:bg-white/5 rounded-lg transition-colors"
@@ -1166,6 +1168,7 @@ export default function App() {
                         Gestor AI
                     </div>
                     <div className="flex items-center gap-2">
+                        <NotificationCenter />
                         <button
                             onClick={() => setIsDarkMode(!isDarkMode)}
                             className="p-2 text-slate-500 hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400 hover:bg-slate-200 dark:hover:bg-white/5 rounded-xl transition-colors"
