@@ -5,7 +5,8 @@ import {
     Download, Save, RefreshCw, FileSpreadsheet, Trash2, Mail,
     Briefcase, Activity, TrendingUp, Clock, MessageSquare,
     Eye, Zap, BarChart2, Award, Target, MousePointerClick,
-    Cake, CalendarClock, FileWarning, PartyPopper, CalendarDays, CalendarCheck2
+    Cake, CalendarClock, FileWarning, PartyPopper, CalendarDays, CalendarCheck2,
+    Building2, Network, FileText, UserCircle2, ShieldAlert
 } from 'lucide-react';
 import {
     PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip,
@@ -163,13 +164,122 @@ export const Dashboard: React.FC<DashboardProps> = ({
         { name: 'Outros', value: unspecifiedCount, color: '#94a3b8' },
     ].filter(d => d.value > 0);
 
-    // ── Health checks ───────────────────────────────────────────────────────
+    // ── Health checks (Comprehensive) ───────────────────────────────────────────────────────
     const missingBossCount = officials.filter(o => !o.bossName).length;
-    const missingBossUsers = officials.filter(o => !o.bossName).slice(0, 3).map(buildFullName);
-    const invalidEmailCount = officials.filter(o => !o.email.includes('@')).length;
-    const invalidEmailUsers = officials.filter(o => !o.email.includes('@')).slice(0, 3).map(buildFullName);
-    const unspecifiedUsers = officials.filter(o => o.gender === Gender.Unspecified).slice(0, 3).map(buildFullName);
-    const isHealthy = missingBossCount === 0 && unspecifiedCount === 0 && invalidEmailCount === 0 && totalOfficials > 0;
+    const invalidEmailCount = officials.filter(o => !o.email || !o.email.includes('@')).length;
+    // Let's create an array of all integrity checks so we can render them dynamically
+    const healthChecks = [
+        {
+            id: 'names',
+            title: 'Sin Nombre o Apellido',
+            subtitle: 'Requerido para plantillas.',
+            icon: <UserCircle2 className="w-4 h-4 text-red-400" />,
+            bgColorClass: 'bg-red-500/10 hover:bg-red-500/20',
+            borderColorClass: 'border-red-500/20',
+            iconBgClass: 'bg-red-500/20',
+            countClass: 'text-red-500',
+            users: officials.filter(o => (!o.primerNombre && !o.name) || !o.primerApellido).map(buildFullName),
+            navType: ''
+        },
+        {
+            id: 'email',
+            title: 'Correos Inválidos o Vacíos',
+            subtitle: 'Fundamental para el gestor.',
+            icon: <Mail className="w-4 h-4 text-red-400" />,
+            bgColorClass: 'bg-red-500/10 hover:bg-red-500/20',
+            borderColorClass: 'border-red-500/20',
+            iconBgClass: 'bg-red-500/20',
+            countClass: 'text-red-500',
+            users: officials.filter(o => !o.email || !o.email.includes('@')).map(buildFullName),
+            navType: 'invalidEmail'
+        },
+        {
+            id: 'boss',
+            title: 'Sin Jefatura',
+            subtitle: 'Requerido para gráficas/organigrama.',
+            icon: <Network className="w-4 h-4 text-orange-400" />,
+            bgColorClass: 'bg-orange-500/10 hover:bg-orange-500/20',
+            borderColorClass: 'border-orange-500/20',
+            iconBgClass: 'bg-orange-500/20',
+            countClass: 'text-orange-500',
+            users: officials.filter(o => !o.bossName).map(buildFullName),
+            navType: 'missingBoss'
+        },
+        {
+            id: 'department',
+            title: 'Sin Departamento',
+            subtitle: 'Requerido analíticas y organigrama.',
+            icon: <Briefcase className="w-4 h-4 text-orange-400" />,
+            bgColorClass: 'bg-orange-500/10 hover:bg-orange-500/20',
+            borderColorClass: 'border-orange-500/20',
+            iconBgClass: 'bg-orange-500/20',
+            countClass: 'text-orange-500',
+            users: officials.filter(o => !o.department).map(buildFullName),
+            navType: ''
+        },
+        {
+            id: 'position',
+            title: 'Sin Cargo',
+            subtitle: 'Requerido analíticas y organigrama.',
+            icon: <Briefcase className="w-4 h-4 text-amber-400" />,
+            bgColorClass: 'bg-amber-500/10 hover:bg-amber-500/20',
+            borderColorClass: 'border-amber-500/20',
+            iconBgClass: 'bg-amber-500/20',
+            countClass: 'text-amber-500',
+            users: officials.filter(o => !o.position).map(buildFullName),
+            navType: ''
+        },
+        {
+            id: 'contractType',
+            title: 'Sin Tipo de Contrato',
+            subtitle: 'Honorarios, Planta, etc.',
+            icon: <Building2 className="w-4 h-4 text-amber-400" />,
+            bgColorClass: 'bg-amber-500/10 hover:bg-amber-500/20',
+            borderColorClass: 'border-amber-500/20',
+            iconBgClass: 'bg-amber-500/20',
+            countClass: 'text-amber-500',
+            users: officials.filter(o => !o.tipoContrato).map(buildFullName),
+            navType: ''
+        },
+        {
+            id: 'birthday',
+            title: 'Sin Fecha Nacimiento',
+            subtitle: 'Requerido para Cumpleaños Automáticos.',
+            icon: <Cake className="w-4 h-4 text-pink-400" />,
+            bgColorClass: 'bg-pink-500/10 hover:bg-pink-500/20',
+            borderColorClass: 'border-pink-500/20',
+            iconBgClass: 'bg-pink-500/20',
+            countClass: 'text-pink-500',
+            users: officials.filter(o => !o.fechaCumpleanios).map(buildFullName),
+            navType: ''
+        },
+        {
+            id: 'gender',
+            title: 'Sin Género',
+            subtitle: 'Recomendado para redacción.',
+            icon: <Users className="w-4 h-4 text-indigo-400" />,
+            bgColorClass: 'bg-indigo-500/10 hover:bg-indigo-500/20',
+            borderColorClass: 'border-indigo-500/20',
+            iconBgClass: 'bg-indigo-500/20',
+            countClass: 'text-indigo-500',
+            users: officials.filter(o => o.gender === Gender.Unspecified).map(buildFullName),
+            navType: 'missingGender'
+        },
+        {
+            id: 'contract',
+            title: 'Sin Ingreso/Término',
+            subtitle: 'Requerido para Alertas.',
+            icon: <FileText className="w-4 h-4 text-blue-400" />,
+            bgColorClass: 'bg-blue-500/10 hover:bg-blue-500/20',
+            borderColorClass: 'border-blue-500/20',
+            iconBgClass: 'bg-blue-500/20',
+            countClass: 'text-blue-500',
+            users: officials.filter(o => !o.fechaIngreso || !o.fechaTermino).map(buildFullName),
+            navType: ''
+        }
+    ];
+
+    const isHealthy = healthChecks.every(check => check.users.length === 0) && totalOfficials > 0;
 
     // ── Flatten all logs ────────────────────────────────────────────────────
     const allLogs: EmailLog[] = useMemo(
@@ -682,66 +792,39 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         </div>
                     ) : (
                         <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
-                            {missingBossCount > 0 && (
-                                <div onClick={() => onNavigate('database', { type: 'missingBoss' })}
-                                    className="flex flex-col gap-2 p-3 bg-orange-500/10 border border-orange-500/20 rounded-xl cursor-pointer hover:bg-orange-500/20 transition-colors group">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
-                                            <AlertTriangle className="w-4 h-4 text-orange-400" />
+                            {healthChecks.map((check) => {
+                                if (check.users.length === 0) return null;
+                                return (
+                                    <div
+                                        key={check.id}
+                                        onClick={() => check.navType && onNavigate('database', { type: check.navType as any })}
+                                        className={`flex flex-col gap-2 p-3 border rounded-xl transition-colors group ${check.bgColorClass} ${check.borderColorClass} ${check.navType ? 'cursor-pointer' : ''}`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${check.iconBgClass}`}>
+                                                {check.icon}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                                    <span className={`${check.countClass} mr-1`}>{check.users.length}</span>
+                                                    {check.title}
+                                                </p>
+                                                <p className="text-[10px] text-slate-500 dark:text-slate-400">{check.subtitle}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-slate-900 dark:text-white">{missingBossCount} Sin Jefatura</p>
-                                            <p className="text-xs text-orange-400/80">Requerido para el organigrama.</p>
-                                        </div>
-                                    </div>
-                                    <div className="mt-1 pl-11 flex flex-wrap gap-1">
-                                        {missingBossUsers.map(u => (
-                                            <span key={u} className="text-[10px] bg-white/50 dark:bg-dark-950/30 text-orange-600 dark:text-orange-300 px-1.5 py-0.5 rounded border border-orange-500/10 truncate max-w-[120px]">{u}</span>
-                                        ))}
-                                        {missingBossCount > 3 && <span className="text-[10px] text-orange-500/70 py-0.5">+{missingBossCount - 3} más</span>}
-                                    </div>
-                                </div>
-                            )}
-                            {unspecifiedCount > 0 && (
-                                <div onClick={() => onNavigate('database', { type: 'missingGender' })}
-                                    className="flex flex-col gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl cursor-pointer hover:bg-amber-500/20 transition-colors group">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-                                            <AlertTriangle className="w-4 h-4 text-amber-400" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-slate-900 dark:text-white">{unspecifiedCount} Sin Género</p>
-                                            <p className="text-xs text-amber-400/80">Recomendado para plantillas.</p>
-                                        </div>
-                                    </div>
-                                    <div className="mt-1 pl-11 flex flex-wrap gap-1">
-                                        {unspecifiedUsers.map(u => (
-                                            <span key={u} className="text-[10px] bg-white/50 dark:bg-dark-950/30 text-amber-600 dark:text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/10 truncate max-w-[120px]">{u}</span>
-                                        ))}
-                                        {unspecifiedCount > 3 && <span className="text-[10px] text-amber-500/70 py-0.5">+{unspecifiedCount - 3} más</span>}
-                                    </div>
-                                </div>
-                            )}
-                            {invalidEmailCount > 0 && (
-                                <div onClick={() => onNavigate('database', { type: 'invalidEmail' })}
-                                    className="flex flex-col gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl cursor-pointer hover:bg-red-500/20 transition-colors group">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
-                                            <Mail className="w-4 h-4 text-red-400" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-slate-900 dark:text-white">{invalidEmailCount} Correos Inválidos</p>
-                                            <p className="text-xs text-red-400/80">Formato incorrecto.</p>
+                                        <div className="mt-1 flex flex-col gap-1.5 pl-11">
+                                            {/* Scrollable container for names if there are many */}
+                                            <div className="flex flex-wrap gap-1 max-h-[80px] overflow-y-auto custom-scrollbar pr-1">
+                                                {check.users.map((u, i) => (
+                                                    <span key={`${u}-${i}`} className="text-[9px] bg-white/70 dark:bg-black/20 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded shadow-sm border border-slate-200/50 dark:border-white/5 truncate max-w-full">
+                                                        {u.trim() || 'Sin Nombre'}
+                                                    </span>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="mt-1 pl-11 flex flex-wrap gap-1">
-                                        {invalidEmailUsers.map(u => (
-                                            <span key={u} className="text-[10px] bg-white/50 dark:bg-dark-950/30 text-red-600 dark:text-red-300 px-1.5 py-0.5 rounded border border-red-500/10 truncate max-w-[120px]">{u}</span>
-                                        ))}
-                                        {invalidEmailCount > 3 && <span className="text-[10px] text-red-500/70 py-0.5">+{invalidEmailCount - 3} más</span>}
-                                    </div>
-                                </div>
-                            )}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
