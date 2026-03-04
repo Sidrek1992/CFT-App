@@ -377,10 +377,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 Gestiona tu base de datos y campañas con una interfaz fluida. Has contactado al <strong className="text-primary-400">{progressPercent}%</strong> de tu registro actual.
                             </p>
                         </div>
-                        <div className="text-right">
-                            <span className="text-2xl font-mono font-bold text-slate-800 dark:text-slate-200">
-                                {timeString}
-                            </span>
+                        <div className="text-right flex justify-end">
+                            <div className="inline-flex bg-white/70 dark:bg-slate-900/70 backdrop-blur-md px-5 py-2.5 border border-white/50 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] rounded-3xl items-center gap-3">
+                                <Clock className="w-5 h-5 text-indigo-500 animate-pulse" />
+                                <span className="text-3xl font-mono font-black text-slate-800 dark:text-slate-100 tracking-tighter">
+                                    {timeString}
+                                </span>
+                            </div>
                         </div>
                     </div>
                     <div className="relative z-10 mt-auto">
@@ -431,41 +434,41 @@ export const Dashboard: React.FC<DashboardProps> = ({
             {/* ── Row 2: Email Analytics KPIs ────────────────────────────────── */}
             <div>
                 <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                    <BarChart2 className="w-3.5 h-3.5" /> Métricas de Email
+                    <BarChart2 className="w-3.5 h-3.5" /> Métricas Generales
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                     <KPICard
-                        label="Total Enviados"
-                        value={emailAnalytics.totalSent.toLocaleString('es-CL')}
-                        sub={`${campaigns.filter(c => (c.logs?.length ?? 0) > 0).length} campaña(s)`}
-                        icon={<Send className="w-4 h-4 text-indigo-400" />}
+                        label="Personal Registrado"
+                        value={totalOfficials.toLocaleString('es-CL')}
+                        sub="contactos totales"
+                        icon={<Users className="w-4 h-4 text-indigo-400" />}
                         color="bg-indigo-500/15"
                     />
                     <KPICard
-                        label="Correos Abiertos"
-                        value={emailAnalytics.totalOpened.toLocaleString('es-CL')}
-                        sub="con pixel de seguimiento"
-                        icon={<Eye className="w-4 h-4 text-emerald-400" />}
+                        label="Campañas Mails"
+                        value={campaigns.filter(c => (c.logs?.length ?? 0) > 0).length.toLocaleString('es-CL')}
+                        sub="listas enviadas"
+                        icon={<Send className="w-4 h-4 text-emerald-400" />}
                         color="bg-emerald-500/15"
                     />
                     <KPICard
-                        label="Tasa de Apertura"
-                        value={`${emailAnalytics.openRate}%`}
-                        sub={emailAnalytics.totalSent > 0 ? `${emailAnalytics.totalOpened} de ${emailAnalytics.totalSent}` : 'Sin datos aún'}
-                        icon={<MousePointerClick className="w-4 h-4 text-amber-400" />}
+                        label="Cumpleaños Mes"
+                        value={(birthdayData.today.length + birthdayData.thisWeek.length + birthdayData.thisMonth.length).toLocaleString('es-CL')}
+                        sub="eventos este mes"
+                        icon={<Cake className="w-4 h-4 text-amber-400" />}
                         color="bg-amber-500/15"
                     />
                     <KPICard
-                        label="Prom. por Campaña"
-                        value={emailAnalytics.avgSends.toLocaleString('es-CL')}
-                        sub="correos / campaña activa"
-                        icon={<Target className="w-4 h-4 text-pink-400" />}
+                        label="Contratos p/Vencer"
+                        value={contractExpirations.within30.length.toLocaleString('es-CL')}
+                        sub="en los próximos 30 días"
+                        icon={<AlertTriangle className="w-4 h-4 text-pink-400" />}
                         color="bg-pink-500/15"
                     />
                     <KPICard
-                        label="Aperturas 7 días"
-                        value={emailAnalytics.opens7d.toLocaleString('es-CL')}
-                        sub="últimos 7 días"
+                        label="Total Mails Enviados"
+                        value={emailAnalytics.totalSent.toLocaleString('es-CL')}
+                        sub="registro histórico"
                         icon={<Zap className="w-4 h-4 text-cyan-400" />}
                         color="bg-cyan-500/15"
                     />
@@ -479,9 +482,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="font-bold text-slate-700 dark:text-slate-300 text-sm flex items-center gap-2">
                             <TrendingUp className="w-4 h-4 text-primary-400" />
-                            Actividad de Correos
+                            Actividad de Envíos
                             <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
-                                ({totalInPeriod} enviados · {openedInPeriod} abiertos)
+                                ({totalInPeriod} enviados este período)
                             </span>
                         </h3>
                         <div className="flex bg-slate-100 dark:bg-dark-900 p-0.5 rounded-lg border border-slate-200 dark:border-slate-800">
@@ -507,10 +510,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                             <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
                                             <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                                         </linearGradient>
-                                        <linearGradient id="gradAbiertos" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
-                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                        </linearGradient>
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" />
                                     <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }}
@@ -518,8 +517,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                     <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} allowDecimals={false} />
                                     <RechartsTooltip contentStyle={darkTooltipStyle} labelStyle={{ color: '#94a3b8' }} />
                                     <Legend wrapperStyle={{ fontSize: 11, color: '#94a3b8' }} />
-                                    <Area type="monotone" dataKey="enviados" name="Enviados" stroke="#6366f1" strokeWidth={2} fill="url(#gradEnviados)" dot={false} activeDot={{ r: 4 }} />
-                                    <Line type="monotone" dataKey="abiertos" name="Abiertos" stroke="#10b981" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                                    <Area type="monotone" dataKey="enviados" name="Enviados" stroke="#6366f1" strokeWidth={2} fill="url(#gradEnviados)" dot={true} activeDot={{ r: 4 }} />
                                 </ComposedChart>
                             </ResponsiveContainer>
                         )}
@@ -530,7 +528,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <div className="glass-panel bento-card p-6 lg:col-span-2 flex flex-col">
                     <h3 className="font-bold text-slate-700 dark:text-slate-300 text-sm mb-4 flex items-center gap-2">
                         <Award className="w-4 h-4 text-amber-400" />
-                        Campañas: Enviados vs Abiertos
+                        Campañas por Volumen
                     </h3>
                     {campaignBarData.length === 0 ? (
                         <div className="flex-1 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
@@ -545,14 +543,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                     <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} width={70} />
                                     <RechartsTooltip
                                         contentStyle={darkTooltipStyle}
-                                        formatter={(value: number, name: string, props: any) => {
-                                            if (name === 'Enviados') return [value, 'Enviados'];
-                                            return [`${value} (${props.payload.tasa}% tasa)`, 'Abiertos'];
+                                        formatter={(value: number, name: string) => {
+                                            return [value, 'Enviados'];
                                         }}
                                     />
                                     <Legend wrapperStyle={{ fontSize: 11, color: '#94a3b8' }} />
                                     <Bar dataKey="enviados" name="Enviados" fill="#6366f1" radius={[0, 3, 3, 0]} maxBarSize={14} />
-                                    <Bar dataKey="abiertos" name="Abiertos" fill="#10b981" radius={[0, 3, 3, 0]} maxBarSize={14} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>

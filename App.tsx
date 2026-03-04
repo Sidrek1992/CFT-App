@@ -97,21 +97,23 @@ const UserProfileSection = ({ userProfile, isDarkMode, setIsDarkMode, handleLogo
             <div className="glass-panel rounded-xl p-3 border border-slate-100 dark:border-white/5 shadow-lg relative overflow-hidden bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-900 dark:to-slate-800/80">
                 <div className="flex flex-col gap-3">
                     {/* Top Row: Role and Online Status */}
-                    <div className="flex items-center justify-between">
-                        <span className={`text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-md border ${userProfile ? ROLE_COLORS[userProfile.role] : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                            {userProfile ? ROLE_LABELS[userProfile.role] : 'Cargando...'}
-                        </span>
-                        <span className="flex items-center gap-1.5 text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-md border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                            <span className="relative flex h-1.5 w-1.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                    <div className="flex flex-col relative gap-2 pt-1">
+                        <div className="flex items-center justify-between">
+                            <span className={`text-[10px] uppercase tracking-wider font-extrabold px-2 py-1 rounded-lg border shadow-sm ${userProfile ? ROLE_COLORS[userProfile.role] : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                                {userProfile ? ROLE_LABELS[userProfile.role] : 'Cargando...'}
                             </span>
-                            ONLINE
-                        </span>
+                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 shadow-sm">
+                                <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                                </span>
+                                <span className="text-[9px] uppercase tracking-wider font-bold text-emerald-600 dark:text-emerald-400">ONLINE</span>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Bottom Row: Actions */}
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-white/5">
+                    <div className="flex items-center justify-between pt-3 mt-1 border-t border-slate-100 dark:border-white/5">
                         <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
                             Ajustes
                         </div>
