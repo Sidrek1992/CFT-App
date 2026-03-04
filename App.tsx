@@ -32,7 +32,7 @@ class OrgChartErrorBoundary extends Component<{ children: React.ReactNode }, { h
         return this.props.children;
     }
 }
-import { FileEdit, Send, Plus, Database, LayoutDashboard, Upload, Download, AlertTriangle, X, RefreshCw, SkipForward, Trash2, FileSpreadsheet, Menu, Briefcase, CheckCircle2, Settings, ChevronDown, FolderPlus, PenLine, FolderInput, FolderOutput, Network, LogOut, Moon, Sun, Inbox, Loader2, Shield, ScanSearch, Paperclip, Merge } from 'lucide-react';
+import { FileEdit, Send, Plus, Database, LayoutDashboard, Upload, Download, AlertTriangle, X, RefreshCw, SkipForward, Trash2, FileSpreadsheet, Menu, Briefcase, CheckCircle2, Settings, ChevronDown, FolderPlus, PenLine, FolderInput, FolderOutput, Network, LogOut, Moon, Sun, Inbox, Loader2, Shield, ScanSearch, Paperclip, Merge, ParkingSquare } from 'lucide-react';
 import { Official, EmailTemplate, ViewState, ToastNotification, SavedTemplate, Gender, SortOption, FilterCriteria, OfficialDatabase, Campaign, EmailLog, UserProfile, UserRole, ROLE_LABELS, ROLE_COLORS } from './types';
 import type { AssignedFile } from './components/DocAnalysisView';
 import { bootstrapUserProfile, subscribeToMyProfile, canEdit, canSendEmails, canManageRoles } from './services/rolesService';
@@ -51,13 +51,14 @@ import { User } from 'firebase/auth';
 
 // ─── Lazy-loaded heavy components ────────────────────────────────────────────
 // These chunks are only downloaded when the user navigates to those sections.
-const TemplateEditor  = lazy(() => import('./components/TemplateEditor').then(m => ({ default: m.TemplateEditor })));
-const Generator       = lazy(() => import('./components/Generator').then(m => ({ default: m.Generator })));
-const Dashboard       = lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })));
-const OrgChart        = lazy(() => import('./components/OrgChart').then(m => ({ default: m.OrgChart })));
-const InboxView       = lazy(() => import('./components/InboxView').then(m => ({ default: m.InboxView })));
-const RolesManager    = lazy(() => import('./components/RolesManager').then(m => ({ default: m.RolesManager })));
+const TemplateEditor = lazy(() => import('./components/TemplateEditor').then(m => ({ default: m.TemplateEditor })));
+const Generator = lazy(() => import('./components/Generator').then(m => ({ default: m.Generator })));
+const Dashboard = lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })));
+const OrgChart = lazy(() => import('./components/OrgChart').then(m => ({ default: m.OrgChart })));
+const InboxView = lazy(() => import('./components/InboxView').then(m => ({ default: m.InboxView })));
+const RolesManager = lazy(() => import('./components/RolesManager').then(m => ({ default: m.RolesManager })));
 const DocAnalysisView = lazy(() => import('./components/DocAnalysisView').then(m => ({ default: m.DocAnalysisView })));
+const ParkingRotation = lazy(() => import('./components/ParkingRotation').then(m => ({ default: m.ParkingRotation })));
 
 // Shared loading skeleton shown while a lazy chunk is downloading
 const LazyLoader: React.FC = () => (
@@ -135,9 +136,9 @@ export default function App() {
 
     // Derived permissions from role
     const userRole = userProfile?.role ?? 'reader';
-    const canEditDb    = canEdit(userRole);
+    const canEditDb = canEdit(userRole);
     const canSendMails = canSendEmails(userRole);
-    const canManage    = canManageRoles(userRole);
+    const canManage = canManageRoles(userRole);
 
     // Centralized RBAC context
     const rbac = useRBAC(userRole);
@@ -248,6 +249,7 @@ export default function App() {
     // before calling signOut (avoids permission-denied errors mid-flight)
     const unsubscribeDbRef = useRef<(() => void) | null>(null);
     const unsubscribeConfigRef = useRef<(() => void) | null>(null);
+    const unsubscribeUserTplRef = useRef<(() => void) | null>(null);
 
     // --- PERSISTENCE ---
 
@@ -265,11 +267,23 @@ export default function App() {
             }
         });
 
+        // Shared config: template body only (no longer stores savedTemplates here)
         unsubscribeConfigRef.current = dbService.subscribeToSharedConfig((config) => {
             if (config) {
                 if (config.template) setTemplate(config.template);
-                if (config.savedTemplates) setSavedTemplates(config.savedTemplates);
+                // Legacy: if user has NO user_templates yet, seed from shared_config
+                if (config.savedTemplates && savedTemplatesRef.current.length === 0) {
+                    setSavedTemplates(config.savedTemplates);
+                }
                 if (config.sentHistory) setSentHistory(config.sentHistory);
+            }
+            setConfigLoaded(true);
+        });
+
+        // Per-user template library
+        unsubscribeUserTplRef.current = dbService.subscribeToUserTemplates(user.uid, (data) => {
+            if (data?.savedTemplates) {
+                setSavedTemplates(data.savedTemplates);
             }
             setConfigLoaded(true);
         });
@@ -277,30 +291,37 @@ export default function App() {
         return () => {
             unsubscribeDbRef.current?.();
             unsubscribeConfigRef.current?.();
+            unsubscribeUserTplRef.current?.();
             unsubscribeDbRef.current = null;
             unsubscribeConfigRef.current = null;
+            unsubscribeUserTplRef.current = null;
         };
     }, [user]);
 
     useEffect(() => { localStorage.setItem('active_db_id', activeDbId); }, [activeDbId]);
 
     // Always-fresh refs so the debounced auto-save never captures stale closures
-    const templateRef      = useRef(template);
+    const templateRef = useRef(template);
     const savedTemplatesRef = useRef(savedTemplates);
-    useEffect(() => { templateRef.current = template; },       [template]);
+    useEffect(() => { templateRef.current = template; }, [template]);
     useEffect(() => { savedTemplatesRef.current = savedTemplates; }, [savedTemplates]);
 
-    // Persist shared configurations to Firestore with a debounce to prevent excessive writes.
-    // Uses refs instead of closure values so the write always uses the latest state,
-    // even if React batched several state updates before the timer fires.
+    // Auto-save: persist template body to shared_config (shared) and
+    // savedTemplates to user_templates/{uid} (per-user). Debounced 1.5s.
     useEffect(() => {
         if (!user) return;
         const timer = setTimeout(() => {
+            // Save template body to shared_config (keeps it available globally)
             dbService.saveSharedConfig({
                 template: templateRef.current,
+            }).catch((err) => {
+                console.error('[auto-save template] Error:', err);
+            });
+            // Save template library to per-user doc
+            dbService.saveUserTemplates(user.uid, {
                 savedTemplates: savedTemplatesRef.current,
             }).catch((err) => {
-                console.error('[auto-save] Error al guardar en Firestore:', err);
+                console.error('[auto-save user templates] Error:', err);
             });
         }, 1500);
         return () => clearTimeout(timer);
@@ -580,7 +601,7 @@ export default function App() {
         e.target.value = '';
     };
 
-    // Template Handlers — persist directly to Firestore for immediate response
+    // Template Handlers — persist directly to user_templates/{uid} for immediate response
     const handleSaveTemplate = async (name: string, category: import('./types').TemplateCategory) => {
         const newTemplate: SavedTemplate = {
             ...template,
@@ -593,8 +614,8 @@ export default function App() {
         const updated = [...savedTemplates, newTemplate];
         setSavedTemplates(updated);
         try {
-            await dbService.saveSharedConfig({ template, savedTemplates: updated });
-            addToast(`Plantilla "${name}" guardada en Firebase`, 'success');
+            await dbService.saveUserTemplates(user!.uid, { savedTemplates: updated });
+            addToast(`Plantilla "${name}" guardada`, 'success');
         } catch (e) {
             console.error('Error guardando plantilla:', e);
             addToast('Error al guardar plantilla', 'error');
@@ -605,7 +626,7 @@ export default function App() {
         const updated = savedTemplates.map(t => t.id === id ? { ...t, archived } : t);
         setSavedTemplates(updated);
         try {
-            await dbService.saveSharedConfig({ template, savedTemplates: updated });
+            await dbService.saveUserTemplates(user!.uid, { savedTemplates: updated });
             addToast(archived ? 'Plantilla archivada' : 'Plantilla restaurada', 'success');
         } catch (e) {
             console.error('Error archivando plantilla:', e);
@@ -618,7 +639,7 @@ export default function App() {
             const updated = savedTemplates.filter(t => t.id !== id);
             setSavedTemplates(updated);
             try {
-                await dbService.saveSharedConfig({ template, savedTemplates: updated });
+                await dbService.saveUserTemplates(user!.uid, { savedTemplates: updated });
                 addToast("Plantilla eliminada", 'success');
             } catch (e) {
                 console.error('Error eliminando plantilla:', e);
@@ -1056,6 +1077,17 @@ export default function App() {
                         </button>
                     )}
 
+                    {/* Parking Rotation — all roles */}
+                    {rbac.canView('parking') && (
+                        <button
+                            onClick={() => handleNavigate('parking')}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'parking' ? 'bg-emerald-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)] border border-emerald-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
+                        >
+                            <ParkingSquare className={`w-5 h-5 flex-shrink-0 ${view === 'parking' ? 'text-emerald-100' : 'text-slate-600 dark:text-slate-400'}`} />
+                            <span className="flex-1 text-left">Rotación Estac.</span>
+                        </button>
+                    )}
+
                     {/* Inbox — superadmin, admin, operator */}
                     {rbac.canView('inbox') && (
                         <button
@@ -1424,6 +1456,18 @@ export default function App() {
                                         />
                                     </Suspense>
                                 </div>
+                            </ProtectedView>
+                        )}
+
+                        {view === 'parking' && (
+                            <ProtectedView allowed={rbac.canView('parking')} role={userRole} resource="Rotación de Estacionamiento">
+                                <Suspense fallback={<LazyLoader />}>
+                                    <ParkingRotation
+                                        officials={activeDatabase?.officials ?? []}
+                                        canEdit={rbac.canMutateView('parking')}
+                                        onToast={(msg, type) => addToast(msg, type)}
+                                    />
+                                </Suspense>
                             </ProtectedView>
                         )}
                     </div>

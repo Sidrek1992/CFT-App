@@ -196,6 +196,10 @@ export const VIEW_PERMISSIONS: Record<string, ViewPermission> = {
     docAnalysis: {
         canView: (role) => role === 'superadmin' || role === 'admin' || role === 'operator',
     },
+    parking: {
+        canView: () => true,
+        canMutate: (role) => role === 'superadmin' || role === 'admin',
+    },
 };
 
 // ─── Granular action-level permissions ───────────────────────────────────────

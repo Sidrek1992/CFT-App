@@ -9,6 +9,7 @@ export const DB_PAGE_SIZE = 50;
 
 const DB_COLLECTION = "databases";
 const SHARED_DOC_ID = "shared_config";
+const USER_TEMPLATES_COLLECTION = "user_templates";
 
 export const dbService = {
     // Save or Update a full database object
@@ -127,5 +128,33 @@ export const dbService = {
                 }
             }
         );
-    }
+    },
+
+    // ─── Per-user template persistence ─────────────────────────────────────────
+    // Each user has their own document: user_templates/{uid}
+    // Field: savedTemplates — array of SavedTemplate.
+    // The active template body/subject is still saved in shared_config for
+    // backward compatibility; only the SavedTemplates library moves per-user.
+
+    /** Saves the user's template library to their own Firestore document. */
+    async saveUserTemplates(uid: string, data: { savedTemplates: any[]; template?: any }) {
+        const ref = doc(db, USER_TEMPLATES_COLLECTION, uid);
+        await setDoc(ref, { ...data, updatedAt: Date.now() }, { merge: true });
+    },
+
+    /** Real-time listener for the current user's template library. */
+    subscribeToUserTemplates(uid: string, callback: (data: any) => void) {
+        const ref = doc(db, USER_TEMPLATES_COLLECTION, uid);
+        return onSnapshot(
+            ref,
+            (docSnap) => {
+                callback(docSnap.exists() ? docSnap.data() : null);
+            },
+            (err) => {
+                if (err.code !== 'permission-denied' && err.code !== 'unauthenticated') {
+                    console.error('subscribeToUserTemplates error:', err);
+                }
+            }
+        );
+    },
 };

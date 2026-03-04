@@ -100,6 +100,30 @@ service cloud.firestore {
       }
     }
 
+    // ─── user_templates collection ────────────────────────────────────────────
+    //
+    // Each authenticated user has their own document keyed by their UID.
+    // This stores their personal SavedTemplate library, isolated per user.
+    //
+    // Rules:
+    //  • READ   → only the owner (their own doc)
+    //  • WRITE  → only the owner (their own doc)
+    //  • Nobody else can read/write another user's templates.
+
+    match /user_templates/{uid} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ─── parking_config collection ────────────────────────────────────────────
+    //
+    // Stores parking rotation configuration and history.
+    // Readable by all authenticated users; writable by admin/superadmin.
+
+    match /parking_config/{docId} {
+      allow read: if canRead();
+      allow write: if isSignedIn() && canEdit();
+    }
+
     // ─── Deny everything else ─────────────────────────────────────────────────
     //
     // Any collection not explicitly matched above is denied by default in

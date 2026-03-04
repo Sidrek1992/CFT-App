@@ -24,6 +24,7 @@ export interface Official {
   fechaCumpleanios?: string;   // ISO date – solo importa día/mes
   contactoEmergencia?: string; // Nombre + teléfono contacto de emergencia
   direccion?: string;          // Dirección particular del funcionario
+  tieneVehiculo?: boolean;     // Si el funcionario tiene vehículo propio
 }
 
 export interface EmailLog {
@@ -90,7 +91,26 @@ export interface GeneratedEmail {
   attachments: File[];
 }
 
-export type ViewState = 'dashboard' | 'database' | 'orgChart' | 'template' | 'generate' | 'inbox' | 'roles' | 'docAnalysis';
+export type ViewState = 'dashboard' | 'database' | 'orgChart' | 'template' | 'generate' | 'inbox' | 'roles' | 'docAnalysis' | 'parking';
+
+// ─── Parking Rotation ─────────────────────────────────────────────────────────
+
+export interface ParkingWeek {
+  weekKey: string;       // formato ISO: '2026-W10'
+  assignedOfficialIds: string[]; // IDs de funcionarios que les toca ese slot
+  spots: number;         // cantidad de estacionamientos disponibles
+  lockedManually?: boolean;
+}
+
+export interface ParkingConfig {
+  spots: number;                 // # de estacionamientos disponibles (default 13)
+  rotationHistory: ParkingWeek[];
+  lastRotatedWeekKey?: string;
+  excludedOfficialIds?: string[]; // funcionarios excluidos de la rotación
+  ccEmails?: string[];            // correos extra que reciben la notificación
+  createdAt: number;
+  updatedAt: number;
+}
 
 // ─── User Roles ────────────────────────────────────────────────────────────────
 /**

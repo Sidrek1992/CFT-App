@@ -40,6 +40,7 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
   const [fechaCumpleanios, setFechaCumpleanios] = useState('');
   const [contactoEmergencia, setContactoEmergencia] = useState('');
   const [direccion, setDireccion] = useState('');
+  const [tieneVehiculo, setTieneVehiculo] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Load data: If editing, load initialData. If new, try to load Draft from localStorage.
@@ -61,6 +62,7 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
       setFechaCumpleanios(initialData.fechaCumpleanios || '');
       setContactoEmergencia(initialData.contactoEmergencia || '');
       setDireccion(initialData.direccion || '');
+      setTieneVehiculo(initialData.tieneVehiculo || false);
     } else {
       // Logic for recovering Draft
       const draft = localStorage.getItem('officialFormDraft');
@@ -83,6 +85,7 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
           setFechaCumpleanios(parsed.fechaCumpleanios || '');
           setContactoEmergencia(parsed.contactoEmergencia || '');
           setDireccion(parsed.direccion || '');
+          setTieneVehiculo(parsed.tieneVehiculo || false);
         } catch (e) {
           console.error("Error loading draft", e);
         }
@@ -110,21 +113,22 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
         fechaCumpleanios,
         contactoEmergencia,
         direccion,
+        tieneVehiculo,
       };
       localStorage.setItem('officialFormDraft', JSON.stringify(draft));
     }
-  }, [name, email, department, position, stament, isBoss, bossName, bossPosition, bossEmail, gender, title, fechaIngreso, fechaTermino, fechaCumpleanios, contactoEmergencia, direccion, initialData]);
+  }, [name, email, department, position, stament, isBoss, bossName, bossPosition, bossEmail, gender, title, fechaIngreso, fechaTermino, fechaCumpleanios, contactoEmergencia, direccion, tieneVehiculo, initialData]);
 
   // Derive unique lists for autocomplete
   const registeredBosses = useMemo(() => existingOfficials.filter(o => o.isBoss), [existingOfficials]);
 
-  const uniqueDepartments = useMemo(() => 
+  const uniqueDepartments = useMemo(() =>
     [...new Set(existingOfficials.map(o => o.department).filter(Boolean))].sort(),
-  [existingOfficials]);
+    [existingOfficials]);
 
-  const uniqueStaments = useMemo(() => 
+  const uniqueStaments = useMemo(() =>
     [...new Set(existingOfficials.map(o => o.stament).filter(Boolean))].sort(),
-  [existingOfficials]);
+    [existingOfficials]);
 
   const uniqueBossNames = useMemo(() => {
     const historicNames = existingOfficials.map(o => o.bossName).filter(Boolean);
@@ -147,11 +151,11 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
   // ── Duplicate detection ────────────────────────────────────────────────────
   // Runs in real-time as the user types; excludes the record being edited.
   const duplicateMatch = useMemo<DuplicateMatch | null>(() => {
-    const normName  = normalizeStr(name);
+    const normName = normalizeStr(name);
     const normEmail = normalizeStr(email);
 
     // Need at least 3 chars in name OR a non-trivial email to start matching
-    const nameReady  = normName.length >= 3;
+    const nameReady = normName.length >= 3;
     const emailReady = normEmail.includes('@') && normEmail.length > 5;
 
     if (!nameReady && !emailReady) return null;
@@ -197,18 +201,18 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
 
   const handleBossNameChange = (val: string) => {
     setBossName(val);
-    
+
     const registeredMatch = registeredBosses.find(b => b.name.toLowerCase() === val.toLowerCase());
     if (registeredMatch) {
-        setBossPosition(registeredMatch.position);
-        setBossEmail(registeredMatch.email);
-        return;
+      setBossPosition(registeredMatch.position);
+      setBossEmail(registeredMatch.email);
+      return;
     }
 
     const historicMatch = existingOfficials.find(o => o.bossName.toLowerCase() === val.toLowerCase());
     if (historicMatch) {
-        if (!bossPosition && historicMatch.bossPosition) setBossPosition(historicMatch.bossPosition);
-        if (!bossEmail && historicMatch.bossEmail) setBossEmail(historicMatch.bossEmail);
+      if (!bossPosition && historicMatch.bossPosition) setBossPosition(historicMatch.bossPosition);
+      if (!bossEmail && historicMatch.bossEmail) setBossEmail(historicMatch.bossEmail);
     }
   };
 
@@ -230,6 +234,7 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
       setFechaCumpleanios('');
       setContactoEmergencia('');
       setDireccion('');
+      setTieneVehiculo(false);
       localStorage.removeItem('officialFormDraft');
     }
   };
@@ -253,8 +258,9 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
       fechaCumpleanios: fechaCumpleanios || undefined,
       contactoEmergencia: contactoEmergencia || undefined,
       direccion: direccion || undefined,
+      tieneVehiculo,
     });
-    
+
     // Clear draft on successful save
     if (!initialData) {
       localStorage.removeItem('officialFormDraft');
@@ -270,28 +276,28 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
     <div className="bg-white dark:bg-dark-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold text-slate-800 dark:text-white">
+          <h3 className="text-lg font-semibold text-slate-800 dark:text-white">
             {initialData ? 'Editar Funcionario' : 'Nuevo Funcionario'}
-            </h3>
-            {!initialData && (name || email) && (
-                <span className="text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full font-medium">
-                    Borrador detectado
-                </span>
-            )}
+          </h3>
+          {!initialData && (name || email) && (
+            <span className="text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full font-medium">
+              Borrador detectado
+            </span>
+          )}
         </div>
         <div className="flex gap-2">
-             {!initialData && (name || email) && (
-                <button 
-                    onClick={handleClearDraft}
-                    className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-colors"
-                    title="Limpiar formulario"
-                >
-                    <Eraser className="w-5 h-5" />
-                </button>
-            )}
-            <button onClick={onCancel} className="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors">
-            <X className="w-5 h-5" />
+          {!initialData && (name || email) && (
+            <button
+              onClick={handleClearDraft}
+              className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-colors"
+              title="Limpiar formulario"
+            >
+              <Eraser className="w-5 h-5" />
             </button>
+          )}
+          <button onClick={onCancel} className="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors">
+            <X className="w-5 h-5" />
+          </button>
         </div>
       </div>
 
@@ -396,17 +402,17 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
           <div>
             <label className={labelCls}>Correo Electrónico</label>
             <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-4 w-4 text-slate-400 dark:text-slate-500" />
-                </div>
-                <input
-                  required
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={inputWithIconCls}
-                  placeholder="juan@empresa.com"
-                />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Mail className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+              </div>
+              <input
+                required
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={inputWithIconCls}
+                placeholder="juan@empresa.com"
+              />
             </div>
           </div>
 
@@ -425,21 +431,21 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
           <div>
             <label className={labelCls}>Cargo</label>
             <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Briefcase className="h-4 w-4 text-slate-400 dark:text-slate-500" />
-                </div>
-                <input
-                  required
-                  type="text"
-                  value={position}
-                  onChange={(e) => setPosition(e.target.value)}
-                  className={inputWithIconCls}
-                  placeholder="Ej. Analista"
-                />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Briefcase className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+              </div>
+              <input
+                required
+                type="text"
+                value={position}
+                onChange={(e) => setPosition(e.target.value)}
+                className={inputWithIconCls}
+                placeholder="Ej. Analista"
+              />
             </div>
           </div>
 
-           <div>
+          <div>
             <label className={labelCls}>Estamento</label>
             <Combobox
               id="stament-combo"
@@ -517,71 +523,87 @@ export const OfficialForm: React.FC<OfficialFormProps> = ({ initialData, existin
               </div>
             </div>
           </div>
+
+          {/* Tiene vehículo */}
+          <div className="md:col-span-3 flex items-center gap-3 pt-1">
+            <input
+              id="tiene-vehiculo"
+              type="checkbox"
+              checked={tieneVehiculo}
+              onChange={(e) => setTieneVehiculo(e.target.checked)}
+              className="w-4 h-4 text-indigo-600 border-slate-300 dark:border-slate-600 rounded focus:ring-indigo-500"
+            />
+            <label htmlFor="tiene-vehiculo" className="text-sm font-medium text-slate-700 dark:text-slate-200 flex items-center gap-2 cursor-pointer select-none">
+              <span className={`text-base ${tieneVehiculo ? 'grayscale-0' : 'grayscale opacity-40'}`}>🚗</span>
+              Tiene vehículo propio
+              <span className="text-xs font-normal text-slate-400 dark:text-slate-500">(se considera en la rotación de estacionamiento)</span>
+            </label>
+          </div>
         </div>
 
         {/* Boss Toggle */}
         <div className="bg-slate-50 dark:bg-dark-900/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
-             <div className="flex items-center gap-3 mb-4">
-                 <div className="flex items-center h-5">
-                    <input
-                        id="is-boss"
-                        type="checkbox"
-                        checked={isBoss}
-                        onChange={(e) => setIsBoss(e.target.checked)}
-                        className="w-4 h-4 text-indigo-600 border-slate-300 dark:border-slate-600 rounded focus:ring-indigo-500"
-                    />
-                 </div>
-                 <div className="text-sm">
-                    <label htmlFor="is-boss" className="font-medium text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                        Es Jefatura
-                        <Crown className={`w-4 h-4 ${isBoss ? 'text-amber-500' : 'text-slate-400 dark:text-slate-500'}`} />
-                    </label>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Habilita a esta persona para ser seleccionada como jefe de otros.</p>
-                 </div>
-             </div>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center h-5">
+              <input
+                id="is-boss"
+                type="checkbox"
+                checked={isBoss}
+                onChange={(e) => setIsBoss(e.target.checked)}
+                className="w-4 h-4 text-indigo-600 border-slate-300 dark:border-slate-600 rounded focus:ring-indigo-500"
+              />
+            </div>
+            <div className="text-sm">
+              <label htmlFor="is-boss" className="font-medium text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                Es Jefatura
+                <Crown className={`w-4 h-4 ${isBoss ? 'text-amber-500' : 'text-slate-400 dark:text-slate-500'}`} />
+              </label>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Habilita a esta persona para ser seleccionada como jefe de otros.</p>
+            </div>
+          </div>
 
-             <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-4">
-                 <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">
-                    <UserCheck className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                    Jefatura Directa (A quien reporta)
-                 </h4>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Nombre Jefatura</label>
-                        <Combobox
-                            id="boss-name-combo"
-                            value={bossName}
-                            onChange={handleBossNameChange}
-                            options={uniqueBossNames}
-                            placeholder="Buscar jefe..."
-                            size="sm"
-                        />
-                    </div>
-                     <div>
-                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Cargo Jefatura</label>
-                        <Combobox
-                            id="boss-pos-combo"
-                            value={bossPosition}
-                            onChange={setBossPosition}
-                            options={uniqueBossPositions}
-                            placeholder="Cargo del jefe"
-                            size="sm"
-                        />
-                    </div>
-                     <div className="md:col-span-2">
-                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Correo Jefatura</label>
-                        <Combobox
-                            id="boss-email-combo"
-                            value={bossEmail}
-                            onChange={setBossEmail}
-                            options={uniqueBossEmails}
-                            placeholder="correo.jefe@empresa.com"
-                            size="sm"
-                            type="email"
-                        />
-                    </div>
-                 </div>
-             </div>
+          <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-4">
+            <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+              Jefatura Directa (A quien reporta)
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Nombre Jefatura</label>
+                <Combobox
+                  id="boss-name-combo"
+                  value={bossName}
+                  onChange={handleBossNameChange}
+                  options={uniqueBossNames}
+                  placeholder="Buscar jefe..."
+                  size="sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Cargo Jefatura</label>
+                <Combobox
+                  id="boss-pos-combo"
+                  value={bossPosition}
+                  onChange={setBossPosition}
+                  options={uniqueBossPositions}
+                  placeholder="Cargo del jefe"
+                  size="sm"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Correo Jefatura</label>
+                <Combobox
+                  id="boss-email-combo"
+                  value={bossEmail}
+                  onChange={setBossEmail}
+                  options={uniqueBossEmails}
+                  placeholder="correo.jefe@empresa.com"
+                  size="sm"
+                  type="email"
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
