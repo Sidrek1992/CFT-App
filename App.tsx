@@ -1010,113 +1010,91 @@ export default function App() {
                     </p>
                 </div>
 
-                <nav className="flex-1 min-h-0 px-3 py-2 space-y-1">
-                    {/* Dashboard — all roles */}
-                    {rbac.canView('dashboard') && (
-                        <button
-                            onClick={() => handleNavigate('dashboard')}
-                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'dashboard' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
-                        >
-                            <LayoutDashboard className={`w-5 h-5 flex-shrink-0 ${view === 'dashboard' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
-                            Dashboard
-                        </button>
-                    )}
+                {/* ── Navigation ──────────────────────────────────────────── */}
+                <nav className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-3 py-3 space-y-5">
 
-                    {/* Database — all roles (mutations gated inside) */}
-                    {rbac.canView('database') && (
-                        <button
-                            onClick={() => handleNavigate('database')}
-                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'database' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
-                        >
-                            <Database className={`w-5 h-5 flex-shrink-0 ${view === 'database' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
-                            Base de Datos
-                        </button>
-                    )}
+                    {/* ── GENERAL ── */}
+                    <div className="space-y-0.5">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-3 mb-2">General</p>
 
-                    {/* Org chart — all roles */}
-                    {rbac.canView('orgChart') && (
-                        <button
-                            onClick={() => handleNavigate('orgChart')}
-                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'orgChart' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
-                        >
-                            <Network className={`w-5 h-5 flex-shrink-0 ${view === 'orgChart' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
-                            Organigrama
-                        </button>
-                    )}
-
-                    {/* Template editor — superadmin, admin */}
-                    {rbac.canView('template') && (
-                        <button
-                            onClick={() => handleNavigate('template')}
-                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'template' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
-                        >
-                            <FileEdit className={`w-5 h-5 flex-shrink-0 ${view === 'template' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
-                            Editor Plantilla
-                        </button>
-                    )}
-
-                    {/* Generator — superadmin, admin, operator */}
-                    {rbac.canView('generate') && (
-                        <button
-                            onClick={() => handleNavigate('generate')}
-                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'generate' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
-                        >
-                            <Send className={`w-5 h-5 flex-shrink-0 ${view === 'generate' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
-                            Generar y Enviar
-                        </button>
-                    )}
-
-                    {/* Doc Analysis — superadmin, admin, operator */}
-                    {rbac.canView('docAnalysis') && (
-                        <button
-                            onClick={() => handleNavigate('docAnalysis')}
-                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'docAnalysis' ? 'bg-violet-600 text-white shadow-[0_0_20px_rgba(139,92,246,0.3)] border border-violet-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
-                        >
-                            <ScanSearch className={`w-5 h-5 flex-shrink-0 ${view === 'docAnalysis' ? 'text-violet-100' : 'text-slate-600 dark:text-slate-400'}`} />
-                            <span className="flex-1 text-left">Análisis de Docs</span>
-                            {assignedFiles.length > 0 && (
-                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${view === 'docAnalysis' ? 'bg-white/20 text-white' : 'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300'}`}>
-                                    {assignedFiles.length}
-                                </span>
-                            )}
-                        </button>
-                    )}
-
-                    {/* Parking Rotation — all roles */}
-                    {rbac.canView('parking') && (
-                        <button
-                            onClick={() => handleNavigate('parking')}
-                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'parking' ? 'bg-emerald-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)] border border-emerald-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
-                        >
-                            <ParkingSquare className={`w-5 h-5 flex-shrink-0 ${view === 'parking' ? 'text-emerald-100' : 'text-slate-600 dark:text-slate-400'}`} />
-                            <span className="flex-1 text-left">Rotación Estac.</span>
-                        </button>
-                    )}
-
-                    {/* Inbox — superadmin, admin, operator */}
-                    {rbac.canView('inbox') && (
-                        <button
-                            onClick={() => handleNavigate('inbox')}
-                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'inbox' ? 'bg-primary-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
-                        >
-                            <Inbox className={`w-5 h-5 flex-shrink-0 ${view === 'inbox' ? 'text-primary-100' : 'text-slate-600 dark:text-slate-400'}`} />
-                            Bandeja de Respuestas
-                        </button>
-                    )}
-
-                    {/* Roles panel — superadmin only */}
-                    {rbac.canView('roles') && (
-                        <>
-                            <div className="my-2 border-t border-slate-200 dark:border-slate-800/50" />
-                            <button
-                                onClick={() => handleNavigate('roles')}
-                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${view === 'roles' ? 'bg-red-600 text-white shadow-[0_0_20px_rgba(239,68,68,0.3)] border border-red-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent hover:border-slate-200 dark:hover:border-white/10'}`}
-                            >
-                                <Shield className={`w-5 h-5 flex-shrink-0 ${view === 'roles' ? 'text-red-100' : 'text-slate-600 dark:text-slate-400'}`} />
-                                Gestión de Roles
+                        {rbac.canView('dashboard') && (
+                            <button onClick={() => handleNavigate('dashboard')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'dashboard' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
+                                <LayoutDashboard className="w-4 h-4 flex-shrink-0" />
+                                <span>Dashboard</span>
                             </button>
-                        </>
+                        )}
+                        {rbac.canView('database') && (
+                            <button onClick={() => handleNavigate('database')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'database' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
+                                <Database className="w-4 h-4 flex-shrink-0" />
+                                <span>Base de Datos</span>
+                            </button>
+                        )}
+                        {rbac.canView('orgChart') && (
+                            <button onClick={() => handleNavigate('orgChart')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'orgChart' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
+                                <Network className="w-4 h-4 flex-shrink-0" />
+                                <span>Organigrama</span>
+                            </button>
+                        )}
+                        {rbac.canView('parking') && (
+                            <button onClick={() => handleNavigate('parking')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'parking' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
+                                <ParkingSquare className="w-4 h-4 flex-shrink-0" />
+                                <span>Rotación Estac.</span>
+                            </button>
+                        )}
+                    </div>
+
+                    {/* ── COMUNICACIONES ── */}
+                    {(rbac.canView('template') || rbac.canView('generate') || rbac.canView('inbox')) && (
+                        <div className="space-y-0.5">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-3 mb-2">Comunicaciones</p>
+                            {rbac.canView('template') && (
+                                <button onClick={() => handleNavigate('template')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'template' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
+                                    <FileEdit className="w-4 h-4 flex-shrink-0" />
+                                    <span>Editor Plantilla</span>
+                                </button>
+                            )}
+                            {rbac.canView('generate') && (
+                                <button onClick={() => handleNavigate('generate')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'generate' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
+                                    <Send className="w-4 h-4 flex-shrink-0" />
+                                    <span>Generar y Enviar</span>
+                                </button>
+                            )}
+                            {rbac.canView('inbox') && (
+                                <button onClick={() => handleNavigate('inbox')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'inbox' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
+                                    <Inbox className="w-4 h-4 flex-shrink-0" />
+                                    <span>Bandeja Respuestas</span>
+                                </button>
+                            )}
+                        </div>
                     )}
+
+                    {/* ── IA & ANÁLISIS ── */}
+                    {rbac.canView('docAnalysis') && (
+                        <div className="space-y-0.5">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-3 mb-2">IA & Análisis</p>
+                            <button onClick={() => handleNavigate('docAnalysis')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'docAnalysis' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
+                                <ScanSearch className="w-4 h-4 flex-shrink-0" />
+                                <span className="flex-1 text-left">Análisis de Docs</span>
+                                {assignedFiles.length > 0 && (
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${view === 'docAnalysis' ? 'bg-white/20 text-white' : 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'}`}>
+                                        {assignedFiles.length}
+                                    </span>
+                                )}
+                            </button>
+                        </div>
+                    )}
+
+                    {/* ── ADMINISTRACIÓN ── */}
+                    {rbac.canView('roles') && (
+                        <div className="space-y-0.5">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-3 mb-2">Administración</p>
+                            <button onClick={() => handleNavigate('roles')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'roles' ? 'bg-red-600 text-white shadow-[0_4px_14px_rgba(239,68,68,0.35)] border border-red-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-700 dark:hover:text-red-300 border border-transparent hover:border-red-200 dark:hover:border-red-800/40'}`}>
+                                <Shield className="w-4 h-4 flex-shrink-0" />
+                                <span>Gestión de Roles</span>
+                            </button>
+                        </div>
+                    )}
+
                 </nav>
 
                 <div className="px-3 pb-3 pt-1 shrink-0">
