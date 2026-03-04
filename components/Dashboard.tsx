@@ -6,7 +6,7 @@ import {
     Briefcase, Activity, TrendingUp, Clock, MessageSquare,
     Eye, Zap, BarChart2, Award, Target, MousePointerClick,
     Cake, CalendarClock, FileWarning, PartyPopper, CalendarDays, CalendarCheck2,
-    Building2, Network, FileText, UserCircle2, ShieldAlert, ScanSearch
+    Building2, Network, FileText, UserCircle2, ShieldAlert
 } from 'lucide-react';
 import {
     PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip,
@@ -36,7 +36,7 @@ const getDayKey = (ts: number) => new Date(ts).toISOString().slice(0, 10);
 const buildTimeline = (campaigns: Campaign[], days: 7 | 30 | 90) => {
     const now = Date.now();
     const msPerDay = 86400000;
-    const entries: { date: string; enviados: number }[] = [];
+    const entries: { date: string; enviados: number; abiertos: number }[] = [];
 
     const keyToIndex: Record<string, number> = {};
     for (let i = days - 1; i >= 0; i--) {
@@ -47,6 +47,7 @@ const buildTimeline = (campaigns: Campaign[], days: 7 | 30 | 90) => {
         entries.push({
             date: d.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' }),
             enviados: 0,
+            abiertos: 0,
         });
     }
 
@@ -56,6 +57,12 @@ const buildTimeline = (campaigns: Campaign[], days: 7 | 30 | 90) => {
                 const key = getDayKey(log.sentAt);
                 if (keyToIndex[key] !== undefined) {
                     entries[keyToIndex[key]].enviados++;
+                }
+            }
+            if (log.openedAt) {
+                const key = getDayKey(log.openedAt);
+                if (keyToIndex[key] !== undefined) {
+                    entries[keyToIndex[key]].abiertos++;
                 }
             }
         });
@@ -187,18 +194,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
             navType: 'invalidEmail'
         },
         {
-            id: 'rut',
-            title: 'Sin RUT / DV',
-            subtitle: 'Identificación oficial faltante.',
-            icon: <ShieldAlert className="w-4 h-4 text-red-400" />,
-            bgColorClass: 'bg-red-500/10 hover:bg-red-500/20',
-            borderColorClass: 'border-red-500/20',
-            iconBgClass: 'bg-red-500/20',
-            countClass: 'text-red-500',
-            users: officials.filter(o => !o.rut || !o.dv).map(buildFullName),
-            navType: ''
-        },
-        {
             id: 'boss',
             title: 'Sin Jefatura',
             subtitle: 'Requerido para gráficas/organigrama.',
@@ -281,54 +276,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
             countClass: 'text-blue-500',
             users: officials.filter(o => !o.fechaIngreso || !o.fechaTermino).map(buildFullName),
             navType: ''
-        },
-        {
-            id: 'secondaryNames',
-            title: 'Sin Nombres Secundarios',
-            subtitle: 'Segundo nombre o apellido faltante.',
-            icon: <UserCircle2 className="w-4 h-4 text-slate-400" />,
-            bgColorClass: 'bg-slate-500/10 hover:bg-slate-500/20',
-            borderColorClass: 'border-slate-500/20',
-            iconBgClass: 'bg-slate-500/20',
-            countClass: 'text-slate-500',
-            users: officials.filter(o => !o.segundoNombre || !o.segundoApellido).map(buildFullName),
-            navType: ''
-        },
-        {
-            id: 'employmentInfo',
-            title: 'Sin Estamento / Profesión',
-            subtitle: 'Información profesional incompleta.',
-            icon: <Award className="w-4 h-4 text-slate-400" />,
-            bgColorClass: 'bg-slate-500/10 hover:bg-slate-500/20',
-            borderColorClass: 'border-slate-500/20',
-            iconBgClass: 'bg-slate-500/20',
-            countClass: 'text-slate-500',
-            users: officials.filter(o => !o.stament || !o.profesion).map(buildFullName),
-            navType: ''
-        },
-        {
-            id: 'contactInfo',
-            title: 'Sin Teléfono / Dirección',
-            subtitle: 'Datos de contacto incompletos.',
-            icon: <ScanSearch className="w-4 h-4 text-slate-400" />,
-            bgColorClass: 'bg-slate-500/10 hover:bg-slate-500/20',
-            borderColorClass: 'border-slate-500/20',
-            iconBgClass: 'bg-slate-500/20',
-            countClass: 'text-slate-500',
-            users: officials.filter(o => !o.telefono || !o.direccion).map(buildFullName),
-            navType: ''
-        },
-        {
-            id: 'emergency',
-            title: 'Sin Contacto Emergencia',
-            subtitle: 'Información de seguridad crítica.',
-            icon: <ShieldAlert className="w-4 h-4 text-slate-400" />,
-            bgColorClass: 'bg-slate-500/10 hover:bg-slate-500/20',
-            borderColorClass: 'border-slate-500/20',
-            iconBgClass: 'bg-slate-500/20',
-            countClass: 'text-slate-500',
-            users: officials.filter(o => !o.contactoEmergencia).map(buildFullName),
-            navType: ''
         }
     ];
 
@@ -343,16 +290,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
     // ── Email analytics KPIs ────────────────────────────────────────────────
     const emailAnalytics = useMemo(() => {
         const totalSent = allLogs.filter(l => l.status === 'sent').length;
+        const totalOpened = allLogs.filter(l => l.openedAt).length;
+        const openRate = totalSent > 0 ? Math.round((totalOpened / totalSent) * 100) : 0;
 
         // Method breakdown
         const byMethod: Record<string, number> = { gmail_api: 0, eml: 0, mailto: 0 };
         allLogs.forEach(l => { byMethod[l.method] = (byMethod[l.method] || 0) + 1; });
+        const topMethod = Object.entries(byMethod).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—';
 
         // Avg sends per campaign
         const activeCampaigns = campaigns.filter(c => (c.logs?.length ?? 0) > 0).length;
         const avgSends = activeCampaigns > 0 ? Math.round(totalSent / activeCampaigns) : 0;
 
-        return { totalSent, byMethod, avgSends };
+        // Open count last 7 days
+        const cutoff7d = Date.now() - 7 * 86400000;
+        const opens7d = allLogs.filter(l => l.openedAt && l.openedAt > cutoff7d).length;
+
+        return { totalSent, totalOpened, openRate, topMethod, avgSends, opens7d, byMethod };
     }, [allLogs, campaigns]);
 
     // ── Campaign bar chart data ─────────────────────────────────────────────
@@ -361,10 +315,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
             .filter(c => (c.logs?.length ?? 0) > 0)
             .map(c => {
                 const sent = c.logs.filter(l => l.status === 'sent').length;
+                const opened = c.logs.filter(l => l.openedAt).length;
+                const rate = sent > 0 ? Math.round((opened / sent) * 100) : 0;
                 return {
                     name: c.name.length > 18 ? c.name.slice(0, 16) + '…' : c.name,
                     fullName: c.name,
                     enviados: sent,
+                    abiertos: opened,
+                    tasa: rate,
                 };
             })
             .sort((a, b) => b.enviados - a.enviados)
@@ -397,6 +355,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         [campaigns, timelineDays]
     );
     const totalInPeriod = timelineData.reduce((acc, d) => acc + d.enviados, 0);
+    const openedInPeriod = timelineData.reduce((acc, d) => acc + d.abiertos, 0);
 
     // ── Last campaigns table ────────────────────────────────────────────────
     const recentCampaigns = useMemo(() => {
@@ -405,8 +364,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
             .slice(0, 5)
             .map(c => {
                 const sent = c.logs?.filter(l => l.status === 'sent').length ?? 0;
+                const opened = c.logs?.filter(l => l.openedAt).length ?? 0;
+                const rate = sent > 0 ? Math.round((opened / sent) * 100) : 0;
                 const methods = [...new Set(c.logs?.map(l => l.method) ?? [])];
-                return { id: c.id, name: c.name, createdAt: c.createdAt, sent, methods };
+                return { id: c.id, name: c.name, createdAt: c.createdAt, sent, opened, rate, methods };
             });
     }, [campaigns]);
 
@@ -611,11 +572,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         color="bg-amber-500/15"
                     />
                     <KPICard
-                        label="Inconsistencias"
-                        value={healthChecks.reduce((acc, c) => acc + c.users.length, 0).toLocaleString('es-CL')}
-                        sub="datos por completar"
-                        icon={<ShieldAlert className="w-4 h-4 text-rose-400" />}
-                        color="bg-rose-500/15"
+                        label="Contratos p/Vencer"
+                        value={contractExpirations.within30.length.toLocaleString('es-CL')}
+                        sub="en los próximos 30 días"
+                        icon={<AlertTriangle className="w-4 h-4 text-pink-400" />}
+                        color="bg-pink-500/15"
                     />
                     <KPICard
                         label="Total Mails Enviados"
@@ -629,14 +590,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
             {/* ── Row 3: Timeline + Campaign bar chart ───────────────────────── */}
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                {/* Timeline — Historial de envíos */}
+                {/* Timeline — enviados + abiertos */}
                 <div className="glass-panel bento-card p-6 lg:col-span-3 flex flex-col">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="font-bold text-slate-700 dark:text-slate-300 text-sm flex items-center gap-2">
                             <TrendingUp className="w-4 h-4 text-primary-400" />
-                            Histórico de Envíos
+                            Actividad de Envíos
                             <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
-                                ({totalInPeriod} correos enviados)
+                                ({totalInPeriod} enviados este período)
                             </span>
                         </h3>
                         <div className="flex bg-slate-100 dark:bg-dark-900 p-0.5 rounded-lg border border-slate-200 dark:border-slate-800">
@@ -669,7 +630,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                     <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} allowDecimals={false} />
                                     <RechartsTooltip contentStyle={darkTooltipStyle} labelStyle={{ color: '#94a3b8' }} />
                                     <Legend wrapperStyle={{ fontSize: 11, color: '#94a3b8' }} />
-                                    <Area type="monotone" dataKey="enviados" name="Correos Enviados" stroke="#6366f1" strokeWidth={2} fill="url(#gradEnviados)" dot={true} activeDot={{ r: 4 }} />
+                                    <Area type="monotone" dataKey="enviados" name="Enviados" stroke="#6366f1" strokeWidth={2} fill="url(#gradEnviados)" dot={true} activeDot={{ r: 4 }} />
                                 </ComposedChart>
                             </ResponsiveContainer>
                         )}
@@ -1034,6 +995,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                     <th className="text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pb-3 pr-4">Campaña</th>
                                     <th className="text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pb-3 pr-4">Fecha</th>
                                     <th className="text-right text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pb-3 pr-4">Enviados</th>
+                                    <th className="text-right text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pb-3 pr-4">Abiertos</th>
+                                    <th className="text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pb-3 pr-4">Tasa Apertura</th>
                                     <th className="text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pb-3">Método(s)</th>
                                 </tr>
                             </thead>
@@ -1045,6 +1008,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                             {new Date(c.createdAt).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: '2-digit' })}
                                         </td>
                                         <td className="py-3 pr-4 text-right font-bold text-slate-700 dark:text-slate-200">{c.sent}</td>
+                                        <td className="py-3 pr-4 text-right font-bold text-emerald-600 dark:text-emerald-400">{c.opened}</td>
+                                        <td className="py-3 pr-4">
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex-1 h-1.5 bg-slate-100 dark:bg-dark-900 rounded-full overflow-hidden min-w-[60px]">
+                                                    <div
+                                                        className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-700"
+                                                        style={{ width: `${c.rate}%` }}
+                                                    />
+                                                </div>
+                                                <span className="text-xs font-bold text-slate-600 dark:text-slate-300 w-8 text-right">{c.rate}%</span>
+                                            </div>
+                                        </td>
                                         <td className="py-3">
                                             <div className="flex gap-1 flex-wrap">
                                                 {c.methods.map(m => (
