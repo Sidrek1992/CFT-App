@@ -16,6 +16,8 @@ export interface Official {
   segundoApellido?: string;
   // ── Datos de contacto ─────────────────────────────────────────────────────
   email: string;
+  rut?: string;
+  dv?: string;
   telefono?: string;
   // ── Datos personales ──────────────────────────────────────────────────────
   gender: Gender;

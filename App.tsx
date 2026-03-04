@@ -93,43 +93,48 @@ const INITIAL_OFFICIALS_DATA: Official[] = [];
 
 const UserProfileSection = ({ userProfile, userName, isDarkMode, setIsDarkMode, handleLogout }: any) => {
     return (
-        <div className="px-3 pb-3 shrink-0">
-            <div className="glass-panel rounded-xl p-3 border border-slate-100 dark:border-white/5 shadow-lg relative bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-900 dark:to-slate-800/80">
-                <div className="flex flex-col gap-3">
-                    {/* Top Row: Role and Online Status */}
-                    <div className="flex flex-col relative gap-2 pt-1">
-                        <div className="flex flex-col gap-1.5">
-                            <h3 className="text-xs font-bold text-slate-800 dark:text-white truncate">
-                                {userName || 'Cargando...'}
+        <div className="px-5 pb-6 shrink-0 mt-auto">
+            <div className="glass-panel rounded-[2rem] p-5 border border-white/40 dark:border-white/10 shadow-xl relative bg-gradient-to-br from-white/80 to-slate-50/50 dark:from-slate-900/80 dark:to-slate-800/80 backdrop-blur-md group overflow-hidden">
+                {/* Subtle Glow Background */}
+                <div className="absolute -top-10 -right-10 w-24 h-24 bg-indigo-500/10 blur-2xl rounded-full transition-all group-hover:bg-indigo-500/20"></div>
+
+                <div className="flex flex-col gap-4 relative z-10">
+                    <div className="flex items-center gap-3.5">
+                        <div className="relative">
+                            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold border-2 border-white dark:border-slate-800 shadow-sm relative overflow-hidden group-hover:scale-105 transition-transform duration-300">
+                                {userName?.charAt(0) || 'U'}
+                                <div className="absolute inset-0 bg-indigo-500/0 group-hover:bg-indigo-500/10 transition-colors"></div>
+                            </div>
+                            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-white dark:bg-slate-900 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-800">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                            </div>
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                            <h3 className="text-sm font-black text-slate-800 dark:text-white truncate tracking-tight">
+                                {userName || 'Usuario'}
                             </h3>
-                            <div className="flex items-center justify-between">
-                                <span className={`text-[9px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded-md border shadow-sm ${userProfile ? ROLE_COLORS[userProfile.role] : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                                    {userProfile ? ROLE_LABELS[userProfile.role] : 'Cargando...'}
-                                </span>
-                                <div className="flex items-center gap-1.5 px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 shadow-sm">
-                                    <span className="relative flex h-1.5 w-1.5">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-500/10 dark:bg-indigo-500/20 border border-indigo-200/50 dark:border-indigo-500/30">
+                                    <span className="text-[8px] font-black text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">
+                                        {userProfile ? ROLE_LABELS[userProfile.role] : 'Usuario'}
                                     </span>
-                                    <span className="text-[8px] uppercase tracking-wider font-bold text-emerald-600 dark:text-emerald-400">ONLINE</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Bottom Row: Actions */}
-                    <div className="flex items-center justify-between pt-3 mt-1 border-t border-slate-100 dark:border-white/5">
-                        <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
-                            Ajustes
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={handleLogout}
-                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-all"
-                                title="Cerrar Sesión"
-                            >
-                                <LogOut className="w-3.5 h-3.5" />
-                            </button>
+                    <div className="flex items-center justify-between pt-4 mt-1 border-t border-slate-100/50 dark:border-white/5">
+                        <button
+                            onClick={handleLogout}
+                            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all active:scale-95 group/logout"
+                        >
+                            <LogOut className="w-3.5 h-3.5 transition-transform group-hover/logout:-translate-x-0.5" />
+                            <span>Salir</span>
+                        </button>
+
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200/30 dark:border-white/[0.03]">
+                            <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
+                            <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-tighter">Conectado</span>
                         </div>
                     </div>
                 </div>
@@ -977,45 +982,68 @@ export default function App() {
             <input type="file" ref={dbImportInputRef} onChange={handleImportDatabase} className="hidden" accept=".json" />
 
             {/* --- SIDEBAR --- */}
-            <aside className={`fixed inset-y-0 left-0 z-30 w-72 glass-panel border-r border-slate-200 dark:border-slate-800 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} m-4 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-xl`}>
-                <div className="p-6 border-b border-slate-200 dark:border-slate-800/50 flex items-center justify-between bg-gradient-to-b from-slate-50 to-transparent dark:from-slate-900/50">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-indigo-700 rounded-2xl flex items-center justify-center shadow-lg shadow-primary-500/20">
-                            <Briefcase className="text-white w-6 h-6" />
+            <aside className={`fixed inset-y-0 left-0 z-30 w-[285px] glass-panel border-r border-white/20 dark:border-white/10 transform transition-all duration-500 ease-in-out lg:translate-x-0 lg:static flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} m-4 lg:m-6 rounded-[2.5rem] overflow-hidden shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] bg-white/70 dark:bg-slate-900/70 backdrop-blur-3xl border border-white/40 dark:border-slate-800/50`}>
+                <div className="p-7 pb-6 relative overflow-hidden">
+                    {/* Decorative Top Accent */}
+                    <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent"></div>
+
+                    <div className="flex flex-col gap-6 relative z-10">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3.5 group cursor-default">
+                                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 rounded-2xl flex items-center justify-center shadow-[0_10px_20px_-5px_rgba(79,70,229,0.5)] group-hover:scale-105 transition-transform duration-500">
+                                    <Briefcase className="text-white w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h1 className="font-black text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-slate-900 via-slate-800 to-slate-600 dark:from-white dark:via-white dark:to-slate-400">
+                                        GDP <span className="text-indigo-600 dark:text-indigo-400">Cloud</span>
+                                    </h1>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                        <p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.25em]">Gestor Pro</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                                <NotificationCenter />
+                                <button
+                                    onClick={() => setIsDarkMode(!isDarkMode)}
+                                    className="p-2.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-white/5 rounded-xl transition-all duration-300 active:scale-90"
+                                    title={isDarkMode ? "Modo Claro" : "Modo Oscuro"}
+                                >
+                                    {isDarkMode ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
+                                </button>
+                            </div>
                         </div>
-                        <div>
-                            <h1 className="text-slate-900 dark:text-white font-extrabold text-xl tracking-tight">GDP Cloud</h1>
-                            <p className="text-xs font-medium text-primary-600 dark:text-primary-400 uppercase tracking-widest mt-0.5">Gestor Email</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <NotificationCenter />
-                        <button
-                            onClick={() => setIsDarkMode(!isDarkMode)}
-                            className="p-2 text-slate-500 hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400 hover:bg-slate-200 dark:hover:bg-white/5 rounded-xl transition-colors"
-                            title={isDarkMode ? "Cambiar a Modo Claro" : "Cambiar a Modo Oscuro"}
-                        >
-                            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-                        </button>
                     </div>
                 </div>
 
                 {/* Database Switcher */}
-                <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-800/50 bg-slate-900/5 dark:bg-black/10">
-                    <div className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center justify-between">
-                        <span>Base de Datos</span>
-                        <button onClick={() => setIsDbMenuOpen(!isDbMenuOpen)} className="hover:text-primary-400 transition-colors p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10">
-                            <Settings className="w-4 h-4" />
-                        </button>
-                    </div>
+                <div className="px-6 py-4">
+                    <div className="relative group">
+                        <div className="flex items-center justify-between mb-2.5 px-1">
+                            <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.25em]">Entorno Actual</span>
+                            <div className="flex gap-1">
+                                <button onClick={() => setIsDbMenuOpen(!isDbMenuOpen)} className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-white/5 transition-all">
+                                    <Settings className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                        </div>
 
-                    <div className="relative">
                         <button
                             onClick={() => setIsDbMenuOpen(!isDbMenuOpen)}
-                            className="w-full bg-white dark:bg-dark-900/70 hover:bg-slate-100 dark:hover:bg-dark-800 text-slate-900 dark:text-white p-3 rounded-xl flex items-center justify-between text-sm transition-all border border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 shadow-inner group"
+                            className={`w-full flex items-center justify-between p-3.5 rounded-[1.25rem] transition-all duration-300 border shadow-sm group/btn
+                                ${isDbMenuOpen
+                                    ? 'bg-indigo-600 border-indigo-500 text-white shadow-indigo-200/50 dark:shadow-indigo-900/20'
+                                    : 'bg-white/50 dark:bg-white/[0.03] border-slate-200/60 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:border-indigo-300 dark:hover:border-indigo-500/30 hover:bg-white dark:hover:bg-white/10'}`}
                         >
-                            <span className="truncate flex-1 text-left font-medium group-hover:text-primary-300 transition-colors">{activeDatabase.name}</span>
-                            <ChevronDown className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${isDbMenuOpen ? 'bg-white/20' : 'bg-indigo-500/10 dark:bg-indigo-500/20'}`}>
+                                    <Database className={`w-4 h-4 ${isDbMenuOpen ? 'text-white' : 'text-indigo-600 dark:text-indigo-400'}`} />
+                                </div>
+                                <span className="truncate font-bold text-sm tracking-tight">{activeDatabase.name}</span>
+                            </div>
+                            <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isDbMenuOpen ? 'rotate-180' : ''} ${isDbMenuOpen ? 'text-white' : 'text-slate-400'}`} />
                         </button>
 
                         {/* Dropdown Menu */}
@@ -1072,41 +1100,44 @@ export default function App() {
                 </div>
 
                 {/* ── Navigation ──────────────────────────────────────────── */}
-                <nav className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-3 py-3 space-y-3">
+                <nav className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-4 py-6 space-y-6">
 
                     {/* ── GENERAL ── */}
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                         <button
                             onClick={() => toggleSidebarSection('general')}
-                            className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors group"
+                            className="w-full flex items-center justify-between px-3 py-1 text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 dark:text-slate-500 hover:text-indigo-500/80 dark:hover:text-indigo-400/80 transition-colors group"
                         >
-                            <span>General</span>
-                            <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${sidebarSectionsOpen.general ? '' : '-rotate-90'}`} />
+                            <div className="flex items-center gap-2.5">
+                                <div className={`w-1 h-3.5 rounded-full transition-all duration-500 ${sidebarSectionsOpen.general ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]' : 'bg-slate-300 dark:bg-slate-700'}`}></div>
+                                <span>General</span>
+                            </div>
+                            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-500 ${sidebarSectionsOpen.general ? '' : '-rotate-90 opacity-40'}`} />
                         </button>
 
-                        <div className={`space-y-0.5 overflow-hidden transition-all duration-300 ${sidebarSectionsOpen.general ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                        <div className={`space-y-1.5 overflow-hidden transition-all duration-500 ${sidebarSectionsOpen.general ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
                             {rbac.canView('dashboard') && (
-                                <button onClick={() => handleNavigate('dashboard')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'dashboard' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
-                                    <LayoutDashboard className="w-4 h-4 flex-shrink-0" />
-                                    <span>Dashboard</span>
+                                <button onClick={() => handleNavigate('dashboard')} className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-bold transition-all duration-300 group ${view === 'dashboard' ? 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-500/20 shadow-[0_4px_12px_-2px_rgba(99,102,241,0.15)] dark:shadow-none' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/[0.04] border border-transparent'}`}>
+                                    <LayoutDashboard className={`w-4.5 h-4.5 flex-shrink-0 transition-all duration-300 ${view === 'dashboard' ? 'text-indigo-600 dark:text-indigo-400 scale-110' : 'text-slate-400 group-hover:text-indigo-500 group-hover:scale-110'}`} />
+                                    <span className="group-hover:translate-x-1 transition-transform duration-300">Dashboard</span>
                                 </button>
                             )}
                             {rbac.canView('database') && (
-                                <button onClick={() => handleNavigate('database')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'database' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
-                                    <Database className="w-4 h-4 flex-shrink-0" />
-                                    <span>Base de Datos</span>
+                                <button onClick={() => handleNavigate('database')} className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-bold transition-all duration-300 group ${view === 'database' ? 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-500/20 shadow-[0_4px_12px_-2px_rgba(99,102,241,0.15)] dark:shadow-none' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/[0.04] border border-transparent'}`}>
+                                    <Database className={`w-4.5 h-4.5 flex-shrink-0 transition-all duration-300 group-hover:translate-x-0.5 ${view === 'database' ? 'text-indigo-600 dark:text-indigo-400 scale-110' : 'text-slate-400 group-hover:text-indigo-500 group-hover:scale-110'}`} />
+                                    <span className="group-hover:translate-x-1 transition-transform duration-300">Base de Datos</span>
                                 </button>
                             )}
                             {rbac.canView('orgChart') && (
-                                <button onClick={() => handleNavigate('orgChart')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'orgChart' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
-                                    <Network className="w-4 h-4 flex-shrink-0" />
-                                    <span>Organigrama</span>
+                                <button onClick={() => handleNavigate('orgChart')} className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-bold transition-all duration-300 group ${view === 'orgChart' ? 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-500/20 shadow-[0_4px_12px_-2px_rgba(99,102,241,0.15)] dark:shadow-none' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/[0.04] border border-transparent'}`}>
+                                    <Network className={`w-4.5 h-4.5 flex-shrink-0 transition-all duration-300 ${view === 'orgChart' ? 'text-indigo-600 dark:text-indigo-400 scale-110' : 'text-slate-400 group-hover:text-indigo-500 group-hover:scale-110'}`} />
+                                    <span className="group-hover:translate-x-1 transition-transform duration-300">Organigrama</span>
                                 </button>
                             )}
                             {rbac.canView('parking') && (
-                                <button onClick={() => handleNavigate('parking')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'parking' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
-                                    <ParkingSquare className="w-4 h-4 flex-shrink-0" />
-                                    <span>Rotación Estac.</span>
+                                <button onClick={() => handleNavigate('parking')} className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-bold transition-all duration-300 group ${view === 'parking' ? 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-500/20 shadow-[0_4px_12px_-2px_rgba(99,102,241,0.15)] dark:shadow-none' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/[0.04] border border-transparent'}`}>
+                                    <ParkingSquare className={`w-4.5 h-4.5 flex-shrink-0 transition-all duration-300 ${view === 'parking' ? 'text-indigo-600 dark:text-indigo-400 scale-110' : 'text-slate-400 group-hover:text-indigo-500 group-hover:scale-110'}`} />
+                                    <span className="group-hover:translate-x-1 transition-transform duration-300">Rotación Estac.</span>
                                 </button>
                             )}
                         </div>
@@ -1114,31 +1145,34 @@ export default function App() {
 
                     {/* ── COMUNICACIONES ── */}
                     {(rbac.canView('template') || rbac.canView('generate') || rbac.canView('inbox')) && (
-                        <div className="space-y-1">
+                        <div className="space-y-2">
                             <button
                                 onClick={() => toggleSidebarSection('comunicaciones')}
-                                className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors group"
+                                className="w-full flex items-center justify-between px-3 py-1 text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 dark:text-slate-500 hover:text-cyan-500/80 dark:hover:text-cyan-400/80 transition-colors group"
                             >
-                                <span>Comunicaciones</span>
-                                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${sidebarSectionsOpen.comunicaciones ? '' : '-rotate-90'}`} />
+                                <div className="flex items-center gap-2.5">
+                                    <div className={`w-1 h-3.5 rounded-full transition-all duration-500 ${sidebarSectionsOpen.comunicaciones ? 'bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.6)]' : 'bg-slate-300 dark:bg-slate-700'}`}></div>
+                                    <span>Comunicaciones</span>
+                                </div>
+                                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-500 ${sidebarSectionsOpen.comunicaciones ? '' : '-rotate-90 opacity-40'}`} />
                             </button>
-                            <div className={`space-y-0.5 overflow-hidden transition-all duration-300 ${sidebarSectionsOpen.comunicaciones ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                            <div className={`space-y-1.5 overflow-hidden transition-all duration-500 ${sidebarSectionsOpen.comunicaciones ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
                                 {rbac.canView('template') && (
-                                    <button onClick={() => handleNavigate('template')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'template' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
-                                        <FileEdit className="w-4 h-4 flex-shrink-0" />
-                                        <span>Editor Plantilla</span>
+                                    <button onClick={() => handleNavigate('template')} className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-bold transition-all duration-300 group ${view === 'template' ? 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-200/50 dark:border-cyan-500/20 shadow-[0_4px_12px_-2px_rgba(6,182,212,0.15)] dark:shadow-none' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/[0.04] border border-transparent'}`}>
+                                        <FileEdit className={`w-4.5 h-4.5 flex-shrink-0 transition-all duration-300 ${view === 'template' ? 'text-cyan-600 dark:text-cyan-400 scale-110' : 'text-slate-400 group-hover:text-cyan-500 group-hover:scale-110'}`} />
+                                        <span className="group-hover:translate-x-1 transition-transform duration-300">Editor Plantilla</span>
                                     </button>
                                 )}
                                 {rbac.canView('generate') && (
-                                    <button onClick={() => handleNavigate('generate')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'generate' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
-                                        <Send className="w-4 h-4 flex-shrink-0" />
-                                        <span>Generar y Enviar</span>
+                                    <button onClick={() => handleNavigate('generate')} className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-bold transition-all duration-300 group ${view === 'generate' ? 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-200/50 dark:border-cyan-500/20 shadow-[0_4px_12px_-2px_rgba(6,182,212,0.15)] dark:shadow-none' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/[0.04] border border-transparent'}`}>
+                                        <Send className={`w-4.5 h-4.5 flex-shrink-0 transition-all duration-300 ${view === 'generate' ? 'text-cyan-600 dark:text-cyan-400 scale-110' : 'text-slate-400 group-hover:text-cyan-500 group-hover:scale-110'}`} />
+                                        <span className="group-hover:translate-x-1 transition-transform duration-300">Generar y Enviar</span>
                                     </button>
                                 )}
                                 {rbac.canView('inbox') && (
-                                    <button onClick={() => handleNavigate('inbox')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'inbox' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
-                                        <Inbox className="w-4 h-4 flex-shrink-0" />
-                                        <span>Bandeja Respuestas</span>
+                                    <button onClick={() => handleNavigate('inbox')} className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-bold transition-all duration-300 group ${view === 'inbox' ? 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-200/50 dark:border-cyan-500/20 shadow-[0_4px_12px_-2px_rgba(6,182,212,0.15)] dark:shadow-none' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/[0.04] border border-transparent'}`}>
+                                        <Inbox className={`w-4.5 h-4.5 flex-shrink-0 transition-all duration-300 ${view === 'inbox' ? 'text-cyan-600 dark:text-cyan-400 scale-110' : 'text-slate-400 group-hover:text-cyan-500 group-hover:scale-110'}`} />
+                                        <span className="group-hover:translate-x-1 transition-transform duration-300">Bandeja Respuestas</span>
                                     </button>
                                 )}
                             </div>
@@ -1147,20 +1181,23 @@ export default function App() {
 
                     {/* ── IA & ANÁLISIS ── */}
                     {rbac.canView('docAnalysis') && (
-                        <div className="space-y-1">
+                        <div className="space-y-2">
                             <button
                                 onClick={() => toggleSidebarSection('ia')}
-                                className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors group"
+                                className="w-full flex items-center justify-between px-3 py-1 text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 dark:text-slate-500 hover:text-fuchsia-500/80 dark:hover:text-fuchsia-400/80 transition-colors group"
                             >
-                                <span>IA & Análisis</span>
-                                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${sidebarSectionsOpen.ia ? '' : '-rotate-90'}`} />
+                                <div className="flex items-center gap-2.5">
+                                    <div className={`w-1 h-3.5 rounded-full transition-all duration-500 ${sidebarSectionsOpen.ia ? 'bg-fuchsia-500 shadow-[0_0_8px_rgba(217,70,239,0.6)]' : 'bg-slate-300 dark:bg-slate-700'}`}></div>
+                                    <span>IA & Análisis</span>
+                                </div>
+                                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-500 ${sidebarSectionsOpen.ia ? '' : '-rotate-90 opacity-40'}`} />
                             </button>
-                            <div className={`space-y-0.5 overflow-hidden transition-all duration-300 ${sidebarSectionsOpen.ia ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                                <button onClick={() => handleNavigate('docAnalysis')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'docAnalysis' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
-                                    <ScanSearch className="w-4 h-4 flex-shrink-0" />
-                                    <span className="flex-1 text-left">Análisis de Docs</span>
+                            <div className={`space-y-1.5 overflow-hidden transition-all duration-500 ${sidebarSectionsOpen.ia ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                <button onClick={() => handleNavigate('docAnalysis')} className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-bold transition-all duration-300 group ${view === 'docAnalysis' ? 'bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-400 border border-fuchsia-200/50 dark:border-fuchsia-500/20 shadow-[0_4px_12px_-2px_rgba(217,70,239,0.15)] dark:shadow-none' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/[0.04] border border-transparent'}`}>
+                                    <ScanSearch className={`w-4.5 h-4.5 flex-shrink-0 transition-all duration-300 ${view === 'docAnalysis' ? 'text-fuchsia-600 dark:text-fuchsia-400 scale-110' : 'text-slate-400 group-hover:text-fuchsia-500 group-hover:scale-110'}`} />
+                                    <span className="flex-1 text-left group-hover:translate-x-1 transition-transform duration-300">Análisis de Docs</span>
                                     {assignedFiles.length > 0 && (
-                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${view === 'docAnalysis' ? 'bg-white/20 text-white' : 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'}`}>
+                                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg flex-shrink-0 ${view === 'docAnalysis' ? 'bg-fuchsia-500 text-white shadow-[0_2px_8px_rgba(217,70,239,0.4)]' : 'bg-slate-200 dark:bg-dark-800 text-slate-600 dark:text-slate-400'}`}>
                                             {assignedFiles.length}
                                         </span>
                                     )}
@@ -1171,18 +1208,21 @@ export default function App() {
 
                     {/* ── ADMINISTRACIÓN ── */}
                     {rbac.canView('roles') && (
-                        <div className="space-y-1">
+                        <div className="space-y-2">
                             <button
                                 onClick={() => toggleSidebarSection('admin')}
-                                className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors group"
+                                className="w-full flex items-center justify-between px-3 py-1 text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 dark:text-slate-500 hover:text-rose-500/80 dark:hover:text-rose-400/80 transition-colors group"
                             >
-                                <span>Administración</span>
-                                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${sidebarSectionsOpen.admin ? '' : '-rotate-90'}`} />
+                                <div className="flex items-center gap-2.5">
+                                    <div className={`w-1 h-3.5 rounded-full transition-all duration-500 ${sidebarSectionsOpen.admin ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]' : 'bg-slate-300 dark:bg-slate-700'}`}></div>
+                                    <span>Administración</span>
+                                </div>
+                                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-500 ${sidebarSectionsOpen.admin ? '' : '-rotate-90 opacity-40'}`} />
                             </button>
-                            <div className={`space-y-0.5 overflow-hidden transition-all duration-300 ${sidebarSectionsOpen.admin ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                                <button onClick={() => handleNavigate('roles')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'roles' ? 'bg-red-600 text-white shadow-[0_4px_14px_rgba(239,68,68,0.35)] border border-red-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-700 dark:hover:text-red-300 border border-transparent hover:border-red-200 dark:hover:border-red-800/40'}`}>
-                                    <Shield className="w-4 h-4 flex-shrink-0" />
-                                    <span>Gestión de Roles</span>
+                            <div className={`space-y-1.5 overflow-hidden transition-all duration-500 ${sidebarSectionsOpen.admin ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                <button onClick={() => handleNavigate('roles')} className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-bold transition-all duration-300 group ${view === 'roles' ? 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200/50 dark:border-rose-500/20 shadow-[0_4px_12px_-2px_rgba(244,63,94,0.15)] dark:shadow-none' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/[0.04] border border-transparent'}`}>
+                                    <Shield className={`w-4.5 h-4.5 flex-shrink-0 transition-all duration-300 ${view === 'roles' ? 'text-rose-600 dark:text-rose-400 scale-110' : 'text-slate-400 group-hover:text-rose-500 group-hover:scale-110'}`} />
+                                    <span className="group-hover:translate-x-1 transition-transform duration-300">Gestión de Roles</span>
                                 </button>
                             </div>
                         </div>
