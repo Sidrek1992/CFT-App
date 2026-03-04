@@ -207,6 +207,17 @@ export default function App() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [showClearConfirm, setShowClearConfirm] = useState(false);
 
+    // Sidebar collapsable sections state
+    const [sidebarSectionsOpen, setSidebarSectionsOpen] = useState({
+        general: true,
+        comunicaciones: true,
+        ia: true,
+        admin: true
+    });
+    const toggleSidebarSection = (section: keyof typeof sidebarSectionsOpen) => {
+        setSidebarSectionsOpen(prev => ({ ...prev, [section]: !prev[section] }));
+    };
+
     // Dark Mode State
     const [isDarkMode, setIsDarkMode] = useState(() => {
         const saved = localStorage.getItem('theme');
@@ -1011,87 +1022,119 @@ export default function App() {
                 </div>
 
                 {/* ── Navigation ──────────────────────────────────────────── */}
-                <nav className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-3 py-3 space-y-5">
+                <nav className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-3 py-3 space-y-3">
 
                     {/* ── GENERAL ── */}
-                    <div className="space-y-0.5">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-3 mb-2">General</p>
+                    <div className="space-y-1">
+                        <button
+                            onClick={() => toggleSidebarSection('general')}
+                            className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors group"
+                        >
+                            <span>General</span>
+                            <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${sidebarSectionsOpen.general ? '' : '-rotate-90'}`} />
+                        </button>
 
-                        {rbac.canView('dashboard') && (
-                            <button onClick={() => handleNavigate('dashboard')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'dashboard' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
-                                <LayoutDashboard className="w-4 h-4 flex-shrink-0" />
-                                <span>Dashboard</span>
-                            </button>
-                        )}
-                        {rbac.canView('database') && (
-                            <button onClick={() => handleNavigate('database')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'database' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
-                                <Database className="w-4 h-4 flex-shrink-0" />
-                                <span>Base de Datos</span>
-                            </button>
-                        )}
-                        {rbac.canView('orgChart') && (
-                            <button onClick={() => handleNavigate('orgChart')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'orgChart' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
-                                <Network className="w-4 h-4 flex-shrink-0" />
-                                <span>Organigrama</span>
-                            </button>
-                        )}
-                        {rbac.canView('parking') && (
-                            <button onClick={() => handleNavigate('parking')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'parking' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
-                                <ParkingSquare className="w-4 h-4 flex-shrink-0" />
-                                <span>Rotación Estac.</span>
-                            </button>
-                        )}
+                        <div className={`space-y-0.5 overflow-hidden transition-all duration-300 ${sidebarSectionsOpen.general ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                            {rbac.canView('dashboard') && (
+                                <button onClick={() => handleNavigate('dashboard')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'dashboard' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
+                                    <LayoutDashboard className="w-4 h-4 flex-shrink-0" />
+                                    <span>Dashboard</span>
+                                </button>
+                            )}
+                            {rbac.canView('database') && (
+                                <button onClick={() => handleNavigate('database')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'database' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
+                                    <Database className="w-4 h-4 flex-shrink-0" />
+                                    <span>Base de Datos</span>
+                                </button>
+                            )}
+                            {rbac.canView('orgChart') && (
+                                <button onClick={() => handleNavigate('orgChart')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'orgChart' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
+                                    <Network className="w-4 h-4 flex-shrink-0" />
+                                    <span>Organigrama</span>
+                                </button>
+                            )}
+                            {rbac.canView('parking') && (
+                                <button onClick={() => handleNavigate('parking')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'parking' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
+                                    <ParkingSquare className="w-4 h-4 flex-shrink-0" />
+                                    <span>Rotación Estac.</span>
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     {/* ── COMUNICACIONES ── */}
                     {(rbac.canView('template') || rbac.canView('generate') || rbac.canView('inbox')) && (
-                        <div className="space-y-0.5">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-3 mb-2">Comunicaciones</p>
-                            {rbac.canView('template') && (
-                                <button onClick={() => handleNavigate('template')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'template' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
-                                    <FileEdit className="w-4 h-4 flex-shrink-0" />
-                                    <span>Editor Plantilla</span>
-                                </button>
-                            )}
-                            {rbac.canView('generate') && (
-                                <button onClick={() => handleNavigate('generate')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'generate' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
-                                    <Send className="w-4 h-4 flex-shrink-0" />
-                                    <span>Generar y Enviar</span>
-                                </button>
-                            )}
-                            {rbac.canView('inbox') && (
-                                <button onClick={() => handleNavigate('inbox')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'inbox' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
-                                    <Inbox className="w-4 h-4 flex-shrink-0" />
-                                    <span>Bandeja Respuestas</span>
-                                </button>
-                            )}
+                        <div className="space-y-1">
+                            <button
+                                onClick={() => toggleSidebarSection('comunicaciones')}
+                                className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors group"
+                            >
+                                <span>Comunicaciones</span>
+                                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${sidebarSectionsOpen.comunicaciones ? '' : '-rotate-90'}`} />
+                            </button>
+                            <div className={`space-y-0.5 overflow-hidden transition-all duration-300 ${sidebarSectionsOpen.comunicaciones ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                {rbac.canView('template') && (
+                                    <button onClick={() => handleNavigate('template')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'template' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
+                                        <FileEdit className="w-4 h-4 flex-shrink-0" />
+                                        <span>Editor Plantilla</span>
+                                    </button>
+                                )}
+                                {rbac.canView('generate') && (
+                                    <button onClick={() => handleNavigate('generate')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'generate' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
+                                        <Send className="w-4 h-4 flex-shrink-0" />
+                                        <span>Generar y Enviar</span>
+                                    </button>
+                                )}
+                                {rbac.canView('inbox') && (
+                                    <button onClick={() => handleNavigate('inbox')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'inbox' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
+                                        <Inbox className="w-4 h-4 flex-shrink-0" />
+                                        <span>Bandeja Respuestas</span>
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     )}
 
                     {/* ── IA & ANÁLISIS ── */}
                     {rbac.canView('docAnalysis') && (
-                        <div className="space-y-0.5">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-3 mb-2">IA & Análisis</p>
-                            <button onClick={() => handleNavigate('docAnalysis')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'docAnalysis' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
-                                <ScanSearch className="w-4 h-4 flex-shrink-0" />
-                                <span className="flex-1 text-left">Análisis de Docs</span>
-                                {assignedFiles.length > 0 && (
-                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${view === 'docAnalysis' ? 'bg-white/20 text-white' : 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'}`}>
-                                        {assignedFiles.length}
-                                    </span>
-                                )}
+                        <div className="space-y-1">
+                            <button
+                                onClick={() => toggleSidebarSection('ia')}
+                                className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors group"
+                            >
+                                <span>IA & Análisis</span>
+                                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${sidebarSectionsOpen.ia ? '' : '-rotate-90'}`} />
                             </button>
+                            <div className={`space-y-0.5 overflow-hidden transition-all duration-300 ${sidebarSectionsOpen.ia ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                <button onClick={() => handleNavigate('docAnalysis')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'docAnalysis' ? 'bg-primary-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] border border-primary-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-white/5 hover:text-primary-700 dark:hover:text-white border border-transparent hover:border-primary-200 dark:hover:border-white/10'}`}>
+                                    <ScanSearch className="w-4 h-4 flex-shrink-0" />
+                                    <span className="flex-1 text-left">Análisis de Docs</span>
+                                    {assignedFiles.length > 0 && (
+                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${view === 'docAnalysis' ? 'bg-white/20 text-white' : 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'}`}>
+                                            {assignedFiles.length}
+                                        </span>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     )}
 
                     {/* ── ADMINISTRACIÓN ── */}
                     {rbac.canView('roles') && (
-                        <div className="space-y-0.5">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-3 mb-2">Administración</p>
-                            <button onClick={() => handleNavigate('roles')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'roles' ? 'bg-red-600 text-white shadow-[0_4px_14px_rgba(239,68,68,0.35)] border border-red-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-700 dark:hover:text-red-300 border border-transparent hover:border-red-200 dark:hover:border-red-800/40'}`}>
-                                <Shield className="w-4 h-4 flex-shrink-0" />
-                                <span>Gestión de Roles</span>
+                        <div className="space-y-1">
+                            <button
+                                onClick={() => toggleSidebarSection('admin')}
+                                className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors group"
+                            >
+                                <span>Administración</span>
+                                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${sidebarSectionsOpen.admin ? '' : '-rotate-90'}`} />
                             </button>
+                            <div className={`space-y-0.5 overflow-hidden transition-all duration-300 ${sidebarSectionsOpen.admin ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                <button onClick={() => handleNavigate('roles')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'roles' ? 'bg-red-600 text-white shadow-[0_4px_14px_rgba(239,68,68,0.35)] border border-red-500/50' : 'text-slate-600 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-700 dark:hover:text-red-300 border border-transparent hover:border-red-200 dark:hover:border-red-800/40'}`}>
+                                    <Shield className="w-4 h-4 flex-shrink-0" />
+                                    <span>Gestión de Roles</span>
+                                </button>
+                            </div>
                         </div>
                     )}
 
