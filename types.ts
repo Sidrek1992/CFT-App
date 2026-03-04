@@ -7,24 +7,50 @@ export enum Gender {
 
 export interface Official {
   id: string;
-  name: string;
+  // ── Nombre desglosado ──────────────────────────────────────────────────────
+  name: string;               // Nombre completo (retrocompatibilidad y display)
+  primerNombre?: string;
+  segundoNombre?: string;
+  tercerNombre?: string;
+  primerApellido?: string;
+  segundoApellido?: string;
+  // ── Datos de contacto ─────────────────────────────────────────────────────
   email: string;
+  telefono?: string;
+  // ── Datos personales ──────────────────────────────────────────────────────
   gender: Gender;
-  title: string; // e.g., "Sr.", "Sra.", "Dr."
-  department: string; // New field
-  stament?: string; // New field: Estamento (Profesional, Técnico, etc.)
+  title: string;              // e.g., "Sr.", "Sra.", "Dr."
+  estadoCivil?: string;       // Soltero, Casado, Viudo, Divorciado, Conviviente
+  hijos?: number;             // Número de hijos
+  // ── Datos laborales ───────────────────────────────────────────────────────
+  department: string;
+  stament?: string;           // Estamento (Profesional, Técnico, etc.)
   position: string;
-  isBoss?: boolean; // New field: Is this person a boss available for others?
+  tipoContrato?: string;      // Planta, Contrata, Honorarios, etc.
+  profesion?: string;         // Título profesional
+  postGrado?: string;         // Postgrado / Magíster / Doctorado
+  isBoss?: boolean;
   bossName: string;
   bossPosition: string;
   bossEmail: string;
-  profileImage?: string; // New field: Profile image URL
-  fechaIngreso?: string;       // ISO date – fecha de ingreso al CFT
-  fechaTermino?: string;       // ISO date – vencimiento de contrato
-  fechaCumpleanios?: string;   // ISO date – solo importa día/mes
-  contactoEmergencia?: string; // Nombre + teléfono contacto de emergencia
-  direccion?: string;          // Dirección particular del funcionario
-  tieneVehiculo?: boolean;     // Si el funcionario tiene vehículo propio
+  profileImage?: string;
+  // ── Fechas ────────────────────────────────────────────────────────────────
+  fechaIngreso?: string;       // ISO date
+  fechaTermino?: string;       // ISO date
+  fechaCumpleanios?: string;   // ISO date
+  // ── Otros ────────────────────────────────────────────────────────────────
+  contactoEmergencia?: string;
+  direccion?: string;
+  tieneVehiculo?: boolean;
+}
+
+/** Construye el nombre completo a partir de los campos desglosados (si existen). */
+export function buildFullName(o: Pick<Official, 'name' | 'primerNombre' | 'segundoNombre' | 'tercerNombre' | 'primerApellido' | 'segundoApellido'>): string {
+  if (o.primerNombre || o.primerApellido) {
+    return [o.primerNombre, o.segundoNombre, o.tercerNombre, o.primerApellido, o.segundoApellido]
+      .filter(Boolean).join(' ').trim();
+  }
+  return o.name ?? '';
 }
 
 export interface EmailLog {

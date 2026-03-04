@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { Upload, X, FileSpreadsheet, CheckCircle2, AlertTriangle, ArrowRight, ChevronDown, ChevronUp, Eye, Loader2, Merge } from 'lucide-react';
-import { Official, Gender } from '../types';
+import { Official, Gender, buildFullName } from '../types';
 
 // ─── Field definitions for auto-mapping ──────────────────────────────────────
 
@@ -11,19 +11,38 @@ interface FieldDef {
 }
 
 const FIELD_DEFS: FieldDef[] = [
-    { key: 'name', label: 'Nombre', aliases: ['nombre', 'name', 'nombres', 'nombre completo', 'full name'] },
+    // Nombre desglosado
+    { key: 'primerNombre', label: 'Primer Nombre', aliases: ['primer nombre', 'primernombre', '1er nombre', 'nombre1', 'p. nombre'] },
+    { key: 'segundoNombre', label: 'Segundo Nombre', aliases: ['segundo nombre', 'segundonombre', '2do nombre', 'nombre2'] },
+    { key: 'tercerNombre', label: 'Tercer Nombre', aliases: ['tercer nombre', 'tercernombre', '3er nombre', 'nombre3'] },
+    { key: 'primerApellido', label: 'Primer Apellido', aliases: ['primer apellido', 'primerapellido', 'apellido1', 'apellido paterno', 'p. apellido'] },
+    { key: 'segundoApellido', label: 'Segundo Apellido', aliases: ['segundo apellido', 'segundoapellido', 'apellido2', 'apellido materno'] },
+    // Nombre completo (fallback / retrocompatibilidad)
+    { key: 'name', label: 'Nombre Completo', aliases: ['nombre', 'name', 'nombres', 'nombre completo', 'full name'] },
+    // Contacto
     { key: 'email', label: 'Correo', aliases: ['correo', 'email', 'e-mail', 'correo electronico', 'mail'] },
+    { key: 'telefono', label: 'Teléfono', aliases: ['telefono', 'teléfono', 'phone', 'fono', 'cel', 'celular', 'movil', 'móvil'] },
+    // Personales
     { key: 'gender', label: 'Género', aliases: ['genero', 'género', 'gender', 'sexo', 'sex'] },
     { key: 'title', label: 'Título', aliases: ['titulo', 'título', 'title', 'tratamiento'] },
+    { key: 'estadoCivil', label: 'Estado Civil', aliases: ['estado civil', 'estadocivil', 'civil', 'estado_civil'] },
+    { key: 'hijos', label: 'N° Hijos', aliases: ['hijos', 'hijos a cargo', 'numero hijos', 'n hijos', 'nro hijos'] },
+    // Laborales
     { key: 'department', label: 'Departamento', aliases: ['departamento', 'department', 'depto', 'area', 'unidad'] },
     { key: 'position', label: 'Cargo', aliases: ['cargo', 'position', 'puesto', 'rol'] },
     { key: 'stament', label: 'Estamento', aliases: ['estamento', 'stament', 'estamento funcionario'] },
+    { key: 'tipoContrato', label: 'Tipo Contrato', aliases: ['tipo contrato', 'tipocontrato', 'contrato', 'tipo de contrato', 'modalidad contrato'] },
+    { key: 'profesion', label: 'Profesión', aliases: ['profesion', 'profesión', 'titulo profesional', 'título profesional', 'carrera'] },
+    { key: 'postGrado', label: 'Postgrado', aliases: ['postgrado', 'post grado', 'magister', 'magíster', 'doctorado', 'diplomado'] },
+    // Jefatura
     { key: 'bossName', label: 'Jefatura', aliases: ['jefatura', 'jefe', 'boss', 'bossname', 'nombre jefe', 'jefe directo'] },
     { key: 'bossPosition', label: 'Cargo Jefatura', aliases: ['cargojefatura', 'cargo jefatura', 'bossposition', 'cargo jefe'] },
     { key: 'bossEmail', label: 'Correo Jefatura', aliases: ['correojefatura', 'correo jefatura', 'bossemail', 'email jefe'] },
+    // Fechas
     { key: 'fechaIngreso', label: 'Fecha Ingreso', aliases: ['fecha ingreso', 'fechaingreso', 'ingreso', 'fecha de ingreso', 'start date'] },
     { key: 'fechaTermino', label: 'Fecha Término', aliases: ['fecha termino', 'fecha término', 'fechatermino', 'termino', 'vencimiento', 'end date', 'fecha vencimiento'] },
     { key: 'fechaCumpleanios', label: 'Cumpleaños', aliases: ['cumpleanos', 'cumpleaños', 'fecha cumpleanos', 'fecha cumpleaños', 'fechacumpleanios', 'birthday'] },
+    // Otros
     { key: 'contactoEmergencia', label: 'Contacto Emergencia', aliases: ['contacto emergencia', 'contactoemergencia', 'emergencia', 'emergency contact'] },
     { key: 'direccion', label: 'Dirección', aliases: ['direccion', 'dirección', 'domicilio', 'address', 'direccion particular'] },
 ];
@@ -50,6 +69,24 @@ const parseGender = (val: any): Gender => {
     if (['female', 'femenino', 'mujer', 'f', 'sra', 'srta', 'dama', 'fem', 'senora', 'dona'].includes(str)) return Gender.Female;
     return Gender.Unspecified;
 };
+
+/**
+ * Fuzzy name matching: returns true if two name strings are "close enough"
+ * using normalized token-set comparison (order-independent full-name match).
+ */
+function namesMatch(a: string, b: string): boolean {
+    if (!a || !b) return false;
+    const tokA = normalize(a).split(/\s+/).filter(Boolean).sort().join(' ');
+    const tokB = normalize(b).split(/\s+/).filter(Boolean).sort().join(' ');
+    if (tokA === tokB) return true;
+    // Partial: all tokens of shorter name exist in longer (covers "Juan Pérez" vs "Juan Carlos Pérez González")
+    const setA = new Set(tokA.split(' '));
+    const setB = new Set(tokB.split(' '));
+    const [smaller, larger] = setA.size <= setB.size ? [setA, setB] : [setB, setA];
+    const overlap = [...smaller].filter(t => larger.has(t)).length;
+    // Require ≥75% of smaller set tokens to match
+    return overlap >= Math.ceil(smaller.size * 0.75);
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -83,7 +120,7 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
     const [mergeResult, setMergeResult] = useState<{ updated: number; fields: number }>({ updated: 0, fields: 0 });
     const fileRef = useRef<HTMLInputElement>(null);
 
-    // ── Step 1: Upload ────────────────────────────────────────────────────────
+    // ── Step 1: Upload ────────────────────────────────────────────────────
     const handleFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -112,17 +149,19 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
         e.target.value = '';
     }, [addToast]);
 
-    // ── Step 2: Process mapping → preview ────────────────────────────────────
+    // ── Step 2: Process mapping → preview ────────────────────────────────
     const processMapping = useCallback(() => {
-        // Build a lookup: which excel column → which Official field
         const activeMapping = Object.entries(columnMapping).filter((entry): entry is [string, keyof Official] => entry[1] !== '');
 
-        // Find the column mapped to 'name' and 'email' (needed for matching)
+        // Columns that can identify a person
         const nameCol = activeMapping.find(([, v]) => v === 'name')?.[0];
+        const primerNombreCol = activeMapping.find(([, v]) => v === 'primerNombre')?.[0];
+        const primerApellidoCol = activeMapping.find(([, v]) => v === 'primerApellido')?.[0];
         const emailCol = activeMapping.find(([, v]) => v === 'email')?.[0];
 
-        if (!nameCol && !emailCol) {
-            addToast('Debes mapear al menos Nombre o Correo para identificar funcionarios', 'error');
+        const hasIdentifier = nameCol || (primerNombreCol && primerApellidoCol) || emailCol;
+        if (!hasIdentifier) {
+            addToast('Debes mapear al menos Correo, Nombre Completo o Primer Nombre + Primer Apellido para identificar funcionarios', 'error');
             return;
         }
 
@@ -130,16 +169,34 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
         let unmatched = 0;
 
         excelData.forEach(row => {
-            const rowEmail = emailCol ? String(row[emailCol] || '').trim().toLowerCase() : '';
-            const rowName = nameCol ? String(row[nameCol] || '').trim().toLowerCase() : '';
+            const rowEmail = emailCol ? String(row[emailCol] ?? '').trim().toLowerCase() : '';
 
-            // Match by email first, then by name
+            // Build candidate full-name from excel row
+            let rowName = nameCol ? String(row[nameCol] ?? '').trim() : '';
+            if (!rowName && primerNombreCol) {
+                rowName = [
+                    primerNombreCol ? String(row[primerNombreCol] ?? '') : '',
+                    activeMapping.find(([, v]) => v === 'segundoNombre')?.[0] ? String(row[activeMapping.find(([, v]) => v === 'segundoNombre')![0]] ?? '') : '',
+                    activeMapping.find(([, v]) => v === 'tercerNombre')?.[0] ? String(row[activeMapping.find(([, v]) => v === 'tercerNombre')![0]] ?? '') : '',
+                    primerApellidoCol ? String(row[primerApellidoCol] ?? '') : '',
+                    activeMapping.find(([, v]) => v === 'segundoApellido')?.[0] ? String(row[activeMapping.find(([, v]) => v === 'segundoApellido')![0]] ?? '') : '',
+                ].filter(s => s.trim()).join(' ').trim();
+            }
+
+            // Match by email first (exact), then by full name (fuzzy)
             let official: Official | undefined;
+
             if (rowEmail && rowEmail.includes('@')) {
                 official = officials.find(o => o.email.trim().toLowerCase() === rowEmail);
             }
+
             if (!official && rowName) {
-                official = officials.find(o => o.name.trim().toLowerCase() === rowName);
+                // Exact match against built full name
+                official = officials.find(o => normalize(buildFullName(o)) === normalize(rowName));
+                // Fuzzy fallback
+                if (!official) {
+                    official = officials.find(o => namesMatch(buildFullName(o), rowName));
+                }
             }
 
             if (!official) {
@@ -147,31 +204,45 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
                 return;
             }
 
-            // Determine which fields can be filled (empty in official, has value in excel)
+            // Determine fields to fill (empty in official, has value in excel)
             const fieldsToFill: MatchResult['fieldsToFill'] = [];
 
             activeMapping.forEach(([excelCol, fieldKey]) => {
-                if (fieldKey === 'name' || fieldKey === 'email') return; // skip identity fields
+                // Skip identity/name fields used for matching
+                if (['name', 'email', 'primerNombre', 'segundoNombre', 'tercerNombre', 'primerApellido', 'segundoApellido'].includes(fieldKey)) return;
 
                 const excelVal = row[excelCol];
                 if (excelVal === undefined || excelVal === null || String(excelVal).trim() === '') return;
 
-                const currentVal = official![fieldKey];
+                const currentVal = official![fieldKey as keyof Official];
                 const fieldDef = FIELD_DEFS.find(f => f.key === fieldKey);
 
-                // Only fill if current value is empty/undefined
                 const isEmpty = currentVal === undefined || currentVal === null || String(currentVal).trim() === '';
                 if (isEmpty) {
                     let newValue = String(excelVal).trim();
-                    if (fieldKey === 'gender') {
-                        newValue = parseGender(excelVal);
-                    }
+                    if (fieldKey === 'gender') newValue = parseGender(excelVal);
                     fieldsToFill.push({
                         field: fieldKey,
                         label: fieldDef?.label || fieldKey,
                         oldValue: String(currentVal ?? ''),
                         newValue,
                     });
+                }
+            });
+
+            // Build name parts if individual columns are mapped (even if official already has name)
+            const nameParts: Partial<Official> = {};
+            if (primerNombreCol && row[primerNombreCol]) { nameParts.primerNombre = String(row[primerNombreCol]).trim(); }
+            ['segundoNombre', 'tercerNombre', 'primerApellido', 'segundoApellido'].forEach(key => {
+                const col = activeMapping.find(([, v]) => v === key)?.[0];
+                if (col && row[col]) (nameParts as any)[key] = String(row[col]).trim();
+            });
+            Object.entries(nameParts).forEach(([k, v]) => {
+                if (!v) return;
+                const current = (official as any)[k];
+                if (!current || String(current).trim() === '') {
+                    const def = FIELD_DEFS.find(f => f.key === k);
+                    fieldsToFill.push({ field: k as keyof Official, label: def?.label || k, oldValue: String(current ?? ''), newValue: String(v) });
                 }
             });
 
@@ -185,11 +256,10 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
         setStep('preview');
     }, [columnMapping, excelData, officials, addToast]);
 
-    // ── Step 3: Apply merge ──────────────────────────────────────────────────
+    // ── Step 3: Apply merge ──────────────────────────────────────────────
     const applyMerge = useCallback(async () => {
         setIsProcessing(true);
         try {
-            // Build a map of updates: officialId → partial Official
             const updatesMap = new Map<string, Partial<Official>>();
             let totalFields = 0;
 
@@ -202,11 +272,15 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
                 updatesMap.set(m.official.id, patch);
             });
 
-            // Merge into officials list
             const merged = officials.map(o => {
                 const patch = updatesMap.get(o.id);
-                if (patch) return { ...o, ...patch };
-                return o;
+                if (!patch) return o;
+                const updated = { ...o, ...patch };
+                // Rebuild full name if name parts changed
+                if (patch.primerNombre || patch.primerApellido) {
+                    updated.name = buildFullName(updated);
+                }
+                return updated;
             });
 
             await onMerge(merged);
@@ -220,7 +294,7 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
         }
     }, [matches, officials, onMerge, addToast]);
 
-    // ── Toggle row expansion ──────────────────────────────────────────────────
+    // ── Toggle row expansion ──────────────────────────────────────────────
     const toggleRow = (idx: number) => {
         setExpandedRows(prev => {
             const next = new Set(prev);
@@ -229,7 +303,7 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
         });
     };
 
-    // ── Close & reset ─────────────────────────────────────────────────────────
+    // ── Close & reset ─────────────────────────────────────────────────────
     const handleClose = () => {
         setStep('upload');
         setFileName('');
@@ -245,7 +319,7 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
 
     if (!isOpen) return null;
 
-    // ── Render ────────────────────────────────────────────────────────────────
+    // ── Render ────────────────────────────────────────────────────────────
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white dark:bg-dark-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden border border-slate-200 dark:border-slate-700 animate-in zoom-in-95 duration-200">
@@ -274,11 +348,10 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
                         return (
                             <React.Fragment key={s}>
                                 {i > 0 && <ArrowRight className="w-3 h-3 text-slate-300 dark:text-slate-600 flex-shrink-0" />}
-                                <span className={`text-xs font-semibold px-2 py-1 rounded-full transition-colors ${
-                                    isActive ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300' :
+                                <span className={`text-xs font-semibold px-2 py-1 rounded-full transition-colors ${isActive ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300' :
                                     isPast ? 'text-emerald-600 dark:text-emerald-400' :
-                                    'text-slate-400 dark:text-slate-500'
-                                }`}>
+                                        'text-slate-400 dark:text-slate-500'
+                                    }`}>
                                     {isPast ? '✓ ' : ''}{labels[i]}
                                 </span>
                             </React.Fragment>
@@ -301,10 +374,10 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
                                 <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Haz clic para subir un archivo Excel</p>
                                 <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">.xlsx o .xls</p>
                             </div>
-                            <p className="text-xs text-slate-400 dark:text-slate-500 mt-4 max-w-sm text-center leading-relaxed">
-                                Solo se rellenarán campos <strong>vacíos</strong> de funcionarios que ya existen en la base de datos.
-                                No se crearán registros nuevos ni se sobrescribirán datos existentes.
-                            </p>
+                            <div className="text-xs text-slate-400 dark:text-slate-500 mt-4 max-w-sm text-center leading-relaxed space-y-1">
+                                <p>Solo se rellenarán campos <strong>vacíos</strong> de funcionarios que ya existen.</p>
+                                <p>La coincidencia se hace por <strong>correo</strong>, luego por <strong>nombre completo</strong> (tolerante a variaciones).</p>
+                            </div>
                         </div>
                     )}
 
@@ -348,7 +421,6 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
                     {/* ──── STEP: Preview ──── */}
                     {step === 'preview' && (
                         <div className="space-y-4">
-                            {/* Summary */}
                             <div className="flex gap-3">
                                 <div className="flex-1 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 rounded-lg p-3 text-center">
                                     <span className="block text-2xl font-bold text-emerald-700 dark:text-emerald-300">{matches.length}</span>
@@ -371,7 +443,9 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
                                     <AlertTriangle className="w-10 h-10 text-amber-400 mx-auto mb-3" />
                                     <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">No se encontraron campos vacíos para rellenar</p>
                                     <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                                        Todos los funcionarios coincidentes ya tienen esos campos completos.
+                                        {unmatchedCount > 0
+                                            ? `${unmatchedCount} filas del Excel no coincidieron con ningún funcionario. Verifica que el correo o el nombre coincidan exactamente.`
+                                            : 'Todos los funcionarios coincidentes ya tienen esos campos completos.'}
                                     </p>
                                 </div>
                             ) : (
@@ -383,7 +457,7 @@ export const ExcelAutoFillModal: React.FC<Props> = ({ isOpen, onClose, officials
                                                 className="w-full flex items-center justify-between px-3 py-2 bg-slate-50 dark:bg-dark-900/50 hover:bg-slate-100 dark:hover:bg-dark-700 transition-colors text-left"
                                             >
                                                 <div className="flex items-center gap-2 min-w-0">
-                                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{m.official.name}</span>
+                                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{buildFullName(m.official)}</span>
                                                     <span className="text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded-full font-medium flex-shrink-0">
                                                         +{m.fieldsToFill.length} campos
                                                     </span>
