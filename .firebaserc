@@ -1,5 +1,7 @@
 {
-  "projects": {},
+  "projects": {
+    "default": "app-correo-cft"
+  },
   "targets": {},
   "etags": {}
 }
